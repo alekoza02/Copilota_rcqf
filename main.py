@@ -6,10 +6,6 @@ import configparser
 def main(config: configparser):
     
     _tasto_navigazione = int(config.get('Default', 'tasto_navigazione'))
-    _modello_or_cloud = config.get('Default', 'modello_or_cloud')
-    _modello_default = config.get('Default', 'modello_default')
-    _debug_mesh_grid = eval(config.get('Default', 'debug_mesh_grid'))
-    _debug_mesh_axis = eval(config.get('Default', 'debug_mesh_axis'))
 
     from _modulo_UI import UI, Logica
     from _modulo_MATE import Mate
@@ -73,14 +69,11 @@ def main(config: configparser):
         # disegno la viewport
         ui.scena["main"].schermo["viewport"].disegnami()
         
-        # calcolo parametri camera
-        camera, logica = ui.scena["main"].schermo["viewport"].camera_setup(camera, logica)
-        
         # set messaggi debug
         logica.messaggio_debug1 = f"FPS : {ui.current_fps:.2f}"
         logica.messaggio_debug2 = f"Numero di segmenti : /"
         logica.messaggio_debug3 = f"Altezza approssimativa (cm): /"
-        logica.messaggio_debug4 = f"Cam pos : {camera.pos[0]:.1f}, {camera.pos[1]:.1f}, {camera.pos[2]:.1f}"
+        logica.messaggio_debug4 = f"Cam pos : /"
         logica.messaggio_debug5 = f"hehehehe"
         
         ui.aggiorna_messaggi_debug(logica)

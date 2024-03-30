@@ -1,9 +1,8 @@
 import numpy as np
 import pygame
 import ctypes
-from numba import njit
 
-from _modulo_MATE import Mate, AcceleratedFoo, Camera, PointCloud, DebugMesh, Modello
+from _modulo_MATE import Mate
 
 class Logica:
     def __init__(self) -> None:
@@ -255,3 +254,4 @@ class Schermo:
         Imposta solo lo sfondo
         ''' 
         self.schermo.fill((148 / 7, 177 / 7, 255 / 7))
+        self.madre.blit(self.schermo, (self.ancoraggio_x, self.ancoraggio_y))
