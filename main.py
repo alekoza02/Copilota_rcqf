@@ -113,18 +113,14 @@ def main(config: configparser):
         
         # disegno i labels / bottoni / entrate
         al_sc.disegnami()
-        
+
+        # resoconto dello stato di tutti i bottoni e entrate
+        al_sc.collect_data()
+
         # disegno il plot
         main_plot.disegna_plots()
-        main_plot.disegna_metadata(al_sc.entrate["prova1"].text, al_sc.bottoni["prova1"].toggled)
+        main_plot.disegna_metadata(al_sc.data_widgets)
         main_plot.aggiorna_schermo()
-        
-        # set messaggi debug
-        logica.messaggio_debug1 = f"FPS : {ui.current_fps:.2f}"
-        logica.messaggio_debug2 = f"W, H : {main_plot.debug_info[0]}"
-        logica.messaggio_debug3 = f"Points : {main_plot.debug_info[1]}"
-        
-        ui.aggiorna_messaggi_debug(logica)
         
         # UI ----------------------------------------------------------------
 

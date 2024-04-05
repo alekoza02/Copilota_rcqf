@@ -18,7 +18,6 @@ class Mate:
         else:     
             return v / Mate.modulo(v)
         
-    
     @staticmethod
     def rot_ax(axis: np.ndarray[float], ang: float) -> np.ndarray[np.ndarray[float]]:
         K = np.array([
@@ -29,3 +28,30 @@ class Mate:
         ])
 
         return np.eye(4) + np.sin(ang) * K + (1 - np.cos(ang)) * np.dot(K, K)
+    
+    @staticmethod
+    def hex2rgb(colore: str) -> list[int]:
+        if type(colore) == str:
+            if len(colore) == 7:
+                if colore[0] == "#":
+                    r = int(colore[1:3], base=16)
+                    g = int(colore[3:5], base=16)
+                    b = int(colore[5:7], base=16)
+                    return [r,g,b]
+        return [255, 0, 255]
+    
+    @staticmethod
+    def conversione_limite(text: str, exception: int | float, limit: int | float) -> int | float:
+        tipologia = type(limit)
+        try:
+            if tipologia == int:
+                ris = int(text)
+            elif tipologia == float:
+                ris = float(text)
+        except:
+            ris = exception
+        
+        if ris > limit:
+            ris = limit
+
+        return ris

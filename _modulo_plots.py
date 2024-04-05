@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
 from _modulo_UI import Schermo
+from _modulo_MATE import Mate
 import configparser
 
 class Painter:
@@ -17,11 +18,11 @@ class Painter:
         self.ancoraggio_x: int
         self.ancoraggio_y: int
         
-        self.offset_x_sx: float
-        self.offset_y_up: float
+        self.start_x: float
+        self.start_y: float
         
-        self.offset_x_dx: float
-        self.offset_y_dw: float
+        self.end_x: float
+        self.end_y: float
         
         self.w_plot_area: float
         self.h_plot_area: float
@@ -29,9 +30,12 @@ class Painter:
         self.w_proportion: float = eval(config.get('Grafici', 'w_plot_area'))
         self.h_proportion: float = eval(config.get('Grafici', 'h_plot_area'))
 
+        self.x_legenda: float
+        self.y_legenda: float
+
         self.schermo: pygame.Surface
-        self.bg_color: tuple[int] = eval(config.get('Grafici', 'bg_color'))
-        self.text_color: tuple[int] = eval(config.get('Grafici', 'text_color'))
+        self.bg_color: tuple[int] = [255, 255, 255]
+        self.text_color: tuple[int]
     
         self.data_path: str
     
@@ -99,7 +103,7 @@ class Painter:
             r"\eta": "η",
             r"\theta": "θ",
             r"\NULL": "ι",
-            r"\NULL": "κ",
+            r"\kappa": "κ",
             r"\lambda": "λ",
             r"\mu": "μ",
             r"\nu": "ν",
@@ -124,7 +128,7 @@ class Painter:
             r"\Eta": "Η",
             r"\Theta": "Θ",
             r"\NULL": "Ι",
-            r"\NULL": "Κ",
+            r"\Kappa": "Κ",
             r"\Lambda": "Λ",
             r"\Mu": "Μ",
             r"\NULL": "Ν",
@@ -259,8 +263,53 @@ class Painter:
                 pygame.draw.line(self.schermo, [255, 255, 255], (x1, y1), (x2, y2), 1)
     
 
-    def disegna_metadata(self, text, bottone) -> None:
+    def disegna_metadata(self, settings_data: dict[str : str | float | bool]) -> None:
+        '''
+        titolo -> titolo grafico
+        labelx -> titolo label x
+        labely -> titolo label y (sx)
+        label2y -> titolo label y (dx)
+        round_label -> precisione in virgola mobile dei numeri sugli scalini
+        color_bg -> colore dello sfondo
+        color_text -> colore di tutta l'interfaccia grafica
+        area_w -> area consentita da utilizzare per la larghezza
+        area_h -> area consentita da utilizzare per l'altezza
+        x_legenda -> posizione x della legenda        
+        y_legenda -> posizione y della legenda
+
+        latex_check -> controllo se appplicare il LaTeX
+        toggle_2_axis -> attiva o disattiva il secondo asse verticale
+        '''
+
+        # import settings
+        if settings_data["latex_check"]:
+            titolo = Painter.check_latex(settings_data["titolo"]) 
+            testo_x = Painter.check_latex(settings_data["labelx"])
+            testo_y = Painter.check_latex(settings_data["labely"])
+            testo_2y = Painter.check_latex(settings_data["label2y"])
+        else:
+            titolo = settings_data["titolo"]
+            testo_x = settings_data["labelx"]
+            testo_y = settings_data["labely"]
+            testo_2y = settings_data["label2y"]
+
+        # prova di conversione
+        self.approx_label = Mate.conversione_limite(settings_data["round_label"], 2, 9)
         
+        self.w_proportion = Mate.conversione_limite(settings_data["area_w"], 0.8, 0.9)
+        self.h_proportion = Mate.conversione_limite(settings_data["area_h"], 0.8, 0.9)
+
+        self.x_legenda = Mate.conversione_limite(settings_data["x_legenda"], 0.2, 0.9)
+        self.y_legenda = Mate.conversione_limite(settings_data["y_legenda"], 0.3, 0.9)
+
+        self.bg_color = Mate.hex2rgb(settings_data["color_bg"])
+        self.text_color = Mate.hex2rgb(settings_data["color_text"])
+
+        # recalculation of window
+        self.re_compute_size(settings_data["toggle_2_axis"])
+
+        "-------------------------------------------------------------"
+
         # plots bounding box
         pygame.draw.rect(self.schermo, self.text_color, [
             self.start_x, self.end_y,
@@ -340,16 +389,12 @@ class Painter:
         self.re_compute_font(32)    
         
         # testo asse x
-        testo_x = Painter.check_latex(f"\lambda [nm]")
-        
         self.schermo.blit(self.font_tipo.render(testo_x, True, self.text_color), (
             self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(testo_x) / 2,
             self.start_y + 3 * (self.h - self.start_y) // 5
         ))
         
         # testo asse y
-        testo_y = Painter.check_latex(f"Conteggi [-]")
-        
         label_y_scr = self.font_tipo.render(testo_y, True, self.text_color)
         label_y_scr = pygame.transform.rotate(label_y_scr, 90)
     
@@ -360,22 +405,17 @@ class Painter:
 
         if self.visualize_second_ax:
             # testo asse 2 y
-            testo_y = Painter.check_latex(f"Conteggi [-]")
-            
-            label_y_scr = self.font_tipo.render(testo_y, True, self.text_color)
+            label_y_scr = self.font_tipo.render(testo_2y, True, self.text_color)
             label_y_scr = pygame.transform.rotate(label_y_scr, 90)
         
             self.schermo.blit(label_y_scr, (
                 self.end_x + self.start_x - 2 * self.start_x // 5,
-                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(testo_y) / 2,
+                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(testo_2y) / 2,
             ))
     
         self.re_compute_font(36)
         
         # titolo
-        titolo = Painter.check_latex("Titolo")
-        titolo = Painter.check_latex(text) if bottone else text
-        
         self.schermo.blit(self.font_tipo.render(titolo, True, self.text_color), (
             self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(titolo) / 2,
             self.end_y // 2 - self.font_pixel_dim[1] / 2
@@ -386,8 +426,8 @@ class Painter:
         self.re_compute_font(16)
         
         # legenda
-        pos_x = self.w * 0.2
-        pos_y = self.h * 0.3
+        pos_x = self.start_x + self.w_plot_area * self.x_legenda
+        pos_y = self.end_y + self.h_plot_area * self.y_legenda
         max_len_legenda = 0
 
         for indice, plot in enumerate(self.plots):

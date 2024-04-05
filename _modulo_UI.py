@@ -65,33 +65,33 @@ class UI:
         self.custom_mouse_icon = pygame.image.load("TEXTURES\mouse.png")
 
         # impostazione dimensione schermi e rapporti
-        self.w : int = int(screen_info.current_w * scale_factor)
-        self.h : int = int(screen_info.current_h * scale_factor)
+        self.w: int = int(screen_info.current_w * scale_factor)
+        self.h: int = int(screen_info.current_h * scale_factor)
 
-        self.aspect_ratio_nativo : float = 2880 / 1800
-        self.moltiplicatore_x : float = self.h * self.aspect_ratio_nativo
-        self.rapporto_ori : float = self.w / 2880
-        self.shift_ori : float = (self.w - self.moltiplicatore_x) / 2
+        self.aspect_ratio_nativo: float = 2880 / 1800
+        self.moltiplicatore_x: float = self.h * self.aspect_ratio_nativo
+        self.rapporto_ori: float = self.w / 2880
+        self.shift_ori: float = (self.w - self.moltiplicatore_x) / 2
 
         # generazione finestra
         self.MAIN = pygame.display.set_mode((self.w, self.h))
-        self.BG : tuple[int] = (30, 30, 30)
+        self.BG: tuple[int] = (30, 30, 30)
         
         self.clock = pygame.time.Clock()
-        self.max_fps : int = 0
-        self.current_fps : int = 0
-        self.running : int = 1
+        self.max_fps: int = 0
+        self.current_fps: int = 0
+        self.running: int = 1
 
         # generazione font
-        self.lista_font : dict[Font] = {}
+        self.lista_font: dict[Font] = {}
         self.lista_font["piccolo"] = Font("piccolo", self.rapporto_ori)
         self.lista_font["medio"] = Font("medio", self.rapporto_ori)
         self.lista_font["grande"] = Font("grande", self.rapporto_ori)
         self.lista_font["gigante"] = Font("gigante", self.rapporto_ori)
 
         # generazione scene
-        parametri_scena_repeat : list = [self.MAIN, self.lista_font, self.moltiplicatore_x, self.shift_ori]
-        self.scena : dict[str, DefaultScene] = {}
+        parametri_scena_repeat: list = [self.MAIN, self.lista_font, self.moltiplicatore_x, self.shift_ori]
+        self.scena: dict[str, DefaultScene] = {}
         self.scena["main"] = DefaultScene(parametri_scena_repeat)
 
 
@@ -117,7 +117,7 @@ class UI:
         self.MAIN.fill((25, 25, 25))
         pygame.draw.rect(self.MAIN, self.BG, [self.shift_ori, 0, self.w - 2 * self.shift_ori, self.h])
 
-    def mouse_icon(self, logica : Logica) -> None:
+    def mouse_icon(self, logica: Logica) -> None:
         '''
         Ottiene la posizione del mouse attuale e ci disegna sopra l'icona custom 
         Assicurarsi che in UI ci sia pygame.mouse.set_visible(False)
@@ -149,7 +149,7 @@ class UI:
                 messaggio_inviato += 1
 
 class Font:
-    def __init__(self, dimensione : str = "medio", rapporto : float = 1.0) -> None:    
+    def __init__(self, dimensione: str = "medio", rapporto: float = 1.0) -> None:    
         
         match dimensione:
             case "piccolo":
@@ -171,20 +171,22 @@ class Font:
 
 
 class DefaultScene:
-    def __init__(self, parametri_repeat : list) -> None:
+    def __init__(self, parametri_repeat: list) -> None:
+        # 0.625
+        self.madre: pygame.Surface = parametri_repeat[0]
+        self.fonts: dict[str, Font] = parametri_repeat[1]
 
-        self.madre : pygame.Surface = parametri_repeat[0]
-        self.fonts : dict[str, Font] = parametri_repeat[1]
+        self.moltiplicatore_x: float = parametri_repeat[2]
+        self.shift: int = parametri_repeat[3]
 
-        self.moltiplicatore_x : float = parametri_repeat[2]
-        self.shift : int = parametri_repeat[3]
-
-        self.ori_y : int = self.madre.get_height()
+        self.ori_y: int = self.madre.get_height()
 
         # impostazioni varie per la entry box
         self.testo_aggiornato = ""
         self.indice_entr_at = ""
         self.entrata_attiva = None
+
+        self.data_widgets: dict[str: str | float | bool] = {}
 
         self.label_text: dict[str, LabelText] = {}
         self.label_texture = {}
@@ -194,25 +196,51 @@ class DefaultScene:
         self.scrolls = {}
         self.schermo: dict[str, Schermo] = {}
 
-        self.parametri_repeat_elementi : list = [self.madre, self.shift, self.moltiplicatore_x, self.ori_y]
-
-        self.label_text["debug1"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=20, text="Empty!")
-        self.label_text["debug2"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=30, text="Empty!")
-        self.label_text["debug3"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=40, text="Empty!")
+        self.parametri_repeat_elementi: list = [self.madre, self.shift, self.moltiplicatore_x, self.ori_y]
         
-        self.bottoni["prova1"] = Button(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=85, text="str to LaTeX")
+        self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=5, text="str to LaTeX")
+        self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=7, text="Toggle 2° axis")
         
-        self.entrate["prova1"] = Entrata(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=90, text="", titolo="Titolo")
+        self.entrate["titolo"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=5, text="", titolo="Titolo")
+        self.entrate["labelx"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=7, text="", titolo="Label X")
+        self.entrate["labely"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=9, text="", titolo="Label Y (sx)")
+        self.entrate["label2y"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=11, text="", titolo="Label Y (dx)")
+        self.entrate["round_label"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=90, y=9, text="2", titolo="Round to")
+        self.entrate["color_bg"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=11, text="#151924", titolo="Colore bg")
+        self.entrate["color_text"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=13, text="#b4b4b4", titolo="Colore UI")
+        self.entrate["area_w"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=15, text=".8", titolo="w plot area")
+        self.entrate["area_h"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=17, text=".8", titolo="h plot area")
+        self.entrate["x_legenda"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=19, text=".2", titolo="x legenda")
+        self.entrate["y_legenda"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=21, text=".3", titolo="y legenda")
 
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
         
+    
     def disegnami(self) -> None:
         [label.disegnami() for indice, label in self.label_text.items()]
         [bottone.disegnami() for indice, bottone in self.bottoni.items()]
         [entrata.disegnami() for indice, entrata in self.entrate.items()]
 
+
+    def collect_data(self) -> None:
+        self.data_widgets["titolo"] = self.entrate["titolo"].text
+        self.data_widgets["labelx"] = self.entrate["labelx"].text
+        self.data_widgets["labely"] = self.entrate["labely"].text
+        self.data_widgets["label2y"] = self.entrate["label2y"].text
+        self.data_widgets["round_label"] = self.entrate["round_label"].text
+        self.data_widgets["color_bg"] = self.entrate["color_bg"].text
+        self.data_widgets["color_text"] = self.entrate["color_text"].text
+        self.data_widgets["area_w"] = self.entrate["area_w"].text
+        self.data_widgets["area_h"] = self.entrate["area_h"].text
+        self.data_widgets["x_legenda"] = self.entrate["x_legenda"].text
+        self.data_widgets["y_legenda"] = self.entrate["y_legenda"].text        
+
+        self.data_widgets["latex_check"] = self.bottoni["latex_check"].toggled
+        self.data_widgets["toggle_2_axis"] = self.bottoni["toggle_2_axis"].toggled
+
+
 class LabelText:
-    def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova") -> None:
+    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova") -> None:
         '''
         parametri_locali_elementi dovrà contenere:
         - schermo madre
@@ -220,24 +248,24 @@ class LabelText:
         - x a disposizione sullo schermo
         - y a disposizione sullo schermo
         '''
-        self.offset : int = parametri_locali_elementi[1]
+        self.offset: int = parametri_locali_elementi[1]
 
-        self.moltiplicatore_x : int = parametri_locali_elementi[2]
-        self.ori_y : int = parametri_locali_elementi[3]
+        self.moltiplicatore_x: int = parametri_locali_elementi[2]
+        self.ori_y: int = parametri_locali_elementi[3]
         
-        self.w : float = self.moltiplicatore_x * w / 100
-        self.h : float = self.ori_y * h / 100
-        self.x : float = self.moltiplicatore_x * x / 100 + self.offset
-        self.y : float = self.ori_y * y / 100
+        self.w: float = self.moltiplicatore_x * w / 100
+        self.h: float = self.ori_y * h / 100
+        self.x: float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y: float = self.ori_y * y / 100
 
-        self.bg : tuple[int] = bg
-        self.renderizza_bg : bool = renderizza_bg
+        self.bg: tuple[int] = bg
+        self.renderizza_bg: bool = renderizza_bg
 
-        self.screen : pygame.Surface = parametri_locali_elementi[0]
+        self.screen: pygame.Surface = parametri_locali_elementi[0]
 
-        self.font_locale : Font = font_locale
-        self.text : str = text
-        self.color_text : tuple[int] = (100, 100, 100)
+        self.font_locale: Font = font_locale
+        self.text: str = text
+        self.color_text: tuple[int] = (100, 100, 100)
 
     def disegnami(self) -> None:
         if self.renderizza_bg:
@@ -249,7 +277,7 @@ class LabelText:
 
 
 class Button():
-    def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova", tipologia = "toggle", toggled = False) -> None:
+    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova", tipologia = "toggle", toggled = False) -> None:
         '''
         parametri_locali_elementi dovrà contenere:
         - schermo madre
@@ -257,26 +285,26 @@ class Button():
         - x a disposizione sullo schermo
         - y a disposizione sullo schermo
         '''
-        self.offset : int = parametri_locali_elementi[1]
+        self.offset: int = parametri_locali_elementi[1]
 
-        self.moltiplicatore_x : int = parametri_locali_elementi[2]
-        self.ori_y : int = parametri_locali_elementi[3]
+        self.moltiplicatore_x: int = parametri_locali_elementi[2]
+        self.ori_y: int = parametri_locali_elementi[3]
         
-        self.w : float = self.moltiplicatore_x * w / 100
-        self.h : float = self.ori_y * h / 100
-        self.x : float = self.moltiplicatore_x * x / 100 + self.offset
-        self.y : float = self.ori_y * y / 100
+        self.w: float = self.moltiplicatore_x * w / 100
+        self.h: float = self.ori_y * h / 100
+        self.x: float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y: float = self.ori_y * y / 100
 
         self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
 
-        self.bg : tuple[int] = bg
-        self.renderizza_bg : bool = renderizza_bg
+        self.bg: tuple[int] = bg
+        self.renderizza_bg: bool = renderizza_bg
 
-        self.screen : pygame.Surface = parametri_locali_elementi[0]
+        self.screen: pygame.Surface = parametri_locali_elementi[0]
 
-        self.font_locale : Font = font_locale
-        self.text : str = text
-        self.color_text : tuple[int] = (100, 100, 100)
+        self.font_locale: Font = font_locale
+        self.text: str = text
+        self.color_text: tuple[int] = (100, 100, 100)
 
         self.tipologia = tipologia
         self.toggled = toggled
@@ -301,29 +329,29 @@ class Button():
 
 
 class Entrata:
-    def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova", titolo = "") -> None:
-        self.offset : int = parametri_locali_elementi[1]
+    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova", titolo = "") -> None:
+        self.offset: int = parametri_locali_elementi[1]
 
-        self.moltiplicatore_x : int = parametri_locali_elementi[2]
-        self.ori_y : int = parametri_locali_elementi[3]
+        self.moltiplicatore_x: int = parametri_locali_elementi[2]
+        self.ori_y: int = parametri_locali_elementi[3]
         
-        self.w : float = self.moltiplicatore_x * w / 100
-        self.h : float = self.ori_y * h / 100
-        self.x : float = self.moltiplicatore_x * x / 100 + self.offset
-        self.y : float = self.ori_y * y / 100
+        self.w: float = self.moltiplicatore_x * w / 100
+        self.h: float = self.ori_y * h / 100
+        self.x: float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y: float = self.ori_y * y / 100
 
-        self.text : str = text
-        self.titolo : str = titolo
+        self.text: str = text
+        self.titolo: str = titolo
         
-        self.bg : tuple[int] = bg
-        self.color_text : tuple[int] = (100, 100, 100)
+        self.bg: tuple[int] = bg
+        self.color_text: tuple[int] = (100, 100, 100)
 
-        self.screen : pygame.Surface = parametri_locali_elementi[0]
+        self.screen: pygame.Surface = parametri_locali_elementi[0]
         self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
 
         self.toggle = False
 
-        self.font_locale : Font = font_locale
+        self.font_locale: Font = font_locale
 
     def disegnami(self):
 
@@ -356,21 +384,21 @@ class Entrata:
         return f"{self.text}"
 
 class Schermo:
-    def __init__(self, parametri_locali_elementi : list) -> None:
+    def __init__(self, parametri_locali_elementi: list) -> None:
 
-        self.w : int = int(parametri_locali_elementi[3] * 0.9)
-        self.h : int = int(parametri_locali_elementi[3] * 0.9)
-        self.ancoraggio_x : int = parametri_locali_elementi[3] * 0.05 + parametri_locali_elementi[1]
-        self.ancoraggio_y : int = parametri_locali_elementi[3] * 0.05
+        self.w: int = int(parametri_locali_elementi[3] * 0.9)
+        self.h: int = int(parametri_locali_elementi[3] * 0.9)
+        self.ancoraggio_x: int = parametri_locali_elementi[3] * 0.05 + parametri_locali_elementi[1]
+        self.ancoraggio_y: int = parametri_locali_elementi[3] * 0.05
 
         self.shift_x = parametri_locali_elementi[1]
 
-        self.madre : pygame.Surface = parametri_locali_elementi[0]
+        self.madre: pygame.Surface = parametri_locali_elementi[0]
 
-        self.buffer : np.ndarray = np.zeros((self.w, self.h, 3))
-        self.bg : tuple[int] = (30, 30, 30)
+        self.buffer: np.ndarray = np.zeros((self.w, self.h, 3))
+        self.bg: tuple[int] = (30, 30, 30)
 
-        self.schermo : pygame.Surface = pygame.Surface((self.w, self.h))
+        self.schermo: pygame.Surface = pygame.Surface((self.w, self.h))
 
     def disegnami(self) -> None:
         '''
