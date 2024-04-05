@@ -169,6 +169,7 @@ class Font:
                 self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
                 self.font_pixel_dim = self.font_tipo.size("a")
 
+
 class DefaultScene:
     def __init__(self, parametri_repeat : list) -> None:
 
@@ -180,24 +181,36 @@ class DefaultScene:
 
         self.ori_y : int = self.madre.get_height()
 
-        self.label_text : dict[str, LabelText] = {}
+        # impostazioni varie per la entry box
+        self.testo_aggiornato = ""
+        self.indice_entr_at = ""
+        self.entrata_attiva = None
+
+        self.label_text: dict[str, LabelText] = {}
         self.label_texture = {}
-        self.bottoni = {}
-        self.entrate = {}
+        self.bottoni: dict[str, Button] = {}
+        self.entrate: dict[str, Entrata] = {}
         self.radio = {}
         self.scrolls = {}
         self.schermo: dict[str, Schermo] = {}
 
         self.parametri_repeat_elementi : list = [self.madre, self.shift, self.moltiplicatore_x, self.ori_y]
 
-        self.label_text["title"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=2, text="Benvenuto in Bonsa-py!")
-        self.label_text["debug1"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=40, text="Empty!")
-        self.label_text["debug2"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=50, text="Empty!")
-        self.label_text["debug3"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=60, text="Empty!")
-        self.label_text["debug4"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=70, text="Empty!")
-        self.label_text["debug5"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=80, text="Empty!")
+        self.label_text["debug1"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=20, text="Empty!")
+        self.label_text["debug2"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=30, text="Empty!")
+        self.label_text["debug3"] = LabelText(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=40, text="Empty!")
+        
+        self.bottoni["prova1"] = Button(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=85, text="str to LaTeX")
+        
+        self.entrate["prova1"] = Entrata(self.parametri_repeat_elementi, self.fonts["grande"], w=25, h=4, x=69.25, y=90, text="", titolo="Titolo")
+
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
         
+    def disegnami(self) -> None:
+        [label.disegnami() for indice, label in self.label_text.items()]
+        [bottone.disegnami() for indice, bottone in self.bottoni.items()]
+        [entrata.disegnami() for indice, entrata in self.entrate.items()]
+
 class LabelText:
     def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova") -> None:
         '''
@@ -234,6 +247,114 @@ class LabelText:
     def assegna_messaggio(self, str: str = "Empty!") -> None:
         self.text = str
 
+
+class Button():
+    def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova", tipologia = "toggle", toggled = False) -> None:
+        '''
+        parametri_locali_elementi dovrà contenere:
+        - schermo madre
+        - shift_x
+        - x a disposizione sullo schermo
+        - y a disposizione sullo schermo
+        '''
+        self.offset : int = parametri_locali_elementi[1]
+
+        self.moltiplicatore_x : int = parametri_locali_elementi[2]
+        self.ori_y : int = parametri_locali_elementi[3]
+        
+        self.w : float = self.moltiplicatore_x * w / 100
+        self.h : float = self.ori_y * h / 100
+        self.x : float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y : float = self.ori_y * y / 100
+
+        self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
+
+        self.bg : tuple[int] = bg
+        self.renderizza_bg : bool = renderizza_bg
+
+        self.screen : pygame.Surface = parametri_locali_elementi[0]
+
+        self.font_locale : Font = font_locale
+        self.text : str = text
+        self.color_text : tuple[int] = (100, 100, 100)
+
+        self.tipologia = tipologia
+        self.toggled = toggled
+        self.colore_bg_schiacciato = [i+10 if i < 245 else 255 for i in self.bg]
+
+    def disegnami(self):
+        colore_scelto = self.colore_bg_schiacciato if self.toggled else self.bg
+        pygame.draw.rect(self.screen, colore_scelto, [self.x, self.y, self.w, self.h], border_top_left_radius=10, border_bottom_right_radius=10)
+        self.screen.blit(self.font_locale.font_tipo.render(f"{self.text}", True, self.color_text), (self.x + self.w // 2 - len(self.text) * self.font_locale.font_pixel_dim[0] // 2, self.y + self.h // 2 - self.font_locale.font_pixel_dim[1] // 2))
+
+    def selezionato_bot(self, event):
+            
+        if self.bounding_box.collidepoint(event.pos):
+            if self.toggled:
+                self.toggled = False
+            else:
+                self.toggled = True
+
+    def push(self):
+        if self.toggled and self.tipologia == "push":
+            self.toggled = False
+
+
+class Entrata:
+    def __init__(self, parametri_locali_elementi : list, font_locale : Font, w : float = 50, h : float = 50, x : float = 0, y : float = 0, bg : tuple[int] = (40, 40, 40), renderizza_bg : bool = True, text : str = "Prova", titolo = "") -> None:
+        self.offset : int = parametri_locali_elementi[1]
+
+        self.moltiplicatore_x : int = parametri_locali_elementi[2]
+        self.ori_y : int = parametri_locali_elementi[3]
+        
+        self.w : float = self.moltiplicatore_x * w / 100
+        self.h : float = self.ori_y * h / 100
+        self.x : float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y : float = self.ori_y * y / 100
+
+        self.text : str = text
+        self.titolo : str = titolo
+        
+        self.bg : tuple[int] = bg
+        self.color_text : tuple[int] = (100, 100, 100)
+
+        self.screen : pygame.Surface = parametri_locali_elementi[0]
+        self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
+
+        self.toggle = False
+
+        self.font_locale : Font = font_locale
+
+    def disegnami(self):
+
+        colore_sfondo = self.bg if not self.toggle else np.array(self.bg) - np.array([30,25,25])
+        colore_testo = self.color_text if not self.toggle else np.array([42,80,67])
+
+        # calcolo forma
+        pygame.draw.rect(self.screen, colore_sfondo, [self.x, self.y, self.w, self.h])
+
+        # calcolo scritta
+        self.screen.blit(self.font_locale.font_tipo.render(f"{self.text}", True, colore_testo), (self.x + self.font_locale.font_pixel_dim[0] // 2, self.y + self.h // 2 - self.font_locale.font_pixel_dim[1] // 2))
+
+        # calcolo nome
+        self.screen.blit(self.font_locale.font_tipo.render(f"{self.titolo}", True, colore_testo), (self.x - len(self.titolo + " ") * self.font_locale.font_pixel_dim[0], self.y + self.h//2 - self.font_locale.font_pixel_dim[1] // 2))
+
+        if self.toggle:
+            pygame.draw.rect(self.screen, np.array([255,255,255]), [self.x + self.font_locale.font_pixel_dim[0] * (len(self.text) + .5) + 2, self.y, 2, self.h])
+
+    def selezionato_ent(self, event):
+            
+            if self.bounding_box.collidepoint(event.pos):
+                if self.toggle:
+                    self.toggle = False
+                else:
+                    self.toggle = True
+            else:
+                self.toggle = False
+
+    def __str__(self) -> str:
+        return f"{self.text}"
+
 class Schermo:
     def __init__(self, parametri_locali_elementi : list) -> None:
 
@@ -241,6 +362,8 @@ class Schermo:
         self.h : int = int(parametri_locali_elementi[3] * 0.9)
         self.ancoraggio_x : int = parametri_locali_elementi[3] * 0.05 + parametri_locali_elementi[1]
         self.ancoraggio_y : int = parametri_locali_elementi[3] * 0.05
+
+        self.shift_x = parametri_locali_elementi[1]
 
         self.madre : pygame.Surface = parametri_locali_elementi[0]
 

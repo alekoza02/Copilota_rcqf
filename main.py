@@ -8,12 +8,28 @@ def main(config: configparser):
     _tasto_navigazione = int(config.get('Default', 'tasto_navigazione'))
 
     from _modulo_UI import UI, Logica
-    from _modulo_MATE import Mate
+    from _modulo_plots import Painter
     
     ui = UI()
     logica = Logica()
+    
+    # Zona inizializzazione plot
+    main_plot = Painter()
+    main_plot.link_ui(ui.scena["main"].schermo["viewport"])
+    main_plot.import_plot_data("DATA/data (1).txt")
+    main_plot.import_plot_data("DATA/data (2).txt")
+    main_plot.import_plot_data("DATA/data (3).txt")
+    main_plot.import_plot_data("DATA/data (4).txt")
+    main_plot.import_plot_data("DATA/data (5).txt")
+    main_plot.import_plot_data("DATA/data (6).txt")
+    main_plot.import_plot_data("DATA/data (7).txt")
+    main_plot.import_plot_data("DATA/data (8).txt")
+    main_plot.import_plot_data("DATA/data (9).txt")
+    main_plot.import_plot_data("DATA/data (10).txt")
 
     while ui.running:
+
+        al_sc = ui.scena["main"]
 
         # impostazione inizio giro
         ui.clock.tick(ui.max_fps)
@@ -36,6 +52,23 @@ def main(config: configparser):
         for event in eventi_in_corso:
             # MOUSE
             if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    
+                    # gestisce eventi bottone e entrata schiacciata
+                    [elemento.selezionato_bot(event) for indice, elemento in al_sc.bottoni.items()]
+                    [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
+                    
+                    # raccolta di tutti i testi già presenti nelle entrate
+                    test_entr_attiva = [[elemento, indice] for indice, elemento in al_sc.entrate.items() if elemento.toggle]
+                    
+                    # logica strana per cui se ci sono entrate nella scena va a prendere quella attiva, aggiorna il testo, indice e il testo generico modificabile
+                    if len(test_entr_attiva) > 0:
+                        al_sc.entrata_attiva = test_entr_attiva[0][0]
+                        al_sc.indice_entr_at = test_entr_attiva[0][1]
+                        al_sc.testo_aggiornato = al_sc.entrata_attiva.text
+                    else:
+                        al_sc.entrata_attiva = None
+                    
                 if event.button == _tasto_navigazione:
                     logica.dragging = True
                     logica.dragging_end_pos = logica.mouse_pos
@@ -56,6 +89,21 @@ def main(config: configparser):
                     logica.dragging_dx = logica.dragging_end_pos[0] - logica.dragging_start_pos[0]
                     logica.dragging_dy = - logica.dragging_end_pos[1] + logica.dragging_start_pos[1] # sistema di riferimento invertito
 
+            # TASTIERA
+            # input -> tastiera con caratteri e backspace
+            if al_sc.entrata_attiva != None:
+
+                if event.type == pygame.TEXTINPUT:            
+                    al_sc.testo_aggiornato += event.text
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_BACKSPACE:
+                        al_sc.testo_aggiornato = al_sc.testo_aggiornato[:-1]
+
+        # aggiornamento input
+        if al_sc.entrata_attiva != None:
+            al_sc.entrata_attiva.text = al_sc.testo_aggiornato
+
         # CONTROLLO CARATTERI SPECIALI
         logica.ctrl = keys[pygame.K_LCTRL]
         logica.shift = keys[pygame.K_LSHIFT]
@@ -63,18 +111,18 @@ def main(config: configparser):
 
         # UI ----------------------------------------------------------------
         
-        # disegno i labels
-        [label.disegnami() for indice, label in ui.scena["main"].label_text.items()]
+        # disegno i labels / bottoni / entrate
+        al_sc.disegnami()
         
-        # disegno la viewport
-        ui.scena["main"].schermo["viewport"].disegnami()
+        # disegno il plot
+        main_plot.disegna_plots()
+        main_plot.disegna_metadata(al_sc.entrate["prova1"].text, al_sc.bottoni["prova1"].toggled)
+        main_plot.aggiorna_schermo()
         
         # set messaggi debug
         logica.messaggio_debug1 = f"FPS : {ui.current_fps:.2f}"
-        logica.messaggio_debug2 = f"Numero di segmenti : /"
-        logica.messaggio_debug3 = f"Altezza approssimativa (cm): /"
-        logica.messaggio_debug4 = f"Cam pos : /"
-        logica.messaggio_debug5 = f"hehehehe"
+        logica.messaggio_debug2 = f"W, H : {main_plot.debug_info[0]}"
+        logica.messaggio_debug3 = f"Points : {main_plot.debug_info[1]}"
         
         ui.aggiorna_messaggi_debug(logica)
         
