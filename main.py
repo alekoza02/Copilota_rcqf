@@ -7,7 +7,7 @@ def main(config: configparser):
     
     _tasto_navigazione = int(config.get('Default', 'tasto_navigazione'))
 
-    from _modulo_UI import UI, Logica
+    from _modulo_UI import UI, Logica, Entrata, Button
     from _modulo_plots import Painter
     
     ui = UI()
@@ -17,15 +17,15 @@ def main(config: configparser):
     main_plot = Painter()
     main_plot.link_ui(ui.scena["main"].schermo["viewport"])
     main_plot.import_plot_data("DATA/data (1).txt")
-    main_plot.import_plot_data("DATA/data (2).txt")
-    main_plot.import_plot_data("DATA/data (3).txt")
-    main_plot.import_plot_data("DATA/data (4).txt")
-    main_plot.import_plot_data("DATA/data (5).txt")
-    main_plot.import_plot_data("DATA/data (6).txt")
-    main_plot.import_plot_data("DATA/data (7).txt")
-    main_plot.import_plot_data("DATA/data (8).txt")
-    main_plot.import_plot_data("DATA/data (9).txt")
-    main_plot.import_plot_data("DATA/data (10).txt")
+    # main_plot.import_plot_data("DATA/data (2).txt")
+    # main_plot.import_plot_data("DATA/data (3).txt")
+    # main_plot.import_plot_data("DATA/data (4).txt")
+    # main_plot.import_plot_data("DATA/data (5).txt")
+    # main_plot.import_plot_data("DATA/data (6).txt")
+    # main_plot.import_plot_data("DATA/data (7).txt")
+    # main_plot.import_plot_data("DATA/data (8).txt")
+    # main_plot.import_plot_data("DATA/data (9).txt")
+    # main_plot.import_plot_data("DATA/data (10).txt")
 
     while ui.running:
 
@@ -59,12 +59,13 @@ def main(config: configparser):
                     [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
                     
                     # raccolta di tutti i testi già presenti nelle entrate
-                    test_entr_attiva = [[elemento, indice] for indice, elemento in al_sc.entrate.items() if elemento.toggle]
-                    
-                    # logica strana per cui se ci sono entrate nella scena va a prendere quella attiva, aggiorna il testo, indice e il testo generico modificabile
+                    test_entr_attiva: list[Entrata, int] = [[elemento, indice] for indice, elemento in al_sc.entrate.items() if elemento.toggle][0]
+
+                    # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
                     if len(test_entr_attiva) > 0:
-                        al_sc.entrata_attiva = test_entr_attiva[0][0]
-                        al_sc.indice_entr_at = test_entr_attiva[0][1]
+                        al_sc.entrata_attiva = test_entr_attiva[0]
+                        al_sc.indice_entr_at = test_entr_attiva[1]
+                        al_sc.puntatore_testo_attivo = al_sc.entrata_attiva.puntatore
                         al_sc.testo_aggiornato = al_sc.entrata_attiva.text
                     else:
                         al_sc.entrata_attiva = None
@@ -118,7 +119,7 @@ def main(config: configparser):
         al_sc.collect_data()
 
         # disegno il plot
-        main_plot.disegna_plots()
+        main_plot.disegna_plots(al_sc.data_widgets)
         main_plot.disegna_metadata(al_sc.data_widgets)
         main_plot.aggiorna_schermo()
         

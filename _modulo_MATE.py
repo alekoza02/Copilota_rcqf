@@ -31,15 +31,32 @@ class Mate:
     
     @staticmethod
     def hex2rgb(colore: str) -> list[int]:
-        if type(colore) == str:
-            if len(colore) == 7:
-                if colore[0] == "#":
-                    r = int(colore[1:3], base=16)
-                    g = int(colore[3:5], base=16)
-                    b = int(colore[5:7], base=16)
-                    return [r,g,b]
-        return [255, 0, 255]
+        '''Accetta SOLO il formato: #123456'''
+        try:
+            r = int(colore[1:3], base=16)
+            g = int(colore[3:5], base=16)
+            b = int(colore[5:7], base=16)
+            return [r,g,b]
+        except ValueError:
+            return [255, 0, 255]
+
     
+    @staticmethod
+    def inp2int(valore: str) -> int:
+        try:
+            return int(valore)
+        except ValueError:
+            return 0
+
+
+    @staticmethod
+    def inp2flo(valore: str) -> float:
+        try:
+            return float(valore)
+        except ValueError:
+            return 0
+
+
     @staticmethod
     def conversione_limite(text: str, exception: int | float, limit: int | float) -> int | float:
         tipologia = type(limit)

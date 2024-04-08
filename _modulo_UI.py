@@ -170,6 +170,30 @@ class Font:
                 self.font_pixel_dim = self.font_tipo.size("a")
 
 
+class WidgetData:
+    def __init__(self) -> None:
+        self.titolo: str
+        self.labelx: str
+        self.labely: str
+        self.label2y: str
+        self.round_label: str
+        self.color_bg: str
+        self.color_text: str
+        self.area_w: str
+        self.area_h: str
+        self.x_legenda: str
+        self.y_legenda: str
+        self.nome_grafico: str
+        self.color_plot: str
+        self.dim_pallini: str
+        self.dim_link: str
+
+        self.latex_check: bool
+        self.toggle_2_axis: bool
+        self.toggle_pallini: bool
+        self.toggle_collegamenti: bool
+
+
 class DefaultScene:
     def __init__(self, parametri_repeat: list) -> None:
         # 0.625
@@ -185,8 +209,9 @@ class DefaultScene:
         self.testo_aggiornato = ""
         self.indice_entr_at = ""
         self.entrata_attiva = None
+        self.puntatore_testo_attivo: int = 0
 
-        self.data_widgets: dict[str: str | float | bool] = {}
+        self.data_widgets =  WidgetData()
 
         self.label_text: dict[str, LabelText] = {}
         self.label_texture = {}
@@ -198,9 +223,21 @@ class DefaultScene:
 
         self.parametri_repeat_elementi: list = [self.madre, self.shift, self.moltiplicatore_x, self.ori_y]
         
+        # BOTTONI
+        # --------------------------------------------------------------------------------
+        # statici
         self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=5, text="str to LaTeX")
         self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=7, text="Toggle 2° axis")
-        
+
+        # dinamici
+        self.bottoni["toggle_pallini"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=67.5, y=36, text="Pallini", toggled=True)
+        self.bottoni["toggle_collegamenti"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=67.5, y=38, text="Links", toggled=True)
+        # --------------------------------------------------------------------------------
+
+
+        # ENTRATE
+        # --------------------------------------------------------------------------------
+        # statiche
         self.entrate["titolo"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=5, text="", titolo="Titolo")
         self.entrate["labelx"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=7, text="", titolo="Label X")
         self.entrate["labely"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=9, text="", titolo="Label Y (sx)")
@@ -213,6 +250,14 @@ class DefaultScene:
         self.entrate["x_legenda"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=19, text=".2", titolo="x legenda")
         self.entrate["y_legenda"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=21, text=".3", titolo="y legenda")
 
+        # dinamiche
+        self.entrate["nome_grafico"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=30, text="Plot 1", titolo="Nome")
+        self.entrate["color_plot"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=65, y=32, text="#ffffff", titolo="Colore graf.")
+        self.entrate["dim_pallini"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=65, y=36, text="1", titolo="Dim. pallini")
+        self.entrate["dim_link"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=65, y=38, text="1", titolo="Dim. links")
+        # --------------------------------------------------------------------------------
+
+
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
         
     
@@ -223,20 +268,26 @@ class DefaultScene:
 
 
     def collect_data(self) -> None:
-        self.data_widgets["titolo"] = self.entrate["titolo"].text
-        self.data_widgets["labelx"] = self.entrate["labelx"].text
-        self.data_widgets["labely"] = self.entrate["labely"].text
-        self.data_widgets["label2y"] = self.entrate["label2y"].text
-        self.data_widgets["round_label"] = self.entrate["round_label"].text
-        self.data_widgets["color_bg"] = self.entrate["color_bg"].text
-        self.data_widgets["color_text"] = self.entrate["color_text"].text
-        self.data_widgets["area_w"] = self.entrate["area_w"].text
-        self.data_widgets["area_h"] = self.entrate["area_h"].text
-        self.data_widgets["x_legenda"] = self.entrate["x_legenda"].text
-        self.data_widgets["y_legenda"] = self.entrate["y_legenda"].text        
+        self.data_widgets.titolo = self.entrate["titolo"].text
+        self.data_widgets.labelx = self.entrate["labelx"].text
+        self.data_widgets.labely = self.entrate["labely"].text
+        self.data_widgets.label2y = self.entrate["label2y"].text
+        self.data_widgets.round_label = self.entrate["round_label"].text
+        self.data_widgets.color_bg = self.entrate["color_bg"].text
+        self.data_widgets.color_text = self.entrate["color_text"].text
+        self.data_widgets.area_w = self.entrate["area_w"].text
+        self.data_widgets.area_h = self.entrate["area_h"].text
+        self.data_widgets.x_legenda = self.entrate["x_legenda"].text
+        self.data_widgets.y_legenda = self.entrate["y_legenda"].text        
+        self.data_widgets.nome_grafico = self.entrate["nome_grafico"].text        
+        self.data_widgets.color_plot = self.entrate["color_plot"].text        
+        self.data_widgets.dim_link = self.entrate["dim_link"].text        
+        self.data_widgets.dim_pallini = self.entrate["dim_pallini"].text        
 
-        self.data_widgets["latex_check"] = self.bottoni["latex_check"].toggled
-        self.data_widgets["toggle_2_axis"] = self.bottoni["toggle_2_axis"].toggled
+        self.data_widgets.toggle_pallini = self.bottoni["toggle_pallini"].toggled 
+        self.data_widgets.toggle_collegamenti = self.bottoni["toggle_collegamenti"].toggled
+        self.data_widgets.latex_check = self.bottoni["latex_check"].toggled
+        self.data_widgets.toggle_2_axis = self.bottoni["toggle_2_axis"].toggled
 
 
 class LabelText:
@@ -350,6 +401,8 @@ class Entrata:
         self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
 
         self.toggle = False
+
+        self.puntatore: int = len(self.text) - 1
 
         self.font_locale: Font = font_locale
 

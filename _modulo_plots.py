@@ -1,6 +1,6 @@
 import numpy as np
 import pygame
-from _modulo_UI import Schermo
+from _modulo_UI import Schermo, WidgetData
 from _modulo_MATE import Mate
 import configparser
 
@@ -246,8 +246,19 @@ class Painter:
             plot.y_screen = y_adattata
     
     
-    def disegna_plots(self) -> None:
+    def disegna_plots(self, widget_data: WidgetData) -> None:
         
+        # Sezione di impostazioni grafico attuale attivo (debug attivato sul primo grafico)
+        self.plots[0].function = widget_data.toggle_collegamenti 
+        self.plots[0].scatter = widget_data.toggle_pallini 
+        self.plots[0].colore = Mate.hex2rgb(widget_data.color_plot) 
+
+        self.plots[0].dim_link = Mate.inp2int(widget_data.dim_link)
+        self.plots[0].dim_pall = Mate.inp2int(widget_data.dim_pallini)
+
+        self.plots[0].nome = widget_data.nome_grafico
+
+
         self.schermo.fill(self.bg_color)
         
         self.adattamento_data2schermo()
@@ -256,14 +267,16 @@ class Painter:
         
         for plot in self.plots:
             
-            for x, y in zip(plot.x_screen.astype(int), plot.y_screen.astype(int)):
-                pygame.draw.circle(self.schermo, [255, 255, 255], (x, y), 2)
+            if self.plots[0].scatter:
+                for x, y in zip(plot.x_screen.astype(int), plot.y_screen.astype(int)):
+                    pygame.draw.circle(self.schermo, self.plots[0].colore, (x, y), plot.dim_pall)
 
-            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
-                pygame.draw.line(self.schermo, [255, 255, 255], (x1, y1), (x2, y2), 1)
+            if self.plots[0].function:
+                for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                    pygame.draw.line(self.schermo, self.plots[0].colore, (x1, y1), (x2, y2), plot.dim_link)
     
 
-    def disegna_metadata(self, settings_data: dict[str : str | float | bool]) -> None:
+    def disegna_metadata(self, widget_data: WidgetData) -> None:
         '''
         titolo -> titolo grafico
         labelx -> titolo label x
@@ -282,31 +295,31 @@ class Painter:
         '''
 
         # import settings
-        if settings_data["latex_check"]:
-            titolo = Painter.check_latex(settings_data["titolo"]) 
-            testo_x = Painter.check_latex(settings_data["labelx"])
-            testo_y = Painter.check_latex(settings_data["labely"])
-            testo_2y = Painter.check_latex(settings_data["label2y"])
+        if widget_data.latex_check:
+            titolo = Painter.check_latex(widget_data.titolo) 
+            testo_x = Painter.check_latex(widget_data.labelx)
+            testo_y = Painter.check_latex(widget_data.labely)
+            testo_2y = Painter.check_latex(widget_data.label2y)
         else:
-            titolo = settings_data["titolo"]
-            testo_x = settings_data["labelx"]
-            testo_y = settings_data["labely"]
-            testo_2y = settings_data["label2y"]
+            titolo = widget_data.titolo
+            testo_x = widget_data.labelx
+            testo_y = widget_data.labely
+            testo_2y = widget_data.label2y
 
         # prova di conversione
-        self.approx_label = Mate.conversione_limite(settings_data["round_label"], 2, 9)
+        self.approx_label = Mate.conversione_limite(widget_data.round_label, 2, 9)
         
-        self.w_proportion = Mate.conversione_limite(settings_data["area_w"], 0.8, 0.9)
-        self.h_proportion = Mate.conversione_limite(settings_data["area_h"], 0.8, 0.9)
+        self.w_proportion = Mate.conversione_limite(widget_data.area_w, 0.8, 0.9)
+        self.h_proportion = Mate.conversione_limite(widget_data.area_h, 0.8, 0.9)
 
-        self.x_legenda = Mate.conversione_limite(settings_data["x_legenda"], 0.2, 0.9)
-        self.y_legenda = Mate.conversione_limite(settings_data["y_legenda"], 0.3, 0.9)
+        self.x_legenda = Mate.conversione_limite(widget_data.x_legenda, 0.2, 0.9)
+        self.y_legenda = Mate.conversione_limite(widget_data.y_legenda, 0.3, 0.9)
 
-        self.bg_color = Mate.hex2rgb(settings_data["color_bg"])
-        self.text_color = Mate.hex2rgb(settings_data["color_text"])
+        self.bg_color = Mate.hex2rgb(widget_data.color_bg)
+        self.text_color = Mate.hex2rgb(widget_data.color_text)
 
         # recalculation of window
-        self.re_compute_size(settings_data["toggle_2_axis"])
+        self.re_compute_size(widget_data.toggle_2_axis)
 
         "-------------------------------------------------------------"
 
@@ -461,3 +474,6 @@ class Plot:
         self.scatter: bool = True
         self.function: bool = False
         self.interpolate: bool = False 
+
+        self.dim_pall: int = 1
+        self.dim_link: int = 1
