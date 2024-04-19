@@ -22,6 +22,13 @@ class Logica:
         
         self.ctrl = False
         self.shift = False
+        self.backspace = False
+        self.left = False
+        self.right = False
+
+        self.acc_backspace = 0
+        self.acc_left = 0
+        self.acc_right = 0
         
         self.scroll_up = 0
         self.scroll_down = 0
@@ -78,7 +85,7 @@ class UI:
         self.BG: tuple[int] = (30, 30, 30)
         
         self.clock = pygame.time.Clock()
-        self.max_fps: int = 0
+        self.max_fps: int = 60
         self.current_fps: int = 0
         self.running: int = 1
 
@@ -172,26 +179,62 @@ class Font:
 
 class WidgetData:
     def __init__(self) -> None:
-        self.titolo: str
-        self.labelx: str
-        self.labely: str
-        self.label2y: str
-        self.round_label: str
-        self.color_bg: str
-        self.color_text: str
-        self.area_w: str
-        self.area_h: str
-        self.x_legenda: str
-        self.y_legenda: str
-        self.nome_grafico: str
-        self.color_plot: str
-        self.dim_pallini: str
-        self.dim_link: str
+        self.titolo: str = ""
+        self.labelx: str = ""
+        self.labely: str = ""
+        self.label2y: str = ""
+        self.round_label: str = ""
+        self.color_bg: str = ""
+        self.color_text: str = ""
+        self.area_w: str = ""
+        self.area_h: str = ""
+        self.x_legenda: str = ""
+        self.y_legenda: str = ""
+        self.nome_grafico: str = ""
+        self.color_plot: str = ""
+        self.dim_pallini: str = ""
+        self.dim_link: str = ""
 
-        self.latex_check: bool
-        self.toggle_2_axis: bool
-        self.toggle_pallini: bool
-        self.toggle_collegamenti: bool
+        self.latex_check: bool = False
+        self.toggle_2_axis: bool = False
+        self.toggle_pallini: bool = False
+        self.toggle_collegamenti: bool = False
+
+
+    @staticmethod
+    def are_attributes_equal(obj1, obj2):
+        # Get the dictionary of attributes for each object
+        attrs_obj1 = obj1.__dict__
+        attrs_obj2 = obj2.__dict__
+
+        # Check if the attributes of obj1 are equal to obj2
+        for key, value in attrs_obj1.items():
+            if key in attrs_obj2:
+                if value != attrs_obj2[key]:
+                    return False
+            else:
+                return False
+
+        # Check if the attributes of obj2 are equal to obj1
+        for key, value in attrs_obj2.items():
+            if key in attrs_obj1:
+                if value != attrs_obj1[key]:
+                    return False
+            else:
+                return False
+
+        return True
+
+
+    @staticmethod
+    def update_attributes(old_obj, new_obj):
+        # Get the dictionary of attributes for each object
+        attrs_old_obj = old_obj.__dict__
+        attrs_new_obj = new_obj.__dict__
+
+        # Check if the attributes of old_obj are equal to new_obj
+        for key, value in attrs_new_obj.items():
+            attrs_old_obj[key] = value
 
 
 class DefaultScene:
@@ -205,11 +248,7 @@ class DefaultScene:
 
         self.ori_y: int = self.madre.get_height()
 
-        # impostazioni varie per la entry box
-        self.testo_aggiornato = ""
-        self.indice_entr_at = ""
         self.entrata_attiva = None
-        self.puntatore_testo_attivo: int = 0
 
         self.data_widgets =  WidgetData()
 
@@ -261,10 +300,10 @@ class DefaultScene:
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
         
     
-    def disegnami(self) -> None:
+    def disegnami(self, logica: Logica) -> None:
         [label.disegnami() for indice, label in self.label_text.items()]
         [bottone.disegnami() for indice, bottone in self.bottoni.items()]
-        [entrata.disegnami() for indice, entrata in self.entrate.items()]
+        [entrata.disegnami(logica) for indice, entrata in self.entrate.items()]
 
 
     def collect_data(self) -> None:
@@ -402,11 +441,12 @@ class Entrata:
 
         self.toggle = False
 
-        self.puntatore: int = len(self.text) - 1
+        self.puntatore: int = len(self.text)
+        self.dt_animazione: int = 0 
 
         self.font_locale: Font = font_locale
 
-    def disegnami(self):
+    def disegnami(self, logica: Logica):
 
         colore_sfondo = self.bg if not self.toggle else np.array(self.bg) - np.array([30,25,25])
         colore_testo = self.color_text if not self.toggle else np.array([42,80,67])
@@ -420,8 +460,10 @@ class Entrata:
         # calcolo nome
         self.screen.blit(self.font_locale.font_tipo.render(f"{self.titolo}", True, colore_testo), (self.x - len(self.titolo + " ") * self.font_locale.font_pixel_dim[0], self.y + self.h//2 - self.font_locale.font_pixel_dim[1] // 2))
 
-        if self.toggle:
-            pygame.draw.rect(self.screen, np.array([255,255,255]), [self.x + self.font_locale.font_pixel_dim[0] * (len(self.text) + .5) + 2, self.y, 2, self.h])
+        self.dt_animazione += 1 if logica.dt % 30 == 0 else 0
+
+        if self.toggle and self.dt_animazione % 2 == 0:
+            pygame.draw.rect(self.screen, np.array([255,255,255]), [self.x + self.font_locale.font_pixel_dim[0] * (self.puntatore + .5) + 2, self.y, 2, self.h])
 
     def selezionato_ent(self, event):
             

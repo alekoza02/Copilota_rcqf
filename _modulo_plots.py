@@ -1,8 +1,9 @@
 import numpy as np
 import pygame
-from _modulo_UI import Schermo, WidgetData
+from _modulo_UI import Schermo, WidgetData, Logica
 from _modulo_MATE import Mate
 import configparser
+from copy import deepcopy
 
 class Painter:
     def __init__(self) -> None:
@@ -53,6 +54,14 @@ class Painter:
         # 1: total points
         # 2: names
         # 3: ...
+
+        '---------------ANIMATION----------------'
+
+        self.old_widget_data: WidgetData = WidgetData()
+
+        self.animation: bool = True
+        self.duration: int = 60
+        self.progress: float = 0.0 # goes from 0.0 to 1.0
     
     
     def re_compute_font(self, dim: int = 32) -> None:
@@ -142,7 +151,9 @@ class Painter:
             r"\Phi": "Φ",
             r"\Chi": "Χ",
             r"\Psi": "Ψ",
-            r"\Omega": "Ω"
+            r"\Omega": "Ω",
+            r"\pm": "±",
+            r"\sqrt": "√"
         }
 
         for indice, segno in dizionario.items():
@@ -247,7 +258,16 @@ class Painter:
     
     
     def disegna_plots(self, widget_data: WidgetData) -> None:
-        
+
+        if not WidgetData.are_attributes_equal(self.old_widget_data, widget_data):
+            self.animation = True
+            self.progress = 0
+            WidgetData.update_attributes(self.old_widget_data, widget_data)
+
+        if self.animation:
+            self.progress += 1 / self.duration
+            if self.progress >= 1.0: self.progress = 0; self.animation = False
+
         # Sezione di impostazioni grafico attuale attivo (debug attivato sul primo grafico)
         self.plots[0].function = widget_data.toggle_collegamenti 
         self.plots[0].scatter = widget_data.toggle_pallini 
@@ -267,12 +287,15 @@ class Painter:
         
         for plot in self.plots:
             
+            animation_bound = int(len(plot.x_screen)*self.progress) if self.animation else len(plot.x_screen)
+            
             if self.plots[0].scatter:
-                for x, y in zip(plot.x_screen.astype(int), plot.y_screen.astype(int)):
+
+                for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
                     pygame.draw.circle(self.schermo, self.plots[0].colore, (x, y), plot.dim_pall)
 
             if self.plots[0].function:
-                for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
                     pygame.draw.line(self.schermo, self.plots[0].colore, (x1, y1), (x2, y2), plot.dim_link)
     
 

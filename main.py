@@ -17,15 +17,15 @@ def main(config: configparser):
     main_plot = Painter()
     main_plot.link_ui(ui.scena["main"].schermo["viewport"])
     main_plot.import_plot_data("DATA/data (1).txt")
-    # main_plot.import_plot_data("DATA/data (2).txt")
-    # main_plot.import_plot_data("DATA/data (3).txt")
-    # main_plot.import_plot_data("DATA/data (4).txt")
-    # main_plot.import_plot_data("DATA/data (5).txt")
-    # main_plot.import_plot_data("DATA/data (6).txt")
-    # main_plot.import_plot_data("DATA/data (7).txt")
-    # main_plot.import_plot_data("DATA/data (8).txt")
-    # main_plot.import_plot_data("DATA/data (9).txt")
-    # main_plot.import_plot_data("DATA/data (10).txt")
+    main_plot.import_plot_data("DATA/data (2).txt")
+    main_plot.import_plot_data("DATA/data (3).txt")
+    main_plot.import_plot_data("DATA/data (4).txt")
+    main_plot.import_plot_data("DATA/data (5).txt")
+    main_plot.import_plot_data("DATA/data (6).txt")
+    main_plot.import_plot_data("DATA/data (7).txt")
+    main_plot.import_plot_data("DATA/data (8).txt")
+    main_plot.import_plot_data("DATA/data (9).txt")
+    main_plot.import_plot_data("DATA/data (10).txt")
 
     while ui.running:
 
@@ -48,6 +48,13 @@ def main(config: configparser):
         # Stato di tutti i tasti
         keys = pygame.key.get_pressed()
 
+        # CONTROLLO CARATTERI SPECIALI
+        logica.ctrl = keys[pygame.K_LCTRL]
+        logica.shift = keys[pygame.K_LSHIFT]
+        logica.backspace = keys[pygame.K_BACKSPACE]
+        logica.left = keys[pygame.K_LEFT]
+        logica.right = keys[pygame.K_RIGHT]
+
         # scena main UI
         for event in eventi_in_corso:
             # MOUSE
@@ -59,17 +66,12 @@ def main(config: configparser):
                     [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
                     
                     # raccolta di tutti i testi già presenti nelle entrate
-                    test_entr_attiva: list[Entrata, int] = [[elemento, indice] for indice, elemento in al_sc.entrate.items() if elemento.toggle][0]
+                    test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
 
                     # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
                     if len(test_entr_attiva) > 0:
-                        al_sc.entrata_attiva = test_entr_attiva[0]
-                        al_sc.indice_entr_at = test_entr_attiva[1]
-                        al_sc.puntatore_testo_attivo = al_sc.entrata_attiva.puntatore
-                        al_sc.testo_aggiornato = al_sc.entrata_attiva.text
-                    else:
-                        al_sc.entrata_attiva = None
-                    
+                        al_sc.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
+
                 if event.button == _tasto_navigazione:
                     logica.dragging = True
                     logica.dragging_end_pos = logica.mouse_pos
@@ -94,26 +96,104 @@ def main(config: configparser):
             # input -> tastiera con caratteri e backspace
             if al_sc.entrata_attiva != None:
 
-                if event.type == pygame.TEXTINPUT:            
-                    al_sc.testo_aggiornato += event.text
+                if event.type == pygame.TEXTINPUT:           
+                    al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore] + event.text + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
+                    al_sc.entrata_attiva.puntatore += len(event.text)
+                    al_sc.entrata_attiva.dt_animazione = 0
 
                 if event.type == pygame.KEYDOWN:
+                    
+                    tx = al_sc.entrata_attiva.text
+                            
                     if event.key == pygame.K_BACKSPACE:
-                        al_sc.testo_aggiornato = al_sc.testo_aggiornato[:-1]
+                        if logica.ctrl:
 
-        # aggiornamento input
-        if al_sc.entrata_attiva != None:
-            al_sc.entrata_attiva.text = al_sc.testo_aggiornato
+                            nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                            text2eli = tx[nuovo_puntatore : al_sc.entrata_attiva.puntatore]
+                            al_sc.entrata_attiva.puntatore = nuovo_puntatore
+                            al_sc.entrata_attiva.text = tx.replace(text2eli, "") 
 
-        # CONTROLLO CARATTERI SPECIALI
-        logica.ctrl = keys[pygame.K_LCTRL]
-        logica.shift = keys[pygame.K_LSHIFT]
-                
+                        else:
+                            if al_sc.entrata_attiva.puntatore != 0: 
+                                al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore-1] + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
+                            if al_sc.entrata_attiva.puntatore > 0:
+                                al_sc.entrata_attiva.puntatore -= 1
+
+                    if event.key == pygame.K_LEFT:
+                        if al_sc.entrata_attiva.puntatore > 0:
+                            if logica.ctrl:
+                                al_sc.entrata_attiva.puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                            else: 
+                                al_sc.entrata_attiva.puntatore -= 1
+
+                    if event.key == pygame.K_RIGHT:
+                        if al_sc.entrata_attiva.puntatore < len(al_sc.entrata_attiva.text):
+                            if logica.ctrl:
+
+                                # trovo l'indice di dove inizia la frase
+                                start = tx.find(tx[al_sc.entrata_attiva.puntatore:].lstrip(), al_sc.entrata_attiva.puntatore, len(tx))
+                                # se non la trovo mi blocco dove sono partito
+                                if start == -1: start = al_sc.entrata_attiva.puntatore
+
+                                # se la trovo, cerco la parola successiva
+                                found = tx.find(" ", start, len(tx))
+                                # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
+                                if found == -1: found = len(tx.rstrip())
+
+                                al_sc.entrata_attiva.puntatore = found
+                                
+                            else:
+                                al_sc.entrata_attiva.puntatore += 1
+
+                    al_sc.entrata_attiva.dt_animazione = 0 
+
+        if logica.backspace:
+            logica.acc_backspace += 1
+            if logica.acc_backspace > 20:
+                tx = al_sc.entrata_attiva.text
+                nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                text2eli = tx[nuovo_puntatore : al_sc.entrata_attiva.puntatore]
+                al_sc.entrata_attiva.puntatore = nuovo_puntatore
+                al_sc.entrata_attiva.text = tx.replace(text2eli, "")
+        else: 
+            logica.acc_backspace = 0
+
+        if logica.left:
+            logica.acc_left += 1
+            if logica.acc_left > 20:
+                if logica.ctrl:
+                    al_sc.entrata_attiva.puntatore = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                elif al_sc.entrata_attiva.puntatore > 0: al_sc.entrata_attiva.puntatore -= 1
+                al_sc.entrata_attiva.dt_animazione = 0 
+        else: 
+            logica.acc_left = 0
+        
+        if logica.right:
+            logica.acc_right += 1
+            if logica.acc_right > 20:
+                if logica.ctrl:
+                    tx = al_sc.entrata_attiva.text
+                    # trovo l'indice di dove inizia la frase
+                    start = tx.find(tx[al_sc.entrata_attiva.puntatore:].lstrip(), al_sc.entrata_attiva.puntatore, len(tx))
+                    # se non la trovo mi blocco dove sono partito
+                    if start == -1: start = al_sc.entrata_attiva.puntatore
+
+                    # se la trovo, cerco la parola successiva
+                    found = tx.find(" ", start, len(tx))
+                    # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
+                    if found == -1: found = len(tx.rstrip())
+
+                    al_sc.entrata_attiva.puntatore = found
+                     
+                elif al_sc.entrata_attiva.puntatore < len(al_sc.entrata_attiva.text): al_sc.entrata_attiva.puntatore += 1
+                al_sc.entrata_attiva.dt_animazione = 0 
+        else: 
+            logica.acc_right = 0
 
         # UI ----------------------------------------------------------------
-        
+
         # disegno i labels / bottoni / entrate
-        al_sc.disegnami()
+        al_sc.disegnami(logica)
 
         # resoconto dello stato di tutti i bottoni e entrate
         al_sc.collect_data()
