@@ -40,6 +40,26 @@ class Mate:
         except ValueError:
             return [255, 0, 255]
 
+
+    @staticmethod
+    def rgb2hex(colore: list[int]) -> str:
+        '''Accetta SOLO il formato: [255, 255, 255]'''
+        try:
+            r = hex(colore[0])
+            g = hex(colore[1])
+            b = hex(colore[2])
+
+            if colore[0] == 0:
+                r += "0"
+            if colore[1] == 0:
+                g += "0"
+            if colore[2] == 0:
+                b += "0"
+
+            return f"#{r[2:]}{g[2:]}{b[2:]}"
+        except ValueError:
+            return "#ff00ff"
+
     
     @staticmethod
     def inp2int(valore: str) -> int:

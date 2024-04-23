@@ -1,9 +1,10 @@
 import numpy as np
 import pygame
-from _modulo_UI import Schermo, WidgetData, Logica
+from _modulo_UI import Schermo, WidgetData, Logica, UI
 from _modulo_MATE import Mate
 import configparser
 from copy import deepcopy
+import os
 
 class Painter:
     def __init__(self) -> None:
@@ -41,6 +42,7 @@ class Painter:
         self.data_path: str
     
         self.plots: list[Plot] = []
+        self.active_plot: int = 0
         
         self.dim_font = 32 
         self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
@@ -187,7 +189,27 @@ class Painter:
         self.schermo = info_schermo.schermo
     
     
+    def change_active_plot(self, ui: UI):
+
+        # aggiorno grafico selezionato
+        self.active_plot = ui.scena["main"].scrolls["grafici"].scroll_item_selected + ui.scena["main"].scrolls["grafici"].first_item
+
+        # aggiorno le entry box con i valori del nuovo grafico
+        ui.scena["main"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
+        ui.scena["main"].entrate["nome_grafico"].puntatore = len(str(self.plots[self.active_plot].nome)) - 1
+        ui.scena["main"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
+        ui.scena["main"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
+        ui.scena["main"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
+
+        ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
+        ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
+        ui.scena["main"].bottoni["acceso"].toggled = self.plots[self.active_plot].acceso
+
+
     def import_plot_data(self, path: str, divisore: str = None) -> None:
+        
+        # TODO -> Import automatico diversi formati
+
         self.data_path = path
         self.divisore = divisore
         
@@ -226,7 +248,18 @@ class Painter:
         self.plots.append(Plot(nome, x, y, ey))
         self.debug_info[2].append(nome)
         
-        
+    
+    def full_import_plot_data(self) -> None:
+
+        files = os.listdir("PLOT_DATA/")
+
+        for f in files:
+            path = os.path.join("PLOT_DATA/", f)
+            if os.path.isfile(path):    
+                self.import_plot_data(path)
+
+
+
     def adattamento_data2schermo(self) -> None:
         '''
         Analizza tutti i plot e li ridimensiona in base ai nuovi dati / cambio di finestra
@@ -241,20 +274,22 @@ class Painter:
         self.min_y = np.inf
         
         for plot in self.plots:
-            self.max_x = np.maximum(self.max_x, np.max(plot.x))
-            self.max_y = np.maximum(self.max_y, np.max(plot.y))
-            self.min_x = np.minimum(self.min_x, np.min(plot.x))
-            self.min_y = np.minimum(self.min_y, np.min(plot.y))
+            if plot.acceso:
+                self.max_x = np.maximum(self.max_x, np.max(plot.x))
+                self.max_y = np.maximum(self.max_y, np.max(plot.y))
+                self.min_x = np.minimum(self.min_x, np.min(plot.x))
+                self.min_y = np.minimum(self.min_y, np.min(plot.y))
 
         for plot in self.plots:
-            x_adattata = self.w_plot_area * (plot.x - self.min_x) / (self.max_x - self.min_x)
-            x_adattata += self.start_x
-            
-            y_adattata = self.h_plot_area * (plot.y - self.min_y) / (self.max_y - self.min_y)
-            y_adattata = - y_adattata + self.start_y
-                    
-            plot.x_screen = x_adattata
-            plot.y_screen = y_adattata
+            if plot.acceso:
+                x_adattata = self.w_plot_area * (plot.x - self.min_x) / (self.max_x - self.min_x)
+                x_adattata += self.start_x
+                
+                y_adattata = self.h_plot_area * (plot.y - self.min_y) / (self.max_y - self.min_y)
+                y_adattata = - y_adattata + self.start_y
+                        
+                plot.x_screen = x_adattata
+                plot.y_screen = y_adattata
     
     
     def disegna_plots(self, widget_data: WidgetData) -> None:
@@ -268,15 +303,16 @@ class Painter:
             self.progress += 1 / self.duration
             if self.progress >= 1.0: self.progress = 0; self.animation = False
 
-        # Sezione di impostazioni grafico attuale attivo (debug attivato sul primo grafico)
-        self.plots[0].function = widget_data.toggle_collegamenti 
-        self.plots[0].scatter = widget_data.toggle_pallini 
-        self.plots[0].colore = Mate.hex2rgb(widget_data.color_plot) 
+        # Sezione di impostazioni grafico attuale attivo
+        self.plots[self.active_plot].function = widget_data.toggle_collegamenti 
+        self.plots[self.active_plot].scatter = widget_data.toggle_pallini 
+        self.plots[self.active_plot].acceso = widget_data.acceso 
+        self.plots[self.active_plot].colore = Mate.hex2rgb(widget_data.color_plot) 
 
-        self.plots[0].dim_link = Mate.inp2int(widget_data.dim_link)
-        self.plots[0].dim_pall = Mate.inp2int(widget_data.dim_pallini)
+        self.plots[self.active_plot].dim_link = Mate.inp2int(widget_data.dim_link)
+        self.plots[self.active_plot].dim_pall = Mate.inp2int(widget_data.dim_pallini)
 
-        self.plots[0].nome = widget_data.nome_grafico
+        self.plots[self.active_plot].nome = widget_data.nome_grafico
 
 
         self.schermo.fill(self.bg_color)
@@ -286,17 +322,19 @@ class Painter:
         self.debug_info[1] = sum([len(i.x) for i in self.plots])
         
         for plot in self.plots:
-            
-            animation_bound = int(len(plot.x_screen)*self.progress) if self.animation else len(plot.x_screen)
-            
-            if self.plots[0].scatter:
 
-                for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
-                    pygame.draw.circle(self.schermo, self.plots[0].colore, (x, y), plot.dim_pall)
+            if plot.acceso:
+                
+                animation_bound = int(len(plot.x_screen)*self.progress) if self.animation else len(plot.x_screen)
+                
+                if plot.scatter:
 
-            if self.plots[0].function:
-                for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
-                    pygame.draw.line(self.schermo, self.plots[0].colore, (x1, y1), (x2, y2), plot.dim_link)
+                    for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
+                        pygame.draw.circle(self.schermo, plot.colore, (x, y), plot.dim_pall)
+
+                if plot.function:
+                    for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
+                        pygame.draw.line(self.schermo, plot.colore, (x1, y1), (x2, y2), plot.dim_link)
     
 
     def disegna_metadata(self, widget_data: WidgetData) -> None:
@@ -466,15 +504,19 @@ class Painter:
         pos_y = self.end_y + self.h_plot_area * self.y_legenda
         max_len_legenda = 0
 
-        for indice, plot in enumerate(self.plots):
-            legenda = self.font_tipo.render(f"{plot.nome}", True, plot.colore)
-            max_len_legenda = max(len(f"{plot.nome}"), max_len_legenda)
-            self.schermo.blit(legenda, (pos_x, pos_y + indice * 1.5 * self.font_pixel_dim[1]))
-        
-        pygame.draw.rect(self.schermo, self.text_color, [
-            pos_x - self.font_pixel_dim[0], pos_y - self.font_pixel_dim[1],
-            self.font_pixel_dim[0] * (max_len_legenda + 2), self.font_pixel_dim[1] * (len(self.plots) + 1) * 1.5
-        ], 1)
+        plot_accesi = [plot for plot in self.plots if plot.acceso]
+
+        if len(plot_accesi) != 0:
+
+            for indice, plot in enumerate(plot_accesi):
+                legenda = self.font_tipo.render(f"{plot.nome}", True, plot.colore)
+                max_len_legenda = max(len(f"{plot.nome}"), max_len_legenda)
+                self.schermo.blit(legenda, (pos_x, pos_y + indice * 1.5 * self.font_pixel_dim[1]))
+            
+            pygame.draw.rect(self.schermo, self.text_color, [
+                pos_x - self.font_pixel_dim[0], pos_y - self.font_pixel_dim[1],
+                self.font_pixel_dim[0] * (max_len_legenda + 2), self.font_pixel_dim[1] * (len(plot_accesi) + 1) * 1.5
+            ], 1)
 
     
     def aggiorna_schermo(self) -> None:
@@ -500,3 +542,5 @@ class Plot:
 
         self.dim_pall: int = 1
         self.dim_link: int = 1
+
+        self.acceso: bool = False

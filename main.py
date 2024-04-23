@@ -7,7 +7,7 @@ def main(config: configparser):
     
     _tasto_navigazione = int(config.get('Default', 'tasto_navigazione'))
 
-    from _modulo_UI import UI, Logica, Entrata, Button
+    from _modulo_UI import UI, Logica
     from _modulo_plots import Painter
     
     ui = UI()
@@ -16,16 +16,7 @@ def main(config: configparser):
     # Zona inizializzazione plot
     main_plot = Painter()
     main_plot.link_ui(ui.scena["main"].schermo["viewport"])
-    main_plot.import_plot_data("DATA/data (1).txt")
-    main_plot.import_plot_data("DATA/data (2).txt")
-    main_plot.import_plot_data("DATA/data (3).txt")
-    main_plot.import_plot_data("DATA/data (4).txt")
-    main_plot.import_plot_data("DATA/data (5).txt")
-    main_plot.import_plot_data("DATA/data (6).txt")
-    main_plot.import_plot_data("DATA/data (7).txt")
-    main_plot.import_plot_data("DATA/data (8).txt")
-    main_plot.import_plot_data("DATA/data (9).txt")
-    main_plot.import_plot_data("DATA/data (10).txt")
+    main_plot.full_import_plot_data()
 
     while ui.running:
 
@@ -64,6 +55,7 @@ def main(config: configparser):
                     # gestisce eventi bottone e entrata schiacciata
                     [elemento.selezionato_bot(event) for indice, elemento in al_sc.bottoni.items()]
                     [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
+                    [scrolla.selezionato_scr(event, logica) for indice, scrolla in al_sc.scrolls.items()]
                     
                     # raccolta di tutti i testi già presenti nelle entrate
                     test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
@@ -93,6 +85,16 @@ def main(config: configparser):
                     logica.dragging_dy = - logica.dragging_end_pos[1] + logica.dragging_start_pos[1] # sistema di riferimento invertito
 
             # TASTIERA
+            # controlli generici -> No inserimento
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    ui.scena["main"].scrolls["grafici"].aggiorna_externo("up", logica)
+                    
+                if event.key == pygame.K_DOWN:
+                    ui.scena["main"].scrolls["grafici"].aggiorna_externo("down", logica)
+
+
             # input -> tastiera con caratteri e backspace
             if al_sc.entrata_attiva != None:
 
@@ -114,7 +116,7 @@ def main(config: configparser):
                             al_sc.entrata_attiva.text = tx.replace(text2eli, "") 
 
                         else:
-                            if al_sc.entrata_attiva.puntatore != 0: 
+                            if al_sc.entrata_attiva.puntatore != 0:
                                 al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore-1] + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
                             if al_sc.entrata_attiva.puntatore > 0:
                                 al_sc.entrata_attiva.puntatore -= 1
@@ -192,9 +194,15 @@ def main(config: configparser):
 
         # UI ----------------------------------------------------------------
 
+        # aggiornamento generico dei nomi grafici nella scroll bar
+        ui.scena["main"].scrolls["grafici"].elementi = [main_plot.plots[index].nome for index in range(len(main_plot.plots))]
+
         # disegno i labels / bottoni / entrate
         al_sc.disegnami(logica)
 
+        # gestione collegamento ui - grafico        
+        if logica.aggiorna_plot: main_plot.change_active_plot(ui); logica.aggiorna_plot = False
+        
         # resoconto dello stato di tutti i bottoni e entrate
         al_sc.collect_data()
 

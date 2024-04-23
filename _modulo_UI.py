@@ -1,8 +1,8 @@
 import numpy as np
 import pygame
 import ctypes
-
-from _modulo_MATE import Mate
+import psutil
+import wmi
 
 class Logica:
     def __init__(self) -> None:
@@ -32,6 +32,8 @@ class Logica:
         
         self.scroll_up = 0
         self.scroll_down = 0
+
+        self.aggiorna_plot: bool = True
         
         self.messaggio_debug1: str = "Empty!"
         self.messaggio_debug2: str = "Empty!"
@@ -89,6 +91,8 @@ class UI:
         self.current_fps: int = 0
         self.running: int = 1
 
+        self.cpu_sample: list[int] = [0 for i in range(100)]
+
         # generazione font
         self.lista_font: dict[Font] = {}
         self.lista_font["piccolo"] = Font("piccolo", self.rapporto_ori)
@@ -137,17 +141,47 @@ class UI:
         Controlla se la combinazione di uscita è stata selezionata -> Uscita
         Altrimenti aggiornamento pagina
         '''
+
+        # aggiornamento
+        self.current_fps = self.clock.get_fps()
+
+        # PC status
+        self.scena["main"].label_text["memory"].text = f"Memory usage: {psutil.Process().memory_info().rss / 1024**2:.2f} MB"
+        
+        self.cpu_sample.pop(0)
+        self.cpu_sample.append(psutil.cpu_percent(interval=0))
+        self.scena["main"].label_text["cpu"].text = f"CPU usage: {sum(self.cpu_sample) / len(self.cpu_sample):.0f}%"
+
+        self.scena["main"].label_text["fps"].text = f"FPS: {self.current_fps:.2f}"
+        
+        battery = psutil.sensors_battery()
+        if battery:
+            if battery.power_plugged: charging = "chr"
+            else: charging = "NO chr"
+            self.scena["main"].label_text["battery"].text = f"Battery: {battery.percent:.1f}% {charging}"
+        
+        try:    
+            w = wmi.WMI(namespace="root\\wmi")
+            cpu_temperature_celsius = (w.MSAcpi_ThermalZoneTemperature()[0].CurrentTemperature / 10.0) - 273.15
+            cpu_temperature_celsius = f"{cpu_temperature_celsius:.2f}"
+        except Exception as e:
+            cpu_temperature_celsius = "err"
+        
+        self.scena["main"].label_text["temp"].text = f"CPU temp: {cpu_temperature_celsius}°C"
+        
+        speed = "nan"
+        self.scena["main"].label_text["fan"].text = f"Fan speed: {speed} RPM"
+
+
         # uscita
         keys = pygame.key.get_pressed()
         key_combo = [pygame.K_ESCAPE, pygame.K_SPACE]
         if all(keys[key] for key in key_combo):
             self.running = 0
-
-        # aggiornamento
-        self.current_fps = self.clock.get_fps()
         pygame.display.flip()
         
     def aggiorna_messaggi_debug(self, logica: Logica) -> None:
+
         messaggio_inviato = 0
         for indice, label in self.scena["main"].label_text.items():
             messaggi = logica.lista_messaggi
@@ -199,6 +233,7 @@ class WidgetData:
         self.toggle_2_axis: bool = False
         self.toggle_pallini: bool = False
         self.toggle_collegamenti: bool = False
+        self.acceso: bool = False
 
 
     @staticmethod
@@ -257,11 +292,22 @@ class DefaultScene:
         self.bottoni: dict[str, Button] = {}
         self.entrate: dict[str, Entrata] = {}
         self.radio = {}
-        self.scrolls = {}
+        self.scrolls: dict[str, ScrollConsole] = {}
         self.schermo: dict[str, Schermo] = {}
+        self.ui_signs: dict[str, UI_signs] = {}
 
         self.parametri_repeat_elementi: list = [self.madre, self.shift, self.moltiplicatore_x, self.ori_y]
         
+        # LABEL
+        # --------------------------------------------------------------------------------
+        # statici
+        self.label_text["memory"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=90, y=98, text="Memory usage: X MB", renderizza_bg=False)
+        self.label_text["battery"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=81, y=98, text="Battery: X%", renderizza_bg=False)
+        self.label_text["fps"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=73, y=98, text="FPS: X", renderizza_bg=False)
+        self.label_text["cpu"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=66.5, y=98, text="CPU usage: X%", renderizza_bg=False)
+        self.label_text["temp"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=59, y=98, text="CPU temp: X°C", renderizza_bg=False)
+        self.label_text["fan"] = LabelText(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=50.5, y=98, text="Fan speed: Xrpm", renderizza_bg=False)
+
         # BOTTONI
         # --------------------------------------------------------------------------------
         # statici
@@ -271,6 +317,7 @@ class DefaultScene:
         # dinamici
         self.bottoni["toggle_pallini"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=67.5, y=36, text="Pallini", toggled=True)
         self.bottoni["toggle_collegamenti"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=67.5, y=38, text="Links", toggled=True)
+        self.bottoni["acceso"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=3*1.6, x=67.5, y=40, text="Acceso", toggled=False)
         # --------------------------------------------------------------------------------
 
 
@@ -290,20 +337,36 @@ class DefaultScene:
         self.entrate["y_legenda"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=21, text=".3", titolo="y legenda")
 
         # dinamiche
-        self.entrate["nome_grafico"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=30, text="Plot 1", titolo="Nome")
+        self.entrate["nome_grafico"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=10, h=1.8, x=65, y=30, text="Plot 1", titolo="Nome")
         self.entrate["color_plot"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=65, y=32, text="#ffffff", titolo="Colore graf.")
         self.entrate["dim_pallini"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=65, y=36, text="1", titolo="Dim. pallini")
         self.entrate["dim_link"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=65, y=38, text="1", titolo="Dim. links")
         # --------------------------------------------------------------------------------
 
 
+        # SCROLLCONSOLE
+        # --------------------------------------------------------------------------------
+        # dinamiche
+        self.scrolls["grafici"] = ScrollConsole(self.parametri_repeat_elementi, self.fonts["piccolo"], w=18, h=16, x=77.5, y=30, titolo="Scelta grafici / data plot")
+
+
+        # UI SIGNS
+        # --------------------------------------------------------------------------------
+        # statiche
+        self.ui_signs["div_stat_din"] = UI_signs(self.parametri_repeat_elementi, x1=61, y1=26.4, x2=98, y2=26.4, spessore=2)
+
+
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
         
     
     def disegnami(self, logica: Logica) -> None:
+        
+        # ui elements
         [label.disegnami() for indice, label in self.label_text.items()]
         [bottone.disegnami() for indice, bottone in self.bottoni.items()]
         [entrata.disegnami(logica) for indice, entrata in self.entrate.items()]
+        [scrolla.disegnami(logica) for indice, scrolla in self.scrolls.items()]
+        [segno.disegnami() for indice, segno in self.ui_signs.items()]
 
 
     def collect_data(self) -> None:
@@ -325,6 +388,7 @@ class DefaultScene:
 
         self.data_widgets.toggle_pallini = self.bottoni["toggle_pallini"].toggled 
         self.data_widgets.toggle_collegamenti = self.bottoni["toggle_collegamenti"].toggled
+        self.data_widgets.acceso = self.bottoni["acceso"].toggled
         self.data_widgets.latex_check = self.bottoni["latex_check"].toggled
         self.data_widgets.toggle_2_axis = self.bottoni["toggle_2_axis"].toggled
 
@@ -365,6 +429,36 @@ class LabelText:
     def assegna_messaggio(self, str: str = "Empty!") -> None:
         self.text = str
 
+
+class UI_signs:
+    def __init__(self, parametri_locali_elementi: list, x1: float = 0, y1: float = 0, x2: float = 100, y2: float = 100, bg: tuple[int] = (40, 40, 40), spessore: int = 1) -> None:
+        '''
+        parametri_locali_elementi dovrà contenere:
+        - schermo madre
+        - shift_x
+        - x a disposizione sullo schermo
+        - y a disposizione sullo schermo
+        '''
+        self.offset: int = parametri_locali_elementi[1]
+
+        self.moltiplicatore_x: int = parametri_locali_elementi[2]
+        self.ori_y: int = parametri_locali_elementi[3]
+        
+        self.x1: float = self.moltiplicatore_x * x1 / 100 + self.offset
+        self.y1: float = self.ori_y * y1 / 100
+        self.x2: float = self.moltiplicatore_x * x2 / 100 + self.offset
+        self.y2: float = self.ori_y * y2 / 100
+
+        self.spessore: int = spessore
+
+        self.bg: tuple[int] = bg
+
+        self.screen: pygame.Surface = parametri_locali_elementi[0]
+
+
+    def disegnami(self) -> None:
+        pygame.draw.line(self.screen, self.bg, [self.x1, self.y1], [self.x2, self.y2], self.spessore)
+        
 
 class Button():
     def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova", tipologia = "toggle", toggled = False) -> None:
@@ -472,11 +566,101 @@ class Entrata:
                     self.toggle = False
                 else:
                     self.toggle = True
+                    self.puntatore = len(self.text)
             else:
                 self.toggle = False
 
     def __str__(self) -> str:
         return f"{self.text}"
+
+
+class ScrollConsole:
+    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, titolo: str = "Default scroll") -> None:
+        self.offset: int = parametri_locali_elementi[1]
+
+        self.moltiplicatore_x: int = parametri_locali_elementi[2]
+        self.ori_y: int = parametri_locali_elementi[3]
+        
+        self.w: float = self.moltiplicatore_x * w / 100
+        self.h: float = self.ori_y * h / 100
+        self.x: float = self.moltiplicatore_x * x / 100 + self.offset
+        self.y: float = self.ori_y * y / 100
+
+        self.bg: tuple[int] = bg
+        self.color_text: tuple[int] = (100, 100, 100)
+
+        self.screen: pygame.Surface = parametri_locali_elementi[0]
+        self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
+
+        self.font_locale: Font = font_locale
+
+        self.titolo: str = titolo
+        self.elementi: list = [f"Prova dell'inserimento del nome del grafico {i}" for i in range(5)]
+        self.first_item: int = 0
+        self.scroll_item_selected: int = 0
+
+        # batched data
+        self.pos_elementi_bb: list[pygame.Rect] = [pygame.Rect([
+            self.x + 3 * self.font_locale.font_pixel_dim[0] // 2, 
+            self.y + self.font_locale.font_pixel_dim[1] * 3.25 + index * (self.h - self.font_locale.font_pixel_dim[1] * 4) / 5, 
+            len(elemento) * self.font_locale.font_pixel_dim[0], 
+            self.font_locale.font_pixel_dim[1] * 1.5]) 
+            for index, elemento in enumerate(self.elementi[self.first_item : self.first_item + 5])]
+
+        self.pos_elementi: list[tuple[float]] = [(
+            self.x + 4 * self.font_locale.font_pixel_dim[0] // 2, 
+            self.y + self.font_locale.font_pixel_dim[1] * 3.5 + index * (self.h - self.font_locale.font_pixel_dim[1] * 4) / 5) 
+            for index in range(len(self.elementi[self.first_item : self.first_item + 5]))]
+
+
+    def disegnami(self, logica: Logica):
+
+        # calcolo forma
+        pygame.draw.rect(self.screen, self.bg, [self.x, self.y, self.w, self.h], border_top_left_radius=10, border_bottom_right_radius=10)
+
+        # calcolo box titolo
+        pygame.draw.rect(self.screen, np.array(self.bg) + 10, [self.x, self.y, self.font_locale.font_pixel_dim[0] * (len(self.titolo) + 4), self.font_locale.font_pixel_dim[1] * 2], border_top_left_radius=10, border_bottom_right_radius=10)
+        self.screen.blit(self.font_locale.font_tipo.render(f"{self.titolo}", True, (100, 100, 100)), (self.x + 3 * self.font_locale.font_pixel_dim[0] // 2, self.y + self.font_locale.font_pixel_dim[1] - self.font_locale.font_pixel_dim[1] // 2))
+
+        bg_alteranto1 = np.array(self.bg) + 20
+        bg_alteranto2 = np.array(self.bg) + 30
+
+        # calcolo scritta elementi
+        for index, elemento in enumerate(self.elementi[self.first_item : self.first_item + 5]):
+            colore_alternato = bg_alteranto1 if index % 2 == 0 else bg_alteranto2
+            if index == self.scroll_item_selected: colore_alternato = [42,80,67] # TODO solve colorazione
+            
+            pygame.draw.rect(self.screen, colore_alternato, self.pos_elementi_bb[index])
+            self.screen.blit(self.font_locale.font_tipo.render(f"{elemento}", True, (100, 100, 100)), self.pos_elementi[index])
+
+
+    def selezionato_scr(self, event, logica: Logica):
+        
+        for index, test_pos in enumerate(self.pos_elementi_bb):
+            if test_pos.collidepoint(logica.mouse_pos):
+                self.scroll_item_selected = index
+                logica.aggiorna_plot = True
+
+    def aggiorna_externo(self, index: str, logica: Logica):
+
+        match index:
+            case "up":
+                if self.scroll_item_selected > 0: 
+                    self.scroll_item_selected -= 1 
+                elif self.first_item > 0:
+                    self.first_item -= 1
+
+            case "down":
+                if self.scroll_item_selected < 4: 
+                    self.scroll_item_selected += 1 
+                elif self.first_item < len(self.elementi) - 5:
+                    self.first_item += 1
+
+            case _:
+                pass
+
+        logica.aggiorna_plot = True
+
 
 class Schermo:
     def __init__(self, parametri_locali_elementi: list) -> None:
