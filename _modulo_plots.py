@@ -208,15 +208,22 @@ class Painter:
 
     def import_plot_data(self, path: str, divisore: str = None) -> None:
         
-        # TODO -> Import automatico diversi formati
-
         self.data_path = path
         self.divisore = divisore
         
+        # SUPPORTO .CSV
+        if self.data_path.endswith(".csv"): self.divisore = ","
+
         # estrazione data
         with open(self.data_path, 'r') as file:
             data = [line for line in file]
-    
+
+        # SUPPORTO FORMATO HEX utf-16-le
+        if data[0].startswith(r"ÿþ"): 
+            import codecs
+            with codecs.open(self.data_path, 'r', encoding='utf-16-le') as file:
+                data = [line.strip() for line in file]
+
         data = [i.split(self.divisore) for i in data]
 
         # controllo dati indesiderati
@@ -236,25 +243,31 @@ class Painter:
         # controllo presenza dati None 
         data = [i for i in data if i]
     
-        # CONVERSIONE ARRAY DI FLOATS
-        data = np.array(data).astype(float)
+        try:
+            # CONVERSIONE ARRAY DI FLOATS
+            if len(data[0]) != len(data[1]): data.pop(0)
+            data = np.array(data).astype(float)    
+            x = data[:, 0]
+            y = data[:, 1]
+            ey = data[:, 2] if data.shape[1] == 3 else None 
+            
+            nome = path.split('\\')[-1]
+            
+            self.plots.append(Plot(nome, x, y, ey))
+            self.debug_info[2].append(nome)
         
-        x = data[:, 0]
-        y = data[:, 1]
-        ey = data[:, 2] if data.shape[1] == 3 else None 
-        
-        nome = path.split("/")[-1]
-        
-        self.plots.append(Plot(nome, x, y, ey))
-        self.debug_info[2].append(nome)
-        
+        except:
+            print(f"Impossibile caricare il file: {path}")
     
-    def full_import_plot_data(self) -> None:
+    def full_import_plot_data(self, path_input: str = 'PLOT_DATA/') -> None:
+        
+        files = os.listdir(path_input)
 
-        files = os.listdir("PLOT_DATA/")
+        self.plots = []
+        self.debug_info[2] = []
 
         for f in files:
-            path = os.path.join("PLOT_DATA/", f)
+            path = os.path.join(path_input, f)
             if os.path.isfile(path):    
                 self.import_plot_data(path)
 

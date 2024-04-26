@@ -3,6 +3,7 @@ import pygame
 import ctypes
 import psutil
 import wmi
+import os
 
 class Logica:
     def __init__(self) -> None:
@@ -189,6 +190,26 @@ class UI:
                 label.assegna_messaggio(messaggi[messaggio_inviato])
                 messaggio_inviato += 1
 
+    @staticmethod
+    def salva_screenshot(destinazione, nome, formato, schermo):
+        try:
+            existing_files = os.listdir(destinazione)
+            highest_number = 0
+            for filename in existing_files:
+                if filename.startswith(nome) and filename.endswith(formato):
+                    try:
+                        file_number = int(filename[len(nome):-len(formato)])
+                        if file_number > highest_number:
+                            highest_number = file_number
+                    except ValueError:
+                        pass
+            new_number = highest_number + 1
+            new_filename = f'{nome}{new_number}{formato}'
+            destination_file_modello = os.path.join(destinazione, new_filename)
+            pygame.image.save(schermo, destination_file_modello)
+        except FileNotFoundError:
+            pass
+
 class Font:
     def __init__(self, dimensione: str = "medio", rapporto: float = 1.0) -> None:    
         
@@ -313,6 +334,8 @@ class DefaultScene:
         # statici
         self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=5, text="str to LaTeX")
         self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=7, text="Toggle 2° axis")
+        self.bottoni["carica"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=82, y=14, tipologia="push", texture="UI_cerca")
+        self.bottoni["salva"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=82, y=18, tipologia="push", texture="UI_save")
 
         # dinamici
         self.bottoni["toggle_pallini"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=67.5, y=36, text="Pallini", toggled=True)
@@ -328,6 +351,9 @@ class DefaultScene:
         self.entrate["labelx"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=7, text="", titolo="Label X")
         self.entrate["labely"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=9, text="", titolo="Label Y (sx)")
         self.entrate["label2y"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=11, text="", titolo="Label Y (dx)")
+        self.entrate["caricamento"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=16, h=1.8, x=65, y=15, text="PLOT_DATA\_DATABASE\spettroscopia", titolo="Input path")
+        self.entrate["salvataggio_path"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=7, h=1.8, x=65, y=19, text="OUTPUT", titolo="Output path")
+        self.entrate["salvataggio_nome"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=5, h=1.8, x=76, y=19, text="default", titolo="File name")
         self.entrate["round_label"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=90, y=9, text="2", titolo="Round to")
         self.entrate["color_bg"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=11, text="#151924", titolo="Colore bg")
         self.entrate["color_text"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=90, y=13, text="#b4b4b4", titolo="Colore UI")
@@ -419,7 +445,7 @@ class LabelText:
 
         self.font_locale: Font = font_locale
         self.text: str = text
-        self.color_text: tuple[int] = (100, 100, 100)
+        self.color_text: tuple[int] = (200, 200, 200)
 
     def disegnami(self) -> None:
         if self.renderizza_bg:
@@ -461,7 +487,7 @@ class UI_signs:
         
 
 class Button():
-    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova", tipologia = "toggle", toggled = False) -> None:
+    def __init__(self, parametri_locali_elementi: list, font_locale: Font, w: float = 50, h: float = 50, x: float = 0, y: float = 0, bg: tuple[int] = (40, 40, 40), renderizza_bg: bool = True, text: str = "Prova", tipologia: str = "toggle", toggled: bool = False, texture: None = None) -> None:
         '''
         parametri_locali_elementi dovrà contenere:
         - schermo madre
@@ -488,16 +514,42 @@ class Button():
 
         self.font_locale: Font = font_locale
         self.text: str = text
-        self.color_text: tuple[int] = (100, 100, 100)
+        self.color_text: tuple[int] = (200, 200, 200)
 
         self.tipologia = tipologia
         self.toggled = toggled
         self.colore_bg_schiacciato = [i+10 if i < 245 else 255 for i in self.bg]
 
+        self.animation: bool = False
+        self.durata: int = 30
+        self.tracker: int = 0
+        self.bg2: tuple[int] = (42, 80, 67)
+
+        if texture is None:
+            self.texture = None
+        else:
+            self.texture = pygame.image.load(f"TEXTURES/{texture}.png")
+            self.texture = pygame.transform.scale(self.texture, (self.w, self.h))
+
     def disegnami(self):
         colore_scelto = self.colore_bg_schiacciato if self.toggled else self.bg
+        
+        if self.animation:
+            self.tracker += 1
+
+            colore_scelto = [int(p * (self.durata - self.tracker) / self.durata + d * (self.tracker) / self.durata) for p, d in zip(self.bg2, colore_scelto)]
+            
+            if self.tracker > self.durata:
+                self.tracker = 0
+                self.animation = False
+        
+        
         pygame.draw.rect(self.screen, colore_scelto, [self.x, self.y, self.w, self.h], border_top_left_radius=10, border_bottom_right_radius=10)
-        self.screen.blit(self.font_locale.font_tipo.render(f"{self.text}", True, self.color_text), (self.x + self.w // 2 - len(self.text) * self.font_locale.font_pixel_dim[0] // 2, self.y + self.h // 2 - self.font_locale.font_pixel_dim[1] // 2))
+        
+        if self.texture is None:
+            self.screen.blit(self.font_locale.font_tipo.render(f"{self.text}", True, self.color_text), (self.x + self.w // 2 - len(self.text) * self.font_locale.font_pixel_dim[0] // 2, self.y + self.h // 2 - self.font_locale.font_pixel_dim[1] // 2))
+        else:
+            self.screen.blit(self.texture, (self.x, self.y))
 
     def selezionato_bot(self, event):
             
@@ -506,8 +558,10 @@ class Button():
                 self.toggled = False
             else:
                 self.toggled = True
+                self.animation = True
+                self.tracker = 0
 
-    def push(self):
+    def push(self) -> None:
         if self.toggled and self.tipologia == "push":
             self.toggled = False
 
@@ -528,7 +582,7 @@ class Entrata:
         self.titolo: str = titolo
         
         self.bg: tuple[int] = bg
-        self.color_text: tuple[int] = (100, 100, 100)
+        self.color_text: tuple[int] = (200, 200, 200)
 
         self.screen: pygame.Surface = parametri_locali_elementi[0]
         self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
@@ -570,6 +624,34 @@ class Entrata:
             else:
                 self.toggle = False
 
+    # def completamento_testo(path, entrata):
+    #     if type(path) == str:
+    #         possibili_file = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file.startswith(entrata.txt)]
+    #     elif type(path) == dict:
+    #         possibili_file = [i for i in path if i.startswith(entrata.txt)]
+
+    #     if event.type == pygame.TEXTINPUT and entrata.collisione:
+    #         try:
+    #             entrata.subtext = possibili_file[0]
+    #         except IndexError:
+    #             pass
+
+    #     if keys[pygame.K_TAB] and entrata.collisione:
+    #         ultimo_file = entrata.subtext
+    #         if ultimo_file in possibili_file:
+    #             indice = possibili_file.index(ultimo_file) + 1
+    #             if indice == len(possibili_file):
+    #                 indice = 0
+    #         else:
+    #             indice = 0
+    #         try:
+    #             entrata.subtext = possibili_file[indice]
+    #         except IndexError:
+    #             pass
+
+    #     if keys[pygame.K_RETURN] and entrata.collisione:
+    #         entrata.txt = entrata.subtext
+
     def __str__(self) -> str:
         return f"{self.text}"
 
@@ -587,7 +669,7 @@ class ScrollConsole:
         self.y: float = self.ori_y * y / 100
 
         self.bg: tuple[int] = bg
-        self.color_text: tuple[int] = (100, 100, 100)
+        self.color_text: tuple[int] = (200, 200, 200)
 
         self.screen: pygame.Surface = parametri_locali_elementi[0]
         self.bounding_box = pygame.Rect(self.x, self.y, self.w, self.h)
@@ -655,6 +737,10 @@ class ScrollConsole:
                     self.scroll_item_selected += 1 
                 elif self.first_item < len(self.elementi) - 5:
                     self.first_item += 1
+
+            case "reload":
+                self.scroll_item_selected = 0
+                self.first_item = 0
 
             case _:
                 pass

@@ -57,6 +57,23 @@ def main(config: configparser):
                     [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
                     [scrolla.selezionato_scr(event, logica) for indice, scrolla in al_sc.scrolls.items()]
                     
+                    '-----------------------------------------------------------------------------------------------------'
+                    # Inizio sezione push events
+                    if al_sc.bottoni["carica"].toggled:
+                        al_sc.bottoni["carica"].push()
+                        try:
+                            main_plot.full_import_plot_data(al_sc.entrate["caricamento"].text)
+                            al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
+                        except FileNotFoundError as e:
+                            print(e)
+
+                    if al_sc.bottoni["salva"].toggled:
+                        al_sc.bottoni["salva"].push()
+                        ui.salva_screenshot(al_sc.entrate["salvataggio_path"].text, al_sc.entrate["salvataggio_nome"].text, ".png", ui.scena["main"].schermo["viewport"].schermo)
+
+                    # Fine sezione push events
+                    '-----------------------------------------------------------------------------------------------------'
+
                     # raccolta di tutti i testi già presenti nelle entrate
                     test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
 
