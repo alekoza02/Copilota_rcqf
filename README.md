@@ -20,37 +20,41 @@ SUPPORTA:
 - Posizione legenda
 - Arrotondamento dei label custom
 - Report di informazioni sul sistema
+- Coordinate Mouse
+- Attivare / Disattivare BB del plot
+- Ordinamento dati
+- Zoom grafico
+- Selezione del grafico dal plot
+- Ctrl + freccia -> Separatore "\\" (limitato ad uno spostamento per volta)
+- Error bar
+- Caricamento dei file con Return
 
 TODO:
 ---
-- Zoom grafico
+- Copia / Incolla
 - Autocompletamento path
-- Ctrl + freccia -> Separatore "\\"
-- Notazione scientifica
-- Selezione del grafico dal plot
-- Dimensione carattere
+
 - [in intervallo] Interpolazione polinomiale / libera (preset) + parametri con errori
 - $\chi^2$ e $R^2$ 
 - [in intervallo] Calcolo derivate                              
 - [in intervallo] Calcolo integrale
 - [in intervallo] Calcolo FWHM            
-- Scelta delle colonne da plottare
-- Ordinamento dati
-- Error bar
-- Copia / Incolla
-- Selezionare
-- Controllo errori
-- Attivare / Disattivare BB del plot
-- Visualizza METADATA
-- Cambia animazione
-- Coordinate Mouse
-- Colorare sottografico
-- Normalizzare
-- Sovrapporre
-- Utilizzo di 2 assi Y
 - T-test
 - Report linee dell'intervallo di confidenza con colorazione basata sul risultato
 - Report linee dell'intervallo di media + $\sigma_{std}$ 
+
+- Scelta delle colonne da plottare
+- Visualizza METADATA
+- Normalizzare
+- Sovrapporre
+- Utilizzo di 2 assi Y
+
+COSMETICS:
+---
+- Cambia animazione
+- Colorare sottografico
+- Notazione scientifica
+- Dimensione carattere
 
 FUTURE PROJECTS:
 ---

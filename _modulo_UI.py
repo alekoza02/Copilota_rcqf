@@ -11,6 +11,7 @@ class Logica:
         Inizializzazione di variabili che mi danno infomrazioni sull'UI / comandi da eseguire
         '''
         self.dragging = False
+        self.original_start_pos = (0,0)
         self.dragging_start_pos = (0,0)
         self.dragging_end_pos = (0,0)
         self.dragging_dx = 0
@@ -210,6 +211,17 @@ class UI:
         except FileNotFoundError:
             pass
 
+
+    def DEBUG_zoom(self, logica: Logica):
+        if logica.dragging:
+            poligono = [
+                [logica.original_start_pos[0], logica.original_start_pos[1]], 
+                [logica.mouse_pos[0], logica.original_start_pos[1]],
+                [logica.mouse_pos[0], logica.mouse_pos[1]], 
+                [logica.original_start_pos[0], logica.mouse_pos[1]]
+            ]
+            pygame.draw.polygon(self.MAIN, [0, 255, 0], poligono)
+
 class Font:
     def __init__(self, dimensione: str = "medio", rapporto: float = 1.0) -> None:    
         
@@ -252,6 +264,7 @@ class WidgetData:
 
         self.latex_check: bool = False
         self.toggle_2_axis: bool = False
+        self.toggle_plt_bb: bool = False
         self.toggle_pallini: bool = False
         self.toggle_collegamenti: bool = False
         self.acceso: bool = False
@@ -332,8 +345,9 @@ class DefaultScene:
         # BOTTONI
         # --------------------------------------------------------------------------------
         # statici
-        self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=5, text="str to LaTeX")
-        self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=7, text="Toggle 2° axis")
+        self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=3, text="str to LaTeX")
+        self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=5, text="Toggle 2° axis")
+        self.bottoni["toggle_plot_bb"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=90, y=7, text="Toggle plot BB", toggled=True)
         self.bottoni["carica"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=82, y=14, tipologia="push", texture="UI_cerca")
         self.bottoni["salva"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=82, y=18, tipologia="push", texture="UI_save")
 
@@ -351,7 +365,7 @@ class DefaultScene:
         self.entrate["labelx"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=7, text="", titolo="Label X")
         self.entrate["labely"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=9, text="", titolo="Label Y (sx)")
         self.entrate["label2y"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=19, h=1.8, x=65, y=11, text="", titolo="Label Y (dx)")
-        self.entrate["caricamento"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=16, h=1.8, x=65, y=15, text="PLOT_DATA\_DATABASE\spettroscopia", titolo="Input path")
+        self.entrate["caricamento"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=16, h=1.8, x=65, y=15, text="PLOT_DATA\_DATABASE\spettri_led", titolo="Input path")
         self.entrate["salvataggio_path"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=7, h=1.8, x=65, y=19, text="OUTPUT", titolo="Output path")
         self.entrate["salvataggio_nome"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=5, h=1.8, x=76, y=19, text="default", titolo="File name")
         self.entrate["round_label"] = Entrata(self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=90, y=9, text="2", titolo="Round to")
@@ -417,6 +431,7 @@ class DefaultScene:
         self.data_widgets.acceso = self.bottoni["acceso"].toggled
         self.data_widgets.latex_check = self.bottoni["latex_check"].toggled
         self.data_widgets.toggle_2_axis = self.bottoni["toggle_2_axis"].toggled
+        self.data_widgets.toggle_plt_bb = self.bottoni["toggle_plot_bb"].toggled
 
 
 class LabelText:

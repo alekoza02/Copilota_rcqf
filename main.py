@@ -5,8 +5,6 @@ import configparser
     
 def main(config: configparser):
     
-    _tasto_navigazione = int(config.get('Default', 'tasto_navigazione'))
-
     from _modulo_UI import UI, Logica
     from _modulo_plots import Painter
     
@@ -71,6 +69,9 @@ def main(config: configparser):
                         al_sc.bottoni["salva"].push()
                         ui.salva_screenshot(al_sc.entrate["salvataggio_path"].text, al_sc.entrate["salvataggio_nome"].text, ".png", ui.scena["main"].schermo["viewport"].schermo)
 
+                    # updates the active plot to the nearest to the click
+                    main_plot.nearest_coords(ui, logica)
+
                     # Fine sezione push events
                     '-----------------------------------------------------------------------------------------------------'
 
@@ -80,9 +81,11 @@ def main(config: configparser):
                     # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
                     if len(test_entr_attiva) > 0:
                         al_sc.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
+                    else: al_sc.entrata_attiva = None
 
-                if event.button == _tasto_navigazione:
+                if event.button == 3:
                     logica.dragging = True
+                    logica.original_start_pos = logica.mouse_pos
                     logica.dragging_end_pos = logica.mouse_pos
                 if event.button == 4:
                     logica.scroll_up += 1
@@ -90,9 +93,10 @@ def main(config: configparser):
                     logica.scroll_down += 1
 
             if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == _tasto_navigazione: 
+                if event.button == 3: 
                     logica.dragging = False
                     logica.dragging_end_pos = logica.mouse_pos
+                    main_plot.values_zoom(logica)
 
             if event.type == pygame.MOUSEMOTION:
                 if logica.dragging:
@@ -105,15 +109,30 @@ def main(config: configparser):
             # controlli generici -> No inserimento
             
             if event.type == pygame.KEYDOWN:
+                
+                if event.key == pygame.K_r:
+                    main_plot.reset_zoom(logica)
+
                 if event.key == pygame.K_UP:
                     ui.scena["main"].scrolls["grafici"].aggiorna_externo("up", logica)
                     
                 if event.key == pygame.K_DOWN:
                     ui.scena["main"].scrolls["grafici"].aggiorna_externo("down", logica)
 
+                if event.key == pygame.K_RETURN:
+                    try:
+                        if al_sc.entrate["caricamento"].toggle:
+                            main_plot.full_import_plot_data(al_sc.entrate["caricamento"].text)
+                            al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
+                    except FileNotFoundError as e:
+                        print(e)
+
 
             # input -> tastiera con caratteri e backspace
             if al_sc.entrata_attiva != None:
+
+                if " " in al_sc.entrata_attiva.text: ricercatore = " " 
+                else: ricercatore = "\\"
 
                 if event.type == pygame.TEXTINPUT:           
                     al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore] + event.text + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
@@ -127,7 +146,7 @@ def main(config: configparser):
                     if event.key == pygame.K_BACKSPACE:
                         if logica.ctrl:
 
-                            nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                            nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
                             text2eli = tx[nuovo_puntatore : al_sc.entrata_attiva.puntatore]
                             al_sc.entrata_attiva.puntatore = nuovo_puntatore
                             al_sc.entrata_attiva.text = tx.replace(text2eli, "") 
@@ -141,7 +160,7 @@ def main(config: configparser):
                     if event.key == pygame.K_LEFT:
                         if al_sc.entrata_attiva.puntatore > 0:
                             if logica.ctrl:
-                                al_sc.entrata_attiva.puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                                al_sc.entrata_attiva.puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
                             else: 
                                 al_sc.entrata_attiva.puntatore -= 1
 
@@ -155,7 +174,7 @@ def main(config: configparser):
                                 if start == -1: start = al_sc.entrata_attiva.puntatore
 
                                 # se la trovo, cerco la parola successiva
-                                found = tx.find(" ", start, len(tx))
+                                found = tx.find(ricercatore, start, len(tx))
                                 # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
                                 if found == -1: found = len(tx.rstrip())
 
@@ -169,11 +188,10 @@ def main(config: configparser):
         if logica.backspace:
             logica.acc_backspace += 1
             if logica.acc_backspace > 20:
-                tx = al_sc.entrata_attiva.text
-                nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
-                text2eli = tx[nuovo_puntatore : al_sc.entrata_attiva.puntatore]
-                al_sc.entrata_attiva.puntatore = nuovo_puntatore
-                al_sc.entrata_attiva.text = tx.replace(text2eli, "")
+                if al_sc.entrata_attiva.puntatore != 0:
+                    al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore-1] + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
+                if al_sc.entrata_attiva.puntatore > 0:
+                    al_sc.entrata_attiva.puntatore -= 1
         else: 
             logica.acc_backspace = 0
 
@@ -181,7 +199,7 @@ def main(config: configparser):
             logica.acc_left += 1
             if logica.acc_left > 20:
                 if logica.ctrl:
-                    al_sc.entrata_attiva.puntatore = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore].rstrip().rfind(" ")+1
+                    al_sc.entrata_attiva.puntatore = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
                 elif al_sc.entrata_attiva.puntatore > 0: al_sc.entrata_attiva.puntatore -= 1
                 al_sc.entrata_attiva.dt_animazione = 0 
         else: 
@@ -198,7 +216,7 @@ def main(config: configparser):
                     if start == -1: start = al_sc.entrata_attiva.puntatore
 
                     # se la trovo, cerco la parola successiva
-                    found = tx.find(" ", start, len(tx))
+                    found = tx.find(ricercatore, start, len(tx))
                     # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
                     if found == -1: found = len(tx.rstrip())
 
@@ -218,14 +236,14 @@ def main(config: configparser):
         al_sc.disegnami(logica)
 
         # gestione collegamento ui - grafico        
-        if logica.aggiorna_plot: main_plot.change_active_plot(ui); logica.aggiorna_plot = False
+        if logica.aggiorna_plot: main_plot.change_active_plot_UIBASED(ui); logica.aggiorna_plot = False
         
         # resoconto dello stato di tutti i bottoni e entrate
         al_sc.collect_data()
 
         # disegno il plot
         main_plot.disegna_plots(al_sc.data_widgets)
-        main_plot.disegna_metadata(al_sc.data_widgets)
+        main_plot.disegna_metadata(logica, al_sc.data_widgets)
         main_plot.aggiorna_schermo()
         
         # UI ----------------------------------------------------------------
@@ -234,6 +252,7 @@ def main(config: configparser):
         ui.mouse_icon(logica)   # lanciato due volte per evitare flickering a bassi FPS
         ui.aggiornamento_e_uscita_check()
         
+
 if __name__ == "__main__":
     
     config = configparser.ConfigParser()
