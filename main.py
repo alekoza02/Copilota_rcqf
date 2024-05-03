@@ -8,7 +8,7 @@ def main(config: configparser):
     from _modulo_UI import UI, Logica
     from _modulo_plots import Painter
     
-    ui = UI()
+    ui = UI(config)
     logica = Logica()
     
     # Zona inizializzazione plot
@@ -16,230 +16,22 @@ def main(config: configparser):
     main_plot.link_ui(ui.scena["main"].schermo["viewport"])
     main_plot.full_import_plot_data()
 
+    # alias
+    al_sc = ui.scena["main"]
+    
     while ui.running:
 
-        al_sc = ui.scena["main"]
+        ui.start_cycle(logica)
 
-        # impostazione inizio giro
-        ui.clock.tick(ui.max_fps)
-        ui.colora_bg()
-        ui.mouse_icon(logica)
-
-        logica.dt += 1
-        logica.dragging_dx = 0
-        logica.dragging_dy = 0
-        logica.mouse_pos = pygame.mouse.get_pos()
-
-        # BLOCCO GESTIONE EVENTI -----------------------------------------------------------------------------
-        # raccolta eventi
         eventi_in_corso = pygame.event.get()
-
-        # Stato di tutti i tasti
-        keys = pygame.key.get_pressed()
-
-        # CONTROLLO CARATTERI SPECIALI
-        logica.ctrl = keys[pygame.K_LCTRL]
-        logica.shift = keys[pygame.K_LSHIFT]
-        logica.backspace = keys[pygame.K_BACKSPACE]
-        logica.left = keys[pygame.K_LEFT]
-        logica.right = keys[pygame.K_RIGHT]
-
-        # scena main UI
-        for event in eventi_in_corso:
-            # MOUSE
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    
-                    # gestisce eventi bottone e entrata schiacciata
-                    [elemento.selezionato_bot(event) for indice, elemento in al_sc.bottoni.items()]
-                    [elemento.selezionato_ent(event) for indice, elemento in al_sc.entrate.items()]
-                    [scrolla.selezionato_scr(event, logica) for indice, scrolla in al_sc.scrolls.items()]
-                    
-                    '-----------------------------------------------------------------------------------------------------'
-                    # Inizio sezione push events
-                    if al_sc.bottoni["carica"].toggled:
-                        al_sc.bottoni["carica"].push()
-                        try:
-                            main_plot.full_import_plot_data(al_sc.entrate["caricamento"].text)
-                            al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
-                        except FileNotFoundError as e:
-                            print(e)
-
-                    if al_sc.bottoni["salva"].toggled:
-                        al_sc.bottoni["salva"].push()
-                        ui.salva_screenshot(al_sc.entrate["salvataggio_path"].text, al_sc.entrate["salvataggio_nome"].text, ".png", ui.scena["main"].schermo["viewport"].schermo)
-
-                    # updates the active plot to the nearest to the click
-                    main_plot.nearest_coords(ui, logica)
-
-                    # Fine sezione push events
-                    '-----------------------------------------------------------------------------------------------------'
-
-                    # raccolta di tutti i testi già presenti nelle entrate
-                    test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
-
-                    # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
-                    if len(test_entr_attiva) > 0:
-                        al_sc.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
-                    else: al_sc.entrata_attiva = None
-
-                if event.button == 3:
-                    logica.dragging = True
-                    logica.original_start_pos = logica.mouse_pos
-                    logica.dragging_end_pos = logica.mouse_pos
-                if event.button == 4:
-                    logica.scroll_up += 1
-                if event.button == 5:
-                    logica.scroll_down += 1
-
-            if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 3: 
-                    logica.dragging = False
-                    logica.dragging_end_pos = logica.mouse_pos
-                    main_plot.values_zoom(logica)
-
-            if event.type == pygame.MOUSEMOTION:
-                if logica.dragging:
-                    logica.dragging_start_pos = logica.dragging_end_pos
-                    logica.dragging_end_pos = logica.mouse_pos
-                    logica.dragging_dx = logica.dragging_end_pos[0] - logica.dragging_start_pos[0]
-                    logica.dragging_dy = - logica.dragging_end_pos[1] + logica.dragging_start_pos[1] # sistema di riferimento invertito
-
-            # TASTIERA
-            # controlli generici -> No inserimento
-            
-            if event.type == pygame.KEYDOWN:
-                
-                if event.key == pygame.K_r:
-                    main_plot.reset_zoom(logica)
-
-                if event.key == pygame.K_UP:
-                    ui.scena["main"].scrolls["grafici"].aggiorna_externo("up", logica)
-                    
-                if event.key == pygame.K_DOWN:
-                    ui.scena["main"].scrolls["grafici"].aggiorna_externo("down", logica)
-
-                if event.key == pygame.K_RETURN:
-                    try:
-                        if al_sc.entrate["caricamento"].toggle:
-                            main_plot.full_import_plot_data(al_sc.entrate["caricamento"].text)
-                            al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
-                    except FileNotFoundError as e:
-                        print(e)
-
-
-            # input -> tastiera con caratteri e backspace
-            if al_sc.entrata_attiva != None:
-
-                if " " in al_sc.entrata_attiva.text: ricercatore = " " 
-                else: ricercatore = "\\"
-
-                if event.type == pygame.TEXTINPUT:           
-                    al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore] + event.text + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
-                    al_sc.entrata_attiva.puntatore += len(event.text)
-                    al_sc.entrata_attiva.dt_animazione = 0
-
-                if event.type == pygame.KEYDOWN:
-                    
-                    tx = al_sc.entrata_attiva.text
-                            
-                    if event.key == pygame.K_BACKSPACE:
-                        if logica.ctrl:
-
-                            nuovo_puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
-                            text2eli = tx[nuovo_puntatore : al_sc.entrata_attiva.puntatore]
-                            al_sc.entrata_attiva.puntatore = nuovo_puntatore
-                            al_sc.entrata_attiva.text = tx.replace(text2eli, "") 
-
-                        else:
-                            if al_sc.entrata_attiva.puntatore != 0:
-                                al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore-1] + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
-                            if al_sc.entrata_attiva.puntatore > 0:
-                                al_sc.entrata_attiva.puntatore -= 1
-
-                    if event.key == pygame.K_LEFT:
-                        if al_sc.entrata_attiva.puntatore > 0:
-                            if logica.ctrl:
-                                al_sc.entrata_attiva.puntatore = tx[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
-                            else: 
-                                al_sc.entrata_attiva.puntatore -= 1
-
-                    if event.key == pygame.K_RIGHT:
-                        if al_sc.entrata_attiva.puntatore < len(al_sc.entrata_attiva.text):
-                            if logica.ctrl:
-
-                                # trovo l'indice di dove inizia la frase
-                                start = tx.find(tx[al_sc.entrata_attiva.puntatore:].lstrip(), al_sc.entrata_attiva.puntatore, len(tx))
-                                # se non la trovo mi blocco dove sono partito
-                                if start == -1: start = al_sc.entrata_attiva.puntatore
-
-                                # se la trovo, cerco la parola successiva
-                                found = tx.find(ricercatore, start, len(tx))
-                                # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
-                                if found == -1: found = len(tx.rstrip())
-
-                                al_sc.entrata_attiva.puntatore = found
-                                
-                            else:
-                                al_sc.entrata_attiva.puntatore += 1
-
-                    al_sc.entrata_attiva.dt_animazione = 0 
-
-        if logica.backspace:
-            logica.acc_backspace += 1
-            if logica.acc_backspace > 20:
-                if al_sc.entrata_attiva.puntatore != 0:
-                    al_sc.entrata_attiva.text = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore-1] + al_sc.entrata_attiva.text[al_sc.entrata_attiva.puntatore:]
-                if al_sc.entrata_attiva.puntatore > 0:
-                    al_sc.entrata_attiva.puntatore -= 1
-        else: 
-            logica.acc_backspace = 0
-
-        if logica.left:
-            logica.acc_left += 1
-            if logica.acc_left > 20:
-                if logica.ctrl:
-                    al_sc.entrata_attiva.puntatore = al_sc.entrata_attiva.text[:al_sc.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
-                elif al_sc.entrata_attiva.puntatore > 0: al_sc.entrata_attiva.puntatore -= 1
-                al_sc.entrata_attiva.dt_animazione = 0 
-        else: 
-            logica.acc_left = 0
-        
-        if logica.right:
-            logica.acc_right += 1
-            if logica.acc_right > 20:
-                if logica.ctrl:
-                    tx = al_sc.entrata_attiva.text
-                    # trovo l'indice di dove inizia la frase
-                    start = tx.find(tx[al_sc.entrata_attiva.puntatore:].lstrip(), al_sc.entrata_attiva.puntatore, len(tx))
-                    # se non la trovo mi blocco dove sono partito
-                    if start == -1: start = al_sc.entrata_attiva.puntatore
-
-                    # se la trovo, cerco la parola successiva
-                    found = tx.find(ricercatore, start, len(tx))
-                    # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
-                    if found == -1: found = len(tx.rstrip())
-
-                    al_sc.entrata_attiva.puntatore = found
-                     
-                elif al_sc.entrata_attiva.puntatore < len(al_sc.entrata_attiva.text): al_sc.entrata_attiva.puntatore += 1
-                al_sc.entrata_attiva.dt_animazione = 0 
-        else: 
-            logica.acc_right = 0
+        ui.event_manage(eventi_in_corso, logica, main_plot)
 
         # UI ----------------------------------------------------------------
 
-        # aggiornamento generico dei nomi grafici nella scroll bar
-        ui.scena["main"].scrolls["grafici"].elementi = [main_plot.plots[index].nome for index in range(len(main_plot.plots))]
-
         # disegno i labels / bottoni / entrate
         al_sc.disegnami(logica)
-
-        # gestione collegamento ui - grafico        
-        if logica.aggiorna_plot: main_plot.change_active_plot_UIBASED(ui); logica.aggiorna_plot = False
-        
-        # resoconto dello stato di tutti i bottoni e entrate
-        al_sc.collect_data()
+        ui.scena["main"].scrolls["grafici"].elementi = [main_plot.plots[index].nome for index in range(len(main_plot.plots))]
+        ui.scena["main"].bottoni["normalizza"].visibile = True if len([plot for plot in main_plot.plots if plot.acceso]) == 2 else False
 
         # disegno il plot
         main_plot.disegna_plots(al_sc.data_widgets)

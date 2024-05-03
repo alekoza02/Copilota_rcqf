@@ -62,19 +62,19 @@ class Mate:
 
     
     @staticmethod
-    def inp2int(valore: str) -> int:
+    def inp2int(valore: str, std_return: int = 0) -> int:
         try:
             return int(valore)
         except ValueError:
-            return 0
+            return std_return
 
 
     @staticmethod
-    def inp2flo(valore: str) -> float:
+    def inp2flo(valore: str, std_return: float = 0.0) -> float:
         try:
             return float(valore)
         except ValueError:
-            return 0
+            return std_return
 
 
     @staticmethod

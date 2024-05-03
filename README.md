@@ -28,36 +28,41 @@ SUPPORTA:
 - Ctrl + freccia -> Separatore "\\" (limitato ad uno spostamento per volta)
 - Error bar
 - Caricamento dei file con Return
+- Dimensione carattere
+- [in intervallo] Interpolazione lineare + parametri con errori
+- Aggiungere interpolazione quadratica, sigmoide, gaussiana
+- $\chi^2$ e $R^2$ 
+- Normalizzare
+- Label automatico per i fit
+- Sovrapporre
+- Utilizzo di 2 assi Y
 
 TODO:
 ---
+- Text selection
+- Puntatore text box con mouse
 - Copia / Incolla
 - Autocompletamento path
-
-- [in intervallo] Interpolazione polinomiale / libera (preset) + parametri con errori
-- $\chi^2$ e $R^2$ 
+---
 - [in intervallo] Calcolo derivate                              
 - [in intervallo] Calcolo integrale
 - [in intervallo] Calcolo FWHM            
 - T-test
 - Report linee dell'intervallo di confidenza con colorazione basata sul risultato
 - Report linee dell'intervallo di media + $\sigma_{std}$ 
-
+---
 - Scelta delle colonne da plottare
 - Visualizza METADATA
-- Normalizzare
-- Sovrapporre
-- Utilizzo di 2 assi Y
 
 COSMETICS:
 ---
 - Cambia animazione
 - Colorare sottografico
 - Notazione scientifica
-- Dimensione carattere
 
 FUTURE PROJECTS:
 ---
+- Splines
 - 2D images
 - Grafici multipli
 - Confronto di più grafici (funzione massima)
