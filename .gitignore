@@ -1,7 +1,8 @@
 # Roba di Ale
 PROFILATORE/
 prove.ipynb
-PLOT_DATA/
+PLOT_DATA_mine/
+OUTPUT/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
