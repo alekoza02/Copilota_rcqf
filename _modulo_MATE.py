@@ -79,6 +79,9 @@ class Mate:
 
     @staticmethod
     def conversione_limite(text: str, exception: int | float, limit: int | float) -> int | float:
+        
+        # TODO sai cosa fare
+
         tipologia = type(limit)
         try:
             if tipologia == int:

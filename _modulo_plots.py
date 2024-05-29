@@ -3,12 +3,26 @@ from scipy.optimize import curve_fit
 import pygame
 from _modulo_UI import Schermo, WidgetData, Logica, UI
 from _modulo_MATE import Mate
+from _modulo_3D_grafica import Triangle
 import configparser
 import os
 from copy import deepcopy
 
 class Plot:
     def __init__(self, nome: str, x: np.ndarray[float], y: np.ndarray[float], ey: np.ndarray[float] | None) -> None:
+        """Generazione di un grafico
+
+        Parameters
+        ----------
+        nome : str
+            Nome con cui verrà visualizzato il grafico
+        x : np.ndarray[float]
+            Array dei valori X
+        y : np.ndarray[float]
+            Array dei valori Y
+        ey : np.ndarray[float] | None
+            Array dei valori degli errori sulle Y
+        """
         self.nome = nome
         
         self.x = x
@@ -24,6 +38,7 @@ class Plot:
         self.yi_screen: np.ndarray[float] | None
         
         self.colore: list = [255, 255, 255]
+        self.gradiente: bool = False
         
         self.scatter: bool = True
         self.function: bool = False
@@ -39,11 +54,14 @@ class Plot:
         self.interpol_maschera: np.ndarray[bool] | None = None
     
 
+
 class Painter:
     def __init__(self) -> None:
 
         config = configparser.ConfigParser()
         config.read('./DATA/settings.ini')
+
+        self.debugging = eval(config.get('Default', 'debugging'))
 
         self.schermo_madre: pygame.Surface
         
@@ -80,6 +98,12 @@ class Painter:
         self.data_points_coords: np.array[float]
         self.active_plot: int = 0
 
+        self.use_custom_borders: bool = False
+        self.x_min: float = 0.0
+        self.x_max: float = 0.0
+        self.y_min: float = 0.0
+        self.y_max: float = 0.0
+
         self.zoom_min_x: float = 0.0
         self.zoom_max_x: float = 1.0
         self.zoom_min_y: float = 0.0
@@ -89,6 +113,11 @@ class Painter:
         self.normalizza: bool = False
         self.min_y_l: list[float] = [0.0, 0.0]
         self.max_y_l: list[float] = [1.0, 1.0]
+
+        self.min_y: float = 0
+        self.min_x: float = 0
+        self.max_y: float = 0
+        self.max_x: float = 0
 
         self.dim_font_base = 32
         self.dim_font = 32 
@@ -114,13 +143,27 @@ class Painter:
     
     
     def re_compute_font(self, factor: float = 1) -> None:
+        """
+        Ricalcolo della dimensione del font in base a quanto mi serve.
+
+        Parameters
+        ----------
+        factor : float, optional
+            Fattore di scala rispetto alla dimensione precedente. Con questo approccio, il cambio di dimensione dello schermo non è più un problema, by default 1
+        """
         self.dim_font = int(self.dim_font_base * factor)
         self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
     
 
     def re_compute_size(self, secondo_asse: bool = False) -> None:
-        
+        """Ricalcola la dimensione dell'UI dei grafici in base alla presenza del secondo asse Y
+
+        Parameters
+        ----------
+        secondo_asse : bool, optional
+            Se presente la posizione di tutti gli elementi UI dovranno essere spostati di conseguenza, by default False
+        """
         self.visualize_second_ax = secondo_asse
 
         if secondo_asse:
@@ -149,13 +192,25 @@ class Painter:
             self.end_y = self.start_y - self.h_plot_area
 
         self.bounding_box = pygame.rect.Rect([self.start_x - 20, self.end_y - 20, self.w_plot_area + 40, self.h_plot_area + 40])
-        # self.bounding_box = pygame.rect.Rect([0, 0, self.w, self.h])
         self.bounding_box[0] += self.ancoraggio_x
         self.bounding_box[1] += self.ancoraggio_y
 
 
     @staticmethod
     def check_latex(input_str: str) -> str:
+        """Data una stringa, controlla la presenza di caratteri speciali riportati nella variabile 'dizionario'. Se sono presenti li sostituisce con il carattere ASCII corrispondente
+
+        Parameters
+        ----------
+        input_str : str
+            Stringa da analizzare
+
+        Returns
+        -------
+        str
+            Stringa analizzata
+        """
+
         dizionario = {
             r"\alpha": "α",
             r"\beta": "β",
@@ -217,6 +272,13 @@ class Painter:
 
     
     def link_ui(self, info_schermo: Schermo) -> None: 
+        """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
+
+        Parameters
+        ----------
+        info_schermo : Schermo
+            Dato la classe Schermo, posso capire le informazioni che mi servono
+        """
         self.schermo_madre = info_schermo.madre
         
         self.w = info_schermo.w
@@ -242,6 +304,13 @@ class Painter:
     
     
     def change_active_plot_UIBASED(self, ui: UI) -> None:
+        """Cambio del grafico attivo in focus basato sull'iterazione dell'ui. Richiede l'UI per funzionare
+
+        Parameters
+        ----------
+        ui : UI
+            Classe UI contenente le informazioni per scegliere il nuovo grafico e caricare le relative informazioni
+        """
         # aggiorno grafico selezionato
         self.active_plot = ui.scena["main"].scrolls["grafici"].scroll_item_selected + ui.scena["main"].scrolls["grafici"].first_item
 
@@ -256,15 +325,27 @@ class Painter:
         ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
         ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
         ui.scena["main"].bottoni["acceso"].toggled = self.plots[self.active_plot].acceso
+        ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
     def change_active_plot_INDEXBASED(self, ui: UI, index: int) -> None:
+        """Cambio del grafico attivo in focus basato sull'indice del grafico da scegliere. Richiede l'UI per funzionare
+
+        Parameters
+        ----------
+        ui : UI
+            Classe UI contenente le informazioni per caricare le info del nuovo grafico
+        index : int
+            Indice del grafico nuovo da caricare
+        """
+
         # aggiorno grafico selezionato
-        ui.scena["main"].scrolls["grafici"].scroll_item_selected = index
-        
-        first_item = index - 2
+        first_item = index - 4
         if first_item < 0: first_item = 0
 
+        selected_item = index - first_item
+
+        ui.scena["main"].scrolls["grafici"].scroll_item_selected = selected_item
         ui.scena["main"].scrolls["grafici"].first_item = first_item
         self.active_plot = index
 
@@ -279,10 +360,19 @@ class Painter:
         ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
         ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
         ui.scena["main"].bottoni["acceso"].toggled = self.plots[self.active_plot].acceso
+        ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
     def nearest_coords(self, ui: UI, logica: Logica) -> None:
-        
+        """Date le informazioni dell'ui e gli input utente, capisce quale sia il grafico più vicino ad un click dell'utente
+
+        Parameters
+        ----------
+        ui : UI
+            Parametro da passare alla funzione 'self.change_active_plot_INDEXBASED'
+        logica : Logica
+            Parametro per verificare la posizione dell'evento (click del mouse) 
+        """
         if self.bounding_box.collidepoint(logica.mouse_pos) and len(self.data_points_coords) > 0:
 
             coordinate = self.data_points_coords[:, :2]
@@ -299,7 +389,15 @@ class Painter:
 
 
     def import_plot_data(self, path: str, divisore: str = None) -> None:
-        
+        """Importa un tipo di file e genera un plot con le X, Y e gli errori sulle Y (raccoglie rispettivamente le prime 3 colonne)
+
+        Parameters
+        ----------
+        path : str
+            Path al singolo file
+        divisore : str, optional
+            Divisore delle colonne all'interno del file. Se non specificato, lo cerca di ricavare in autonomia, by default None
+        """
         self.data_path = path
         self.divisore = divisore
         
@@ -359,7 +457,13 @@ class Painter:
     
 
     def full_import_plot_data(self, path_input: str = 'PLOT_DATA/default') -> None:
-        
+        """Dato un path importa tutti i file con estensioni accettate (txt, ASCII, dat, csv) e ci genera un plot.
+
+        Parameters
+        ----------
+        path_input : str, optional
+            Path alla cartella con i grafici, by default 'PLOT_DATA/default'
+        """
         files = os.listdir(path_input)
 
         self.plots = []
@@ -372,44 +476,51 @@ class Painter:
 
 
     def adattamento_data2schermo(self) -> None:
-        '''
-        Analizza tutti i plot e li ridimensiona in base ai nuovi dati / cambio di finestra
-        '''
+        """
+        Funzione principale che gestisce la ridimensione dei dati alle coordinate dello schermo. Si serve di altre 2 sotto-funzioni:
+        - calcolo_maschere_plots
+        - calcolo_bb_plots
+        - update_zoom_limits
+        """
         try:
-            # ora funziona per un singolo grafico, ci sarà da implementare:
-            # - lettura errori
-            # - lettura multi-plots
-            
-            # calcolo i valori limite del grafico
-            self.calcolo_bb_plots()
-            
-            # aggiorno limiti massimi di zoom x
-            self.update_zoom_limits()
-
-            # calcolo delle maschere aggiornate
-            self.calcolo_maschere_plots()
-
-            # ricalcolo i nuovi limiti dello zoom sulle y in base alla modalità
-            if not self.zoom_mode:
-                self.max_y = -np.inf
-                self.min_y = np.inf
+            if not self.use_custom_borders:
+                # calcolo i valori limite del grafico
+                self.calcolo_bb_plots()
                 
-                for plot in self.plots:
-                    if plot.acceso:
-                        self.max_y = np.maximum(self.max_y, np.max(plot.y[plot.maschera]))
-                        self.min_y = np.minimum(self.min_y, np.min(plot.y[plot.maschera]))
+                # aggiorno limiti massimi di zoom x
+                self.update_zoom_limits()
 
-                        if not plot.ey is None:
-                            error_plus = plot.y + plot.ey
-                            error_minus = plot.y - plot.ey
+                # calcolo delle maschere aggiornate
+                self.calcolo_maschere_plots()
+
+                # ricalcolo i nuovi limiti dello zoom sulle y in base alla modalità
+                if not self.zoom_mode:
+                    self.max_y = -np.inf
+                    self.min_y = np.inf
+                    
+                    for plot in self.plots:
+                        if plot.acceso:
+                            self.max_y = np.maximum(self.max_y, np.max(plot.y[plot.maschera]))
+                            self.min_y = np.minimum(self.min_y, np.min(plot.y[plot.maschera]))
+
+                            if not plot.ey is None:
+                                error_plus = plot.y + plot.ey
+                                error_minus = plot.y - plot.ey
+                                
+                                self.max_y = np.maximum(self.max_y, np.max(error_plus))
+                                self.min_y = np.minimum(self.min_y, np.min(error_minus))
                             
-                            self.max_y = np.maximum(self.max_y, np.max(error_plus))
-                            self.min_y = np.minimum(self.min_y, np.min(error_minus))
-                        
-                        if not plot.y_interp_lin is None and plot.interpolate:
-                            self.max_y = np.maximum(self.max_y, np.max(plot.y_interp_lin[plot.interpol_maschera]))
-                            self.min_y = np.minimum(self.min_y, np.min(plot.y_interp_lin[plot.interpol_maschera]))
-                
+                            if not plot.y_interp_lin is None and plot.interpolate:
+                                self.max_y = np.maximum(self.max_y, np.max(plot.y_interp_lin[plot.interpol_maschera]))
+                                self.min_y = np.minimum(self.min_y, np.min(plot.y_interp_lin[plot.interpol_maschera]))
+            
+            else:
+                self.reset_zoom()
+                self.min_x = self.x_min # questi sono i valori importati dalla entry box 
+                self.max_x = self.x_max # questi sono i valori importati dalla entry box
+                self.min_y = self.y_min # questi sono i valori importati dalla entry box
+                self.max_y = self.y_max # questi sono i valori importati dalla entry box
+
             dati = []
             conteggio_assi_diversi = 0
 
@@ -494,6 +605,11 @@ class Painter:
 
 
     def calcolo_maschere_plots(self) -> None:
+        """
+        Questa funzione serve a ritagliare correttamente i limiti di visualizzazione delle interpolazioni.
+        I plot possiedono 'self.y_interp_lin' che è un array di sole y. Per poter gestire correttamente gli zoom, devo creare una maschera di y che compariranno nello schermo e no.
+        Con questo sistema posso abilitare le interpolazioni senza dovermi preoccupare di range, dal momento che le 'self.y_interp_lin' e le 'self.y' hanno lunghezza uguale
+        """
         for plot in self.plots:
             if plot.acceso:
                 maschera_x = np.logical_and(plot.x >= self.min_x, plot.x <= self.max_x)
@@ -502,12 +618,13 @@ class Painter:
 
 
     def calcolo_bb_plots(self) -> None:
+        """
+        Calcolo della bounding box che contiene al minimo tutti i grafici accesi
+        """
         max_x = -np.inf
         max_y = -np.inf
-        max_ey = -np.inf
         min_x = np.inf
         min_y = np.inf
-        min_ey = np.inf
 
         for plot in self.plots:
             if plot.acceso:
@@ -523,6 +640,9 @@ class Painter:
 
     
     def update_zoom_limits(self) -> None:
+        """
+        Con questa funzione, se sono attivi degli zoom, verranno applicati alla bounding box calcolata nella funzione prima e si ridurrà la finestra di analisi
+        """
         delta_x = self.max_x - self.min_x
         
         self.max_x = self.min_x + self.zoom_max_x * delta_x
@@ -535,7 +655,14 @@ class Painter:
 
 
     def disegna_plots(self, widget_data: WidgetData) -> None:
+        """
+        Disegna tutti i grafici caricati e abilitati al disegno.
 
+        Parameters
+        ----------
+        widget_data : WidgetData
+            Necessita dei widget data per poter aggiornare gli attributi dei singoli grafici
+        """
         if not WidgetData.are_attributes_equal(self.old_widget_data, widget_data):
             self.animation = True
             self.progress = 0
@@ -553,6 +680,7 @@ class Painter:
         self.plots[self.active_plot].function = widget_data.toggle_collegamenti 
         self.plots[self.active_plot].scatter = widget_data.toggle_pallini 
         self.plots[self.active_plot].acceso = widget_data.acceso 
+        self.plots[self.active_plot].gradiente = widget_data.gradiente 
         self.plots[self.active_plot].colore = Mate.hex2rgb(widget_data.color_plot) 
 
         self.plots[self.active_plot].dim_link = Mate.inp2int(widget_data.dim_link)
@@ -560,9 +688,6 @@ class Painter:
 
         self.plots[self.active_plot].nome = widget_data.nome_grafico
 
-
-        self.schermo.fill(self.bg_color)
-        
         self.adattamento_data2schermo()
         
         self.debug_info[1] = sum([len(i.x) for i in self.plots])
@@ -570,30 +695,117 @@ class Painter:
         for index, plot in enumerate(self.plots):
 
             if plot.acceso:
+                    
+                    animation_bound, colore_animazione = self.animation_update(plot, index)
+                    
+                    try:
+                        if plot.gradiente:
+                            # Z BASED 
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
+                                m = (y2 - y1) / (x2 - x1)
+                                for i in range(0, x2 - x1):
+                                    y_interpolated = int(y1 + m * i)
+                                    colore = (self.start_y - y_interpolated) / self.start_y
+                                    colore_finale = np.array(self.bg_color) + (np.array(plot.colore) - np.array(self.bg_color)) * colore
+                                    pygame.draw.line(self.schermo, colore_finale, (x1 + i, self.start_y), (x1 + i, y_interpolated), 1)
+                    except (TypeError, ValueError) as e:
+                        if self.debugging: print(f"Warning: {e} in gradiente")
+
+
+                    try:
+                        if plot.scatter:
+                            for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
+                                pygame.draw.circle(self.schermo, colore_animazione, (x, y), plot.dim_pall)
+                    except (TypeError, ValueError) as e:
+                        if self.debugging: print(f"Warning: {e} in scatter")
+
+
+                    try:
+                        if plot.scatter and not plot.ey is None:
+                            for x, y, ey in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound], plot.ey_screen.astype(int)[:animation_bound]):
+                                pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y + ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y - ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y + ey), (x + ey / 5, y + ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y - ey), (x + ey / 5, y - ey), plot.dim_link)
+                    except (TypeError, ValueError) as e:
+                        if self.debugging: print(f"Warning: {e} in errors")
+
+
+                    try:
+                        if plot.interpolate and not plot.y_interp_lin is None:
+                            for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:animation_bound-1], plot.yi_screen.astype(int)[:animation_bound-1], plot.xi_screen.astype(int)[1:animation_bound], plot.yi_screen.astype(int)[1:animation_bound]):
+                                pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), plot.dim_link)
+                    except (TypeError, ValueError) as e:
+                        if self.debugging: print(f"Warning: {e} in interpolate")
+
+                    
+                    try:
+                        if plot.function:
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
+                                pygame.draw.line(self.schermo, colore_animazione, (x1, y1), (x2, y2), plot.dim_link)
+                    except (TypeError, ValueError) as e:
+                        if self.debugging: print(f"Warning: {e} in function")
+
+
+                # elif plot.gradiente:
+
+                    # # Horizontal colorgrade
+                    # np.array([[[0., 0.], [100., 200.], [600., 300.]]])
                 
-                animation_bound, colore_animazione = self.animation_update(plot, index)
+                    # x_var1 = plot.x_screen.astype(int)[:len(plot.x_screen)-1] - self.start_x
+                    # x_var2 = plot.x_screen.astype(int)[1:len(plot.x_screen)] - self.start_x
+                    # y_var1 = plot.y_screen.astype(int)[:len(plot.x_screen)-1] - self.end_y
+                    # y_var2 = plot.y_screen.astype(int)[1:len(plot.x_screen)] - self.end_y
 
-                if plot.scatter:
-                    for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
-                        pygame.draw.circle(self.schermo, colore_animazione, (x, y), plot.dim_pall)
+                    # limite_y_min = np.min(plot.y_screen) - self.end_y
+                    # limite_y_max = np.max(plot.y_screen) - self.end_y
 
-                if plot.scatter and not plot.ey is None:
-                    for x, y, ey in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound], plot.ey_screen.astype(int)[:animation_bound]):
-                        pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y + ey), plot.dim_link)
-                        pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y - ey), plot.dim_link)
-                        pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y + ey), (x + ey / 5, y + ey), plot.dim_link)
-                        pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y - ey), (x + ey / 5, y - ey), plot.dim_link)
+                    # v0 = np.stack((x_var1, y_var1), axis=1)
+                    # v1 = np.stack((x_var2, y_var2), axis=1)
+                    # v2 = np.stack((x_var2, np.ones_like(x_var2) * (self.start_y - self.end_y) - limite_y_min), axis=1)
+                    # v3 = np.stack((x_var1, np.ones_like(x_var2) * (self.start_y - self.end_y) - limite_y_min), axis=1)
 
-                if plot.interpolate and not plot.y_interp_lin is None:
-                    for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:animation_bound-1], plot.yi_screen.astype(int)[:animation_bound-1], plot.xi_screen.astype(int)[1:animation_bound], plot.yi_screen.astype(int)[1:animation_bound]):
-                        pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), plot.dim_link)
-                        
-                if plot.function:
-                    for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
-                        pygame.draw.line(self.schermo, colore_animazione, (x1, y1), (x2, y2), plot.dim_link)
+                    # triangles = np.concatenate((np.stack((v2, v1, v0), axis=1), np.stack((v3, v2, v0), axis=1)))
+
+                    # if update_gradient:
+                    #     self.colors_array = Triangle.rasterization(int(self.w_plot_area), int(self.h_plot_area), triangles, np.array(self.bg_color), np.array(plot.colore), limite_y_min, limite_y_max)
+                    
+                    # colors_surface = pygame.surfarray.make_surface(self.colors_array)  
+                    # self.schermo.blit(colors_surface, (self.start_x, self.end_y))
+                
+                    # ATTEMPTED ALPHA CHANNEL
+                    # mask = np.any(colors_array != (0, 0, 0), axis=-1).astype(np.uint8) * 255
+
+                    # # Convert the mask into an alpha channel for the surface
+                    # alpha_surface = pygame.Surface(colors_surface.get_size(), pygame.SRCALPHA)
+                    # alpha_surface.fill((255, 255, 255, 0))  # Fill with transparent
+                    # alpha_surface.blit(colors_surface, (0, 0))  # Blit the new_surface onto alpha_surface
+                    
+                    # # Apply the mask to the alpha channel
+                    # mask_surface = pygame.Surface(colors_surface.get_size(), pygame.SRCALPHA)
+                    # pygame.surfarray.pixels_alpha(mask_surface)[:, :] = mask  # Apply mask to alpha channel
+                    
+                    # # Blit the alpha_surface (with mask) onto the screen
+                    # self.schermo.blit(alpha_surface, (self.start_x, self.end_y), special_flags=pygame.BLEND_RGBA_MULT)
 
 
     def animation_update(self, plot: Plot, index: int, noanim: bool = False) -> tuple[int, list[int]]:
+        """Aggiorna lo stato dell'animazione e switcha tra acceso e spento
+
+        Parameters
+        ----------
+        plot : Plot
+            Questo sarà il grafico ac ui verranno applicate le modifiche di animazione
+        index : int
+            Indice del grafico che è sotto attivo cambiamento da parte dell'utente. Verrà colorato di [0, 255, 0]
+        noanim : bool, optional
+            Richiesta di NON - animazione, by default False
+
+        Returns
+        -------
+        tuple[int, list[int]]
+            Restituisce l'indice corrispondente alla % di animazione completa e il colore del grafico
+        """
         animation_bound = int(len(plot.x_screen)*self.progress) if self.animation else len(plot.x_screen)
         if noanim: animation_bound = len(plot.x_screen)
         colore_animazione = [0, 255, 0] if self.active_plot == index and self.animation else plot.colore
@@ -601,7 +813,25 @@ class Painter:
         return animation_bound, colore_animazione
 
 
-    def disegna_metadata(self, logica: Logica, widget_data: WidgetData) -> None:
+    def disegna_bg(self) -> None:
+        """
+        Colora lo schermo del canvas con il colore del background
+        """
+        self.schermo.fill(self.bg_color)
+
+
+    def disegna(self, logica: Logica, widget_data: WidgetData) -> None:
+        """Funzione principale richiamata dall'utente che inizia il processo di disegno dell'UI dei grafici e i grafici stessi
+
+        Parameters
+        ----------
+        logica : Logica
+            Classe contenente varie informazioni riguardo agli input dell'utente (mos pos, CTRL, SHIFT, click, drag, ecc.)
+        widget_data : WidgetData
+            Classe contenente gli attributi dell'UI che potrebbero servire a cambiare le proprietà dei grafici
+        """
+
+        self.disegna_bg()
 
         # import settings
         if widget_data.latex_check:
@@ -628,22 +858,29 @@ class Painter:
         self.bg_color = Mate.hex2rgb(widget_data.color_bg)
         self.text_color = Mate.hex2rgb(widget_data.color_text)
 
+        self.use_custom_borders = widget_data.use_custom_borders
+        
+        self.x_min = Mate.inp2flo(widget_data.x_min)
+        self.x_max = Mate.inp2flo(widget_data.x_max)
+        self.y_min = Mate.inp2flo(widget_data.y_min)
+        self.y_max = Mate.inp2flo(widget_data.y_max)
+
+        self.subdivisions = Mate.inp2int(widget_data.subdivisions)
+        if self.subdivisions < 2: self.subdivisions = 2
+
+        self.ui_spessore = Mate.inp2int(widget_data.ui_spessore)
+        if self.ui_spessore < 1: self.ui_spessore = 1
+
         # recalculation of window
         self.re_compute_size(widget_data.toggle_2_axis)
 
         "-------------------------------------------------------------"
 
-        # plots bounding box
-        if widget_data.toggle_plt_bb:
-            pygame.draw.rect(self.schermo, self.text_color, [
-                self.start_x, self.end_y,
-                self.w_plot_area, self.h_plot_area
-            ], 1)
-        
         # X axis
         pygame.draw.line(self.schermo, self.text_color, 
             [self.start_x, self.start_y + 1 * (self.h - self.start_y) // 4],
-            [self.end_x, self.start_y + 1 * (self.h - self.start_y) // 4]
+            [self.end_x, self.start_y + 1 * (self.h - self.start_y) // 4],
+            self.ui_spessore
         )
 
         # colore assi
@@ -654,14 +891,16 @@ class Painter:
         # Y axis
         pygame.draw.line(self.schermo, colori_assi[0], 
             [3 * self.start_x // 4, self.start_y],
-            [3 * self.start_x // 4, self.end_y]
+            [3 * self.start_x // 4, self.end_y],
+            self.ui_spessore
         )
 
         if self.visualize_second_ax:
             # 2 Y axis
             pygame.draw.line(self.schermo, colori_assi[1], 
                 [self.end_x + 1 * self.start_x // 4, self.start_y],
-                [self.end_x + 1 * self.start_x // 4, (self.h - self.start_y)]
+                [self.end_x + 1 * self.start_x // 4, (self.h - self.start_y)],
+                self.ui_spessore
             )
         
         # scalini sugli assi e valori
@@ -673,19 +912,20 @@ class Painter:
         delta_y = massimo_locale_label - minimo_locale_label
         delta_y2 = self.max_y_l[1] - self.min_y_l[1]
 
-        for i in range(7):
+        for i in range(self.subdivisions):
             
             # data x
-            pos_var_x = (self.start_x + self.w_plot_area * i/6)
-            pos_var_y = (self.start_y - self.h_plot_area * i/6)
+            pos_var_x = (self.start_x + self.w_plot_area * i/ (self.subdivisions - 1))
+            pos_var_y = (self.start_y - self.h_plot_area * i/ (self.subdivisions - 1))
             
             pygame.draw.line(self.schermo, self.text_color, 
                 [pos_var_x, self.start_y + 1 * (self.h - self.start_y) // 4 - self.w // 100],
-                [pos_var_x, self.start_y + 1 * (self.h - self.start_y) // 4 + self.w // 100]
+                [pos_var_x, self.start_y + 1 * (self.h - self.start_y) // 4 + self.w // 100],
+                self.ui_spessore
             )
             
-            self.schermo.blit(self.font_tipo.render(f"{self.min_x + delta_x * i / 6:.{self.approx_label}f}", True, self.text_color), (
-                pos_var_x - self.font_pixel_dim[0] * len(f"{self.min_x + delta_x * i / 6:.{self.approx_label}f}") / 2,
+            self.schermo.blit(self.font_tipo.render(f"{self.min_x + delta_x * i / (self.subdivisions - 1):.{self.approx_label}f}", True, self.text_color), (
+                pos_var_x - self.font_pixel_dim[0] * len(f"{self.min_x + delta_x * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2,
                 self.start_y + (self.h - self.start_y) // 3
             ))
 
@@ -693,33 +933,58 @@ class Painter:
             # data y
             pygame.draw.line(self.schermo, colori_assi[0], 
                 [3 * self.start_x // 4 - self.w // 100, pos_var_y],
-                [3 * self.start_x // 4 + self.w // 100, pos_var_y]
+                [3 * self.start_x // 4 + self.w // 100, pos_var_y],
+                self.ui_spessore
             )
             
-            label_y_scr = self.font_tipo.render(f"{minimo_locale_label + delta_y * i / 6:.{self.approx_label}f}", True, colori_assi[0])
+            label_y_scr = self.font_tipo.render(f"{minimo_locale_label + delta_y * i / (self.subdivisions - 1):.{self.approx_label}f}", True, colori_assi[0])
             label_y_scr = pygame.transform.rotate(label_y_scr, 90)
         
 
             self.schermo.blit(label_y_scr, (
                 self.start_x - self.start_x // 3 - self.font_pixel_dim[1],
-                pos_var_y - self.font_pixel_dim[0] * len(f"{minimo_locale_label + delta_y * i / 6:.{self.approx_label}f}") / 2
+                pos_var_y - self.font_pixel_dim[0] * len(f"{minimo_locale_label + delta_y * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2
             ))
             
             if self.visualize_second_ax:
                 # data 2 y
                 pygame.draw.line(self.schermo, colori_assi[1], 
                     [self.end_x + 1 * self.start_x // 4 - self.w // 100, pos_var_y],
-                    [self.end_x + 1 * self.start_x // 4 + self.w // 100, pos_var_y]
+                    [self.end_x + 1 * self.start_x // 4 + self.w // 100, pos_var_y],
+                    self.ui_spessore
                 )
                 
-                label_y_scr = self.font_tipo.render(f"{self.min_y_l[1] + delta_y2 * i / 6:.{self.approx_label}f}", True, colori_assi[1])
+                label_y_scr = self.font_tipo.render(f"{self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1):.{self.approx_label}f}", True, colori_assi[1])
                 label_y_scr = pygame.transform.rotate(label_y_scr, 90)
             
                 self.schermo.blit(label_y_scr, (
                     self.end_x + 1 * self.start_x // 3,
-                    pos_var_y - self.font_pixel_dim[0] * len(f"{self.min_y_l[1] + delta_y2 * i / 6:.{self.approx_label}f}") / 2
+                    pos_var_y - self.font_pixel_dim[0] * len(f"{self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2
                 ))
-        
+            
+            # griglia
+            if widget_data.toggle_plt_bb:
+                pygame.draw.line(self.schermo, [50, 50, 50], 
+                    [pos_var_x, self.start_y],
+                    [pos_var_x, self.end_y],
+                    1
+                )
+
+                pygame.draw.line(self.schermo, [50, 50, 50], 
+                    [self.start_x, pos_var_y],
+                    [self.end_x, pos_var_y],
+                    1
+                )
+            
+        self.disegna_plots(widget_data)
+
+        # plots bounding box
+        # if widget_data.toggle_plt_bb:
+        #     pygame.draw.rect(self.schermo, self.text_color, [
+        #         self.start_x, self.end_y,
+        #         self.w_plot_area, self.h_plot_area
+        #     ], self.ui_spessore)
+
         "------------------------------------------------------------------------------------------------"
         self.re_compute_font()    
         
@@ -787,7 +1052,7 @@ class Painter:
             pygame.draw.rect(self.schermo, self.text_color, [
                 pos_x - self.font_pixel_dim[0], pos_y - self.font_pixel_dim[1],
                 self.font_pixel_dim[0] * (max_len_legenda + 2), self.font_pixel_dim[1] * (len(plot_accesi) + 1 + numero_interpolazioni_attive) * 1.5
-            ], 1)
+            ], self.ui_spessore)
 
         # mouse coordinate
         coords_values = self.value_research_plot_area(logica.mouse_pos)
@@ -807,10 +1072,21 @@ class Painter:
                 min_bb_y - self.ancoraggio_y, 
                 max_bb_x - min_bb_x, 
                 max_bb_y - min_bb_y
-            ], 2)
+            ], self.ui_spessore)
 
 
     def reset_zoom(self, logica: Logica | None = None) -> None:
+        """Questa funzione può essere invocata da diverse parti del codice. Se è invocata dall'utente, richiede informazioni sull'input (va ad verificare che la richiesta di reset dello zoom sia stato fatto con il mouse all'interno del grafico)
+
+
+        Parameters
+        ----------
+        logica : Logica | None, optional
+            Classe contenente varie informazioni riguardo agli input dell'utente (mos pos, CTRL, SHIFT, click, drag, ecc.), by default None
+        """
+
+        self.zoom_mode = False
+
         if logica is None:
             self.zoom_min_x = 0.0
             self.zoom_min_y = 0.0
@@ -822,7 +1098,17 @@ class Painter:
             self.zoom_max_x = 1.0
             self.zoom_max_y = 1.0
 
+
     def values_zoom(self, logica: Logica) -> None:
+        """Questa funzione genera i valori di minimo e massimo (X e Y) entro i quali verrà applicato il nuovo zoom. Questa scelta verrà fatta se è in corso un trascinamento.
+        In base allo SHIFT schiacciato o meno verrà applicato uno zoom 
+        
+        Parameters
+        ----------
+        logica : Logica
+            Classe contenente varie informazioni riguardo agli input dell'utente (mos pos, CTRL, SHIFT, click, drag, ecc.)
+        """
+
         drag_distance = np.array(logica.dragging_end_pos) - np.array(logica.original_start_pos)
         drag_distance = np.linalg.norm(drag_distance)
         
@@ -845,9 +1131,19 @@ class Painter:
                     self.zoom_min_y = min(y_fin_zoom, y_ini_zoom) * delta_zoom_y + self.zoom_min_y 
                     
 
-
     def pixel_research_plot_area(self, general_coordinate: tuple[float]) -> tuple[float]:
-        
+        """Given a coordinate in pixels of the whole screen, this functions finds the corresponding value in the plot screen space [pixels]
+
+        Parameters
+        ----------
+        general_coordinate : tuple[float]
+            X, Y coordinates of the mouse position in the screen
+
+        Returns
+        -------
+        tuple[float]
+            X, Y coordiantes of the mouse position in the plot screen space in pixels
+        """
         x = general_coordinate[0] - self.ancoraggio_x - self.start_x
         y = general_coordinate[1] - self.ancoraggio_y - self.end_y
 
@@ -858,7 +1154,18 @@ class Painter:
     
 
     def value_research_plot_area(self, general_coordinate: tuple[float]) -> tuple[float, float]:
-        
+        """Given a coordinate in pixels of the whole screen, this functions finds (in terms of plots attributes) the corresponding value
+
+        Parameters
+        ----------
+        general_coordinate : tuple[float]
+            X, Y coordinates of the mouse position in the screen
+
+        Returns
+        -------
+        tuple[float, float]
+            X, Y plot value in that point
+        """
         perc_x, perc_y = self.pixel_research_plot_area(general_coordinate)
 
         delta_x = self.max_x - self.min_x 
@@ -871,11 +1178,20 @@ class Painter:
 
 
     def aggiorna_schermo(self) -> None:
+        """
+        Incolla il canvas contenente metadata e grafici allo schermo madre (originale)
+        """
         self.schermo_madre.blit(self.schermo, (self.ancoraggio_x, self.ancoraggio_y))
 
 
-    def linear_interpolation(self) -> tuple[float, float, float, float, float, str, str]:
+    def linear_interpolation(self) -> str:
+        """Esegue un'interpolazione polinomiale del grafico attivo in quel momento. Restituisce un output stringa contenente tutti i dati relativi all'esito
 
+        Returns
+        -------
+        str
+            OUTPUT dell'interpolazione
+        """
         try:    
             base_data = self.plots[self.active_plot]
 
@@ -891,6 +1207,8 @@ class Painter:
 
             if grado == 1:
 
+                '\n{correlation_type}: {correlation_intera:.{self.approx_label}f}\n{correlation_type} ridotto: {correlation_ridotta:.{self.approx_label}f}'
+
                 m = None
                 q = None
                 m_e = None
@@ -903,18 +1221,14 @@ class Painter:
                     coeff, covar = np.polyfit(x, y, deg = 1, cov= True) 
                     m, q = coeff
                     m_e, q_e = np.sqrt(np.diag(covar))
-                    correlation = round(1 - np.sum( ( y - (m*x+q) )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 ),3)
-                    correlation_type = "R quadro"
                 else:
                     # INIZIO LOGICA INTERPOLAZIONE PESATA ----------------------------------------------------------
                     coeff, covar = np.polyfit(x, y, deg = 1, w = 1/ey, cov= True)
                     m, q = coeff
                     m_e, q_e = np.sqrt(np.diag(covar))
-                    correlation = round(np.sum(((y - (m*x+q))/ey)**2) / (len(x)-2),3)
-                    correlation_type = "\chi quadro"
                 
                 base_data.interpolation_type = "Retta ai minimi quadrati"
-                params_str = f"Interpolazione lineare del grafico {base_data.nome}:\nm: {m:.{self.approx_label}f} \pm {m_e:.{self.approx_label}f}\nq: {q:.{self.approx_label}f} \pm {q_e:.{self.approx_label}f}\n{correlation_type}: {correlation:.{self.approx_label}f}"
+                params_str = f"Interpolazione lineare del grafico {base_data.nome}:\nm: {m:.{self.approx_label}f} \pm {m_e:.{self.approx_label}f}\nq: {q:.{self.approx_label}f} \pm {q_e:.{self.approx_label}f}\n"
 
                 errori = (m_e, q_e)
 
@@ -939,7 +1253,17 @@ class Painter:
             for index, arg in enumerate(coeff[::-1]):
                 if arg is None: return None
                 y_i += x ** index * arg
-            
+
+            if ey is None:        
+                correlation = 1 - np.sum( ( y - (y_i[base_data.maschera]) )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 )
+                correlation_type = "R quadro"
+                params_str += f"{correlation_type}: {correlation}"
+            else:
+                correlation_intera = np.sum(((y - (y_i[base_data.maschera]))/ey)**2)
+                correlation_ridotta = np.sum(((y - (y_i[base_data.maschera]))/ey)**2) / (len(x)-2)
+                correlation_type = "\chi quadro"
+                params_str += f"{correlation_type}: {correlation_intera}\n{correlation_type} ridotto: {correlation_ridotta}"
+
             base_data.y_interp_lin = y_i
             base_data.interpol_maschera = deepcopy(base_data.maschera)
 
@@ -949,8 +1273,19 @@ class Painter:
             return f"Parametri ottimali non trovati, prova con un altro zoom.\n{e}"
 
 
-    def customfoo_interpolation(self, curve: str = "gaussian"):
+    def customfoo_interpolation(self, curve: str = "gaussian") -> str:
+        """Esegue un'interpolazione con una curva specificata del grafico attivo in quel momento. Restituisce un output stringa contenente tutti i dati relativi all'esito
 
+        Parameters
+        ----------
+        curve : str, optional
+            nome della curva, opzioni accettate: 'gaussian', 'sigmoid', by default "gaussian"
+
+        Returns
+        -------
+        str
+            OUTPUT dell'interpolazione
+        """
         base_data = self.plots[self.active_plot]
 
         if base_data.maschera is None: return "Prego, Accendere un grafico per cominciare"

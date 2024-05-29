@@ -31,14 +31,19 @@ SUPPORTA:
 - Dimensione carattere
 - [in intervallo] Interpolazione lineare + parametri con errori
 - Aggiungere interpolazione quadratica, sigmoide, gaussiana
-- $\chi^2$ e $R^2$ 
 - Normalizzare
 - Label automatico per i fit
 - Sovrapporre
 - Utilizzo di 2 assi Y
+- Aggiunto spostamento con il TAB e SHIFT + TAB
+- Cambia animazione
+- Colorare sottografico
+- Numero di divisioni sugli assi
+- Impostare manualmente min, max (x, y)
 
 TODO:
 ---
+- $\chi^2$ e $R^2$ 
 - Text selection
 - Puntatore text box con mouse
 - Copia / Incolla
@@ -56,8 +61,6 @@ TODO:
 
 COSMETICS:
 ---
-- Cambia animazione
-- Colorare sottografico
 - Notazione scientifica
 
 FUTURE PROJECTS:

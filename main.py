@@ -1,7 +1,7 @@
-import cProfile
+import os, cProfile, configparser
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from pygame.locals import *
 import pygame
-import configparser
     
 def main(config: configparser):
     
@@ -24,7 +24,8 @@ def main(config: configparser):
         ui.start_cycle(logica)
 
         eventi_in_corso = pygame.event.get()
-        ui.event_manage(eventi_in_corso, logica, main_plot)
+        ui.event_manage_ui(eventi_in_corso, logica)
+        ui.event_manage_plots(eventi_in_corso, logica, main_plot)
 
         # UI ----------------------------------------------------------------
 
@@ -34,8 +35,7 @@ def main(config: configparser):
         ui.scena["main"].bottoni["normalizza"].visibile = True if len([plot for plot in main_plot.plots if plot.acceso]) == 2 else False
 
         # disegno il plot
-        main_plot.disegna_plots(al_sc.data_widgets)
-        main_plot.disegna_metadata(logica, al_sc.data_widgets)
+        main_plot.disegna(logica, al_sc.data_widgets)
         main_plot.aggiorna_schermo()
         
         # UI ----------------------------------------------------------------
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     import time
     start = time.time()
     main(config)
-    print(f"Finito in {time.time() - start}")
+    print(f"Finito in {time.time() - start:.1f}s")
     
     if _profiler:
         profiler.disable()

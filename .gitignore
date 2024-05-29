@@ -3,6 +3,10 @@ PROFILATORE/
 prove.ipynb
 PLOT_DATA_mine/
 OUTPUT/
+TEXTURES/logo.blend
+TEXTURES/logo.blend1
+TEXTURES/logo.ico
+TEXTURES/logo.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
