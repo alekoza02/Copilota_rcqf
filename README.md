@@ -40,18 +40,20 @@ SUPPORTA:
 - Colorare sottografico
 - Numero di divisioni sugli assi
 - Impostare manualmente min, max (x, y)
+- Ordinare i grafici
+- Creare il proprio workspace, selezionando i grafici che ci interessano
+- [in intervallo] Calcolo derivate                              
+- [in intervallo] Calcolo integrale
+- [in intervallo] Calcolo FWHM            
+- $\chi^2$ e $R^2$ 
 
 TODO:
 ---
-- $\chi^2$ e $R^2$ 
 - Text selection
 - Puntatore text box con mouse
 - Copia / Incolla
 - Autocompletamento path
 ---
-- [in intervallo] Calcolo derivate                              
-- [in intervallo] Calcolo integrale
-- [in intervallo] Calcolo FWHM            
 - T-test
 - Report linee dell'intervallo di confidenza con colorazione basata sul risultato
 - Report linee dell'intervallo di media + $\sigma_{std}$ 
@@ -62,6 +64,7 @@ TODO:
 COSMETICS:
 ---
 - Notazione scientifica
+- Label di chiarimento per bottoni ed entrate (tooltip)
 
 FUTURE PROJECTS:
 ---

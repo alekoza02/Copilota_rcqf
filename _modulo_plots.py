@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.integrate import trapz
 import pygame
-from _modulo_UI import Schermo, WidgetData, Logica, UI
+from _modulo_UI import Schermo, WidgetData, Logica, UI, Scena
 from _modulo_MATE import Mate
 from _modulo_3D_grafica import Triangle
 import configparser
@@ -312,6 +313,8 @@ class Painter:
             Classe UI contenente le informazioni per scegliere il nuovo grafico e caricare le relative informazioni
         """
         # aggiorno grafico selezionato
+        self.riordina_plots(ui.scena["main"].scrolls["grafici"].indici)
+        self.attiva_plots(ui.scena["main"].scrolls["grafici"].elementi_attivi)
         self.active_plot = ui.scena["main"].scrolls["grafici"].scroll_item_selected + ui.scena["main"].scrolls["grafici"].first_item
 
         # aggiorno le entry box con i valori del nuovo grafico
@@ -324,7 +327,6 @@ class Painter:
         ui.scena["main"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
         ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
         ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
-        ui.scena["main"].bottoni["acceso"].toggled = self.plots[self.active_plot].acceso
         ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
@@ -338,6 +340,9 @@ class Painter:
         index : int
             Indice del grafico nuovo da caricare
         """
+
+        self.riordina_plots(ui.scena["main"].scrolls["grafici"].indici)
+        self.attiva_plots(ui.scena["main"].scrolls["grafici"].elementi_attivi)
 
         # aggiorno grafico selezionato
         first_item = index - 4
@@ -359,7 +364,6 @@ class Painter:
         ui.scena["main"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
         ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
         ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
-        ui.scena["main"].bottoni["acceso"].toggled = self.plots[self.active_plot].acceso
         ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
@@ -386,6 +390,8 @@ class Painter:
             if distanze[minima] < 50:
                 indice_grafico_minimo = int(self.data_points_coords[minima, 2])
                 self.change_active_plot_INDEXBASED(ui, indice_grafico_minimo)
+                return True
+        return False
 
 
     def import_plot_data(self, path: str, divisore: str = None) -> None:
@@ -456,7 +462,7 @@ class Painter:
             print(f"Impossibile caricare il file: {path}")
     
 
-    def full_import_plot_data(self, path_input: str = 'PLOT_DATA/default') -> None:
+    def full_import_plot_data(self, link_scena: Scena, path_input: str = 'PLOT_DATA/default') -> None:
         """Dato un path importa tutti i file con estensioni accettate (txt, ASCII, dat, csv) e ci genera un plot.
 
         Parameters
@@ -474,6 +480,23 @@ class Painter:
             if os.path.isfile(path):    
                 self.import_plot_data(path)
 
+        self.original_plot_order = self.plots
+        link_scena.scrolls["grafici"].elementi = [self.plots[index].nome for index in range(len(self.plots))]
+        link_scena.scrolls["grafici"].elementi_attivi = [False for _ in range(len(self.plots))]
+        link_scena.scrolls["grafici"].indici = [i for i in range(len(self.plots))]
+
+
+    def riordina_plots(self, indici: list[int]):
+        new_order = []
+        for i in indici:
+            new_order.append(self.original_plot_order[i])
+        self.plots = new_order
+
+
+    def attiva_plots(self, indici: list[bool]):
+        for plot, accensione in zip(self.plots, indici):
+            plot.acceso = accensione
+        
 
     def adattamento_data2schermo(self) -> None:
         """
@@ -520,6 +543,7 @@ class Painter:
                 self.max_x = self.x_max # questi sono i valori importati dalla entry box
                 self.min_y = self.y_min # questi sono i valori importati dalla entry box
                 self.max_y = self.y_max # questi sono i valori importati dalla entry box
+                self.calcolo_maschere_plots()
 
             dati = []
             conteggio_assi_diversi = 0
@@ -531,6 +555,17 @@ class Painter:
                     # se siamo nella condizione in cui vengono normalizzati i grafici -> Vengono ricalcolati tutti i valori e i bound
                     self.min_y_l[conteggio_assi_diversi] = min(plot.y[plot.maschera])
                     self.max_y_l[conteggio_assi_diversi] = max(plot.y[plot.maschera])
+
+                    if not plot.ey is None:
+                        error_plus = plot.y + plot.ey
+                        error_minus = plot.y - plot.ey
+                        
+                        self.max_y_l[conteggio_assi_diversi] = np.maximum(self.max_y_l[conteggio_assi_diversi], np.max(error_plus))
+                        self.min_y_l[conteggio_assi_diversi] = np.minimum(self.min_y_l[conteggio_assi_diversi], np.min(error_minus))
+                    
+                    if not plot.y_interp_lin is None and plot.interpolate:
+                        self.max_y_l[conteggio_assi_diversi] = np.maximum(self.max_y_l[conteggio_assi_diversi], np.max(plot.y_interp_lin[plot.interpol_maschera]))
+                        self.min_y_l[conteggio_assi_diversi] = np.minimum(self.min_y_l[conteggio_assi_diversi], np.min(plot.y_interp_lin[plot.interpol_maschera]))
 
                     if not plot.y_interp_lin is None:
 
@@ -675,11 +710,11 @@ class Painter:
         self.normalizza = widget_data.normalizza
 
         # Sezione di impostazioni grafico attuale attivo
+        self.plots[self.active_plot].acceso = widget_data.acceso 
         self.plots[self.active_plot].interpolate = widget_data.toggle_inter 
         self.plots[self.active_plot].grado_inter = Mate.inp2int(widget_data.grado_inter, 1) 
         self.plots[self.active_plot].function = widget_data.toggle_collegamenti 
         self.plots[self.active_plot].scatter = widget_data.toggle_pallini 
-        self.plots[self.active_plot].acceso = widget_data.acceso 
         self.plots[self.active_plot].gradiente = widget_data.gradiente 
         self.plots[self.active_plot].colore = Mate.hex2rgb(widget_data.color_plot) 
 
@@ -1074,6 +1109,55 @@ class Painter:
                 max_bb_y - min_bb_y
             ], self.ui_spessore)
 
+        self.compute_integral_FWHM(widget_data)
+
+
+    def compute_integral_FWHM(self, widget_data: WidgetData):
+        """Computes the integral, derivative and FWHM
+
+        Parameters
+        ----------
+        widget_data : WidgetData
+            Class to pass flags and attrributes from the scene
+        """
+        pl_at = self.plots[self.active_plot]
+
+        if pl_at.acceso:
+            
+            x_all = pl_at.x[pl_at.maschera]
+            y_all = pl_at.y[pl_at.maschera]
+            
+            if len(x_all) > 2:
+
+                x_min = x_all[0]
+                x_max = x_all[-1]
+
+                integral = trapz(y_all, x_all)
+                derivata = np.gradient(y_all, x_all)
+
+                FWHM_h = np.max(y_all) / 2
+                FWHM_w = y_all > FWHM_h
+
+                first_true_index = np.argmax(FWHM_w)
+                last_true_index = len(FWHM_w) - 1 - np.argmax(FWHM_w[::-1])
+
+                FWHM = x_all[last_true_index] - x_all[first_true_index]
+
+                if type(integral) == np.ndarray: integral = integral[0]
+
+                nome = pl_at.nome.split(".")
+
+                widget_data.FID = f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.{nome[1]}"
+
+                if widget_data.salva_der:
+                    widget_data.flag_update_save_derivative = True
+
+                    # Writing results to a text file
+                    with open(f"{widget_data.input_path}/{nome[0]}_derivata.{nome[1]}", "w") as file:
+                        # Writing the derivative
+                        for i in range(len(x_all)):
+                            file.write(f"{x_all[i]}\t{derivata[i]}\n")
+
 
     def reset_zoom(self, logica: Logica | None = None) -> None:
         """Questa funzione può essere invocata da diverse parti del codice. Se è invocata dall'utente, richiede informazioni sull'input (va ad verificare che la richiesta di reset dello zoom sia stato fatto con il mouse all'interno del grafico)
@@ -1313,6 +1397,12 @@ class Painter:
                     errori = np.sqrt(np.diag(covariance))
                     console_output = f"Interpolazione Guassiana del grafico {base_data.nome}:\nA: {params_gaus[0]:.{self.approx_label}f} \pm {errori[0]:.{self.approx_label}f}\n\mu: {params_gaus[1]:.{self.approx_label}f} \pm {errori[1]:.{self.approx_label}f}\n\sigma: {params_gaus[2]:.{self.approx_label}f} \pm {errori[2]:.{self.approx_label}f}"
 
+                    y_i = gaussian(x, initial_guess_gauss[0], initial_guess_gauss[1], initial_guess_gauss[2])
+
+                    correlation = 1 - np.sum( ( y - y_i )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 )
+                    correlation_type = "R quadro"
+                    console_output += f"\n{correlation_type}: {correlation}"
+
                 case "sigmoid":
                     def sigmoide(x, a, b, lambda_0, delta_lambda):
                         return b + a / (1 + np.exp((-np.array(x) + lambda_0) / delta_lambda))
@@ -1333,6 +1423,11 @@ class Painter:
 
                     errori = np.sqrt(np.diag(covariance))
                     console_output = f"Interpolazione sigmoide del grafico {base_data.nome}:\na: {params_sigm[0]:.{self.approx_label}f} \pm {errori[0]:.{self.approx_label}f}\nb: {params_sigm[1]:.{self.approx_label}f} \pm {errori[1]:.{self.approx_label}f}\n\lambda0: {params_sigm[2]:.{self.approx_label}f} \pm {errori[2]:.{self.approx_label}f}\n\Delta\lambda: {params_sigm[3]:.{self.approx_label}f} \pm {errori[3]:.{self.approx_label}f}"
+
+                    y_i = sigmoide(x, initial_guess_sigmo[0], initial_guess_sigmo[1], initial_guess_sigmo[2], initial_guess_sigmo[3])
+                    correlation = 1 - np.sum( ( y - y_i )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 )
+                    correlation_type = "R quadro"
+                    console_output += f"\n{correlation_type}: {correlation}"
 
             return console_output
 

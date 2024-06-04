@@ -14,7 +14,7 @@ def main(config: configparser):
     # Zona inizializzazione plot
     main_plot = Painter()
     main_plot.link_ui(ui.scena["main"].schermo["viewport"])
-    main_plot.full_import_plot_data()
+    main_plot.full_import_plot_data(ui.scena["main"])
 
     # alias
     al_sc = ui.scena["main"]
@@ -30,8 +30,8 @@ def main(config: configparser):
         # UI ----------------------------------------------------------------
 
         # disegno i labels / bottoni / entrate
-        al_sc.disegnami(logica)
-        ui.scena["main"].scrolls["grafici"].elementi = [main_plot.plots[index].nome for index in range(len(main_plot.plots))]
+        [tab.disegna_tab(logica) for index, tab in ui.scena["main"].tabs.items()]
+
         ui.scena["main"].bottoni["normalizza"].visibile = True if len([plot for plot in main_plot.plots if plot.acceso]) == 2 else False
 
         # disegno il plot
