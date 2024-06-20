@@ -2,9 +2,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import trapz
 import pygame
-from _modulo_UI import Schermo, WidgetData, Logica, UI, Scena
+from _modulo_UI import Schermo, WidgetDataPlots, Logica, UI, Scena
 from _modulo_MATE import Mate
-from _modulo_3D_grafica import Triangle
 import configparser
 import os
 from copy import deepcopy
@@ -84,7 +83,7 @@ class Painter:
         self.w_proportion: float = eval(config.get('Grafici', 'w_plot_area'))
         self.h_proportion: float = eval(config.get('Grafici', 'h_plot_area'))
         
-        self.bounding_box: pygame.rect.Rect
+        self.bounding_box = pygame.rect.Rect([0, 0, 1, 1])
 
         self.x_legenda: float
         self.y_legenda: float
@@ -136,7 +135,7 @@ class Painter:
 
         '---------------ANIMATION----------------'
 
-        self.old_widget_data: WidgetData = WidgetData()
+        self.old_widget_data: WidgetDataPlots = WidgetDataPlots()
 
         self.animation: bool = True
         self.duration: int = 20
@@ -272,7 +271,7 @@ class Painter:
         return input_str
 
     
-    def link_ui(self, info_schermo: Schermo) -> None: 
+    def link_ui(self, ui: UI) -> None: 
         """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
 
         Parameters
@@ -280,6 +279,9 @@ class Painter:
         info_schermo : Schermo
             Dato la classe Schermo, posso capire le informazioni che mi servono
         """
+
+        info_schermo = ui.scena["plots"].schermo["viewport"]
+
         self.schermo_madre = info_schermo.madre
         
         self.w = info_schermo.w
@@ -313,21 +315,21 @@ class Painter:
             Classe UI contenente le informazioni per scegliere il nuovo grafico e caricare le relative informazioni
         """
         # aggiorno grafico selezionato
-        self.riordina_plots(ui.scena["main"].scrolls["grafici"].indici)
-        self.attiva_plots(ui.scena["main"].scrolls["grafici"].elementi_attivi)
-        self.active_plot = ui.scena["main"].scrolls["grafici"].scroll_item_selected + ui.scena["main"].scrolls["grafici"].first_item
+        self.riordina_plots(ui.scena["plots"].scrolls["grafici"].indici)
+        self.attiva_plots(ui.scena["plots"].scrolls["grafici"].elementi_attivi)
+        self.active_plot = ui.scena["plots"].scrolls["grafici"].scroll_item_selected + ui.scena["plots"].scrolls["grafici"].first_item
 
         # aggiorno le entry box con i valori del nuovo grafico
-        ui.scena["main"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
-        ui.scena["main"].entrate["nome_grafico"].puntatore = len(str(self.plots[self.active_plot].nome)) - 1
-        ui.scena["main"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
-        ui.scena["main"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
-        ui.scena["main"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
+        ui.scena["plots"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
+        ui.scena["plots"].entrate["nome_grafico"].puntatore = len(str(self.plots[self.active_plot].nome)) - 1
+        ui.scena["plots"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
+        ui.scena["plots"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
+        ui.scena["plots"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
 
-        ui.scena["main"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
-        ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
-        ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
-        ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
+        ui.scena["plots"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
+        ui.scena["plots"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
+        ui.scena["plots"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
+        ui.scena["plots"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
     def change_active_plot_INDEXBASED(self, ui: UI, index: int) -> None:
@@ -341,8 +343,8 @@ class Painter:
             Indice del grafico nuovo da caricare
         """
 
-        self.riordina_plots(ui.scena["main"].scrolls["grafici"].indici)
-        self.attiva_plots(ui.scena["main"].scrolls["grafici"].elementi_attivi)
+        self.riordina_plots(ui.scena["plots"].scrolls["grafici"].indici)
+        self.attiva_plots(ui.scena["plots"].scrolls["grafici"].elementi_attivi)
 
         # aggiorno grafico selezionato
         first_item = index - 4
@@ -350,21 +352,21 @@ class Painter:
 
         selected_item = index - first_item
 
-        ui.scena["main"].scrolls["grafici"].scroll_item_selected = selected_item
-        ui.scena["main"].scrolls["grafici"].first_item = first_item
+        ui.scena["plots"].scrolls["grafici"].scroll_item_selected = selected_item
+        ui.scena["plots"].scrolls["grafici"].first_item = first_item
         self.active_plot = index
 
         # aggiorno le entry box con i valori del nuovo grafico
-        ui.scena["main"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
-        ui.scena["main"].entrate["nome_grafico"].puntatore = len(str(self.plots[self.active_plot].nome)) - 1
-        ui.scena["main"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
-        ui.scena["main"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
-        ui.scena["main"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
+        ui.scena["plots"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
+        ui.scena["plots"].entrate["nome_grafico"].puntatore = len(str(self.plots[self.active_plot].nome)) - 1
+        ui.scena["plots"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
+        ui.scena["plots"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
+        ui.scena["plots"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
 
-        ui.scena["main"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
-        ui.scena["main"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
-        ui.scena["main"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
-        ui.scena["main"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
+        ui.scena["plots"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
+        ui.scena["plots"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
+        ui.scena["plots"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
+        ui.scena["plots"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
 
     def nearest_coords(self, ui: UI, logica: Logica) -> None:
@@ -484,6 +486,7 @@ class Painter:
         link_scena.scrolls["grafici"].elementi = [self.plots[index].nome for index in range(len(self.plots))]
         link_scena.scrolls["grafici"].elementi_attivi = [False for _ in range(len(self.plots))]
         link_scena.scrolls["grafici"].indici = [i for i in range(len(self.plots))]
+        link_scena.scrolls["grafici"].update_elements()
 
 
     def riordina_plots(self, indici: list[int]):
@@ -689,7 +692,7 @@ class Painter:
         self.min_y = self.min_y + self.zoom_min_y * delta_y
 
 
-    def disegna_plots(self, widget_data: WidgetData) -> None:
+    def disegna_plots(self, widget_data: WidgetDataPlots) -> None:
         """
         Disegna tutti i grafici caricati e abilitati al disegno.
 
@@ -698,10 +701,10 @@ class Painter:
         widget_data : WidgetData
             Necessita dei widget data per poter aggiornare gli attributi dei singoli grafici
         """
-        if not WidgetData.are_attributes_equal(self.old_widget_data, widget_data):
+        if not WidgetDataPlots.are_attributes_equal(self.old_widget_data, widget_data):
             self.animation = True
             self.progress = 0
-            WidgetData.update_attributes(self.old_widget_data, widget_data)
+            WidgetDataPlots.update_attributes(self.old_widget_data, widget_data)
 
         if self.animation:
             self.progress += 1 / self.duration
@@ -848,14 +851,7 @@ class Painter:
         return animation_bound, colore_animazione
 
 
-    def disegna_bg(self) -> None:
-        """
-        Colora lo schermo del canvas con il colore del background
-        """
-        self.schermo.fill(self.bg_color)
-
-
-    def disegna(self, logica: Logica, widget_data: WidgetData) -> None:
+    def disegna(self, logica: Logica, widget_data: WidgetDataPlots) -> None:
         """Funzione principale richiamata dall'utente che inizia il processo di disegno dell'UI dei grafici e i grafici stessi
 
         Parameters
@@ -866,7 +862,7 @@ class Painter:
             Classe contenente gli attributi dell'UI che potrebbero servire a cambiare le proprietà dei grafici
         """
 
-        self.disegna_bg()
+        self.schermo.fill(self.bg_color)
 
         # import settings
         if widget_data.latex_check:
@@ -1112,7 +1108,7 @@ class Painter:
         self.compute_integral_FWHM(widget_data)
 
 
-    def compute_integral_FWHM(self, widget_data: WidgetData):
+    def compute_integral_FWHM(self, widget_data: WidgetDataPlots):
         """Computes the integral, derivative and FWHM
 
         Parameters
@@ -1147,7 +1143,7 @@ class Painter:
 
                 nome = pl_at.nome.split(".")
 
-                widget_data.FID = f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.{nome[1]}"
+                widget_data.FID = f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.txt"
 
                 if widget_data.salva_der:
                     widget_data.flag_update_save_derivative = True
@@ -1259,13 +1255,6 @@ class Painter:
         ris_y = self.min_y + delta_y * perc_y
 
         return ris_x, ris_y
-
-
-    def aggiorna_schermo(self) -> None:
-        """
-        Incolla il canvas contenente metadata e grafici allo schermo madre (originale)
-        """
-        self.schermo_madre.blit(self.schermo, (self.ancoraggio_x, self.ancoraggio_y))
 
 
     def linear_interpolation(self) -> str:

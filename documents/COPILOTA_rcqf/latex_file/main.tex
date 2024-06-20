@@ -1,0 +1,414 @@
+\documentclass{article}
+\usepackage{geometry}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[italian]{babel}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{backcolor}{rgb}{0.95, 0.95, 0.95}
+\definecolor{codegreen}{rgb}{0.25, 0.45, 0.25}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{passage} = [rectangle, minimum width=3cm, minimum height=1.5cm, text centered, draw=black, fill=orange!30]
+\tikzstyle{operations} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30]
+\tikzstyle{foo} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=violet!30]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+% Define Python style
+\lstdefinestyle{Pythonstyle}{
+    language=Python,
+	basicstyle=\ttfamily,
+	tabsize=4,
+    backgroundcolor=\color{backcolor},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    identifierstyle=\color{violet},
+    stringstyle=\color{green!50!black},
+    showstringspaces=false,
+	showtabs=false,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=5pt,
+    breaklines=true,
+    extendedchars=true,
+    linewidth=\textwidth,
+	morekeywords={*,...}
+}
+
+\setcounter{page}{0}
+
+\geometry{
+	left=.7in,  
+	right=.7in, 
+	top=.7in,   
+	bottom=.7in,
+}
+
+
+\title{Copilota RCQF}
+\author{Alessio Cimma}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+	\includegraphics*[width=.99\linewidth]{../images/logo.png}
+\end{center}
+
+\newpage
+\tableofcontents
+
+% \newpage
+% \section{Grafici / Plot}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Statistica}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Excel / Data entry}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+
+\newpage
+\section{3D orientation}
+\subsection{Pipeline di renderizzazione}
+
+\begin{tikzpicture}[node distance=2.5cm]
+	
+	\node (start) [startstop] {Start};
+	
+	\node (passage1) [passage, below of=start] {World Space};
+	\node (matrice1) [operations, right of=passage1, xshift=1.5cm] {Attributi Modello};
+	\node (foo1) [foo, right of=matrice1, xshift=2cm] {scalotrasla()};
+	\node (foo1_2) [foo, right of=foo1, xshift=2cm] {rotx(), roty(), rotz()};
+	
+	\node (passage2) [passage, below of=passage1] {Camera Space};
+	\node (matrice2) [operations, below of=matrice1] {RotoTraslazione camera};
+	\node (foo2) [foo, right of=matrice2, xshift=1.5cm] {camera\_world()};
+	\node (foo2_2) [foo, right of=foo2, xshift=1cm] {frustrum()};
+	\node (foo2_3) [foo, right of=foo2_2, xshift=1cm] {proiezione()};
+	
+	\node (passage3) [passage, below of=passage2] {Screen Space};
+	\node (matrice3) [operations, below of=matrice2] {Cambio di base};
+	\node (foo3) [foo, right of=matrice3, xshift=3cm] {screen\_world()};
+	\node (foo3_2) [foo, right of=foo3, xshift=3cm] {centra\_schermo()};
+	
+	\node (stop) [startstop, below of=passage3] {Stop};
+	
+	\draw [arrow] (start) -- (passage1);
+	\draw [arrow] (passage1) -- (passage2);
+	\draw [arrow] (passage2) -- (passage3);
+	\draw [arrow] (passage3) -- (stop);
+	
+	\draw [arrow] (passage1) -- (matrice1);
+	\draw [arrow] (passage2) -- (matrice2);
+	\draw [arrow] (passage3) -- (matrice3);
+	
+	\draw [arrow] (matrice1) -- (foo1);
+	\draw [arrow] (foo1) -- (foo1_2);
+
+	\draw [arrow] (matrice2) -- (foo2);
+	\draw [arrow] (foo2) -- (foo3);
+	\draw [arrow] (foo2_2) -- (foo2_3);
+	\draw [arrow] (foo2_3) -- (foo3_2);
+	
+	\draw [arrow] (matrice3) -- (foo3);
+	\draw [arrow] (foo3) -- (foo2_2);
+	
+\end{tikzpicture}
+
+\hrulefill
+\subsection{Pipeline di aggiornamento}
+\begin{tikzpicture}[node distance=2.5cm]
+	
+	\node (start) [startstop] {Input};
+	
+	\node (passage1) [passage, below of=start] {mouse delta XY};
+	\node (matrice1) [operations, right of=passage1, xshift=1.5cm] {rototrasl. separate};
+	\node (foo1) [foo, above of=matrice1, xshift=2cm] {aggiorna\_attributi1()};
+	\node (foo1_2) [foo, below of=matrice1, xshift=2cm] {aggiorna\_attributi2()};
+	
+	\node (passage2) [passage, below of=passage2] {keyboard};
+	\node (matrice2) [operations, right of=passage2, xshift=1.5cm] {aggiornamento attributi};
+	
+	\draw [arrow] (start) -- (passage1);
+	\draw [arrow] (passage1) -- (passage2);
+	
+	\draw [arrow] (passage1) -- (matrice1);
+	\draw [arrow] (passage2) -- (matrice2);
+	
+	\draw [arrow] (matrice1) -- (foo1);
+	\draw [arrow] (matrice1) -- (foo1_2);
+	
+\end{tikzpicture}
+
+\newpage
+
+\subsection{Teoria della pipeline usata}
+\paragraph{Modello:} La geometria del modello solitamente è descritta e contenuta dentro ad un file \texttt{model.obj} c'entrata su un'origine a $XYZ = \{0, 0, 0\}$. Quando questo modello viene caricato, viene inserito in un'apposita classe che contiene anche attributi come posizione, scala e rotazione. Queste verranno applicate ad ogni refresh della pagina con il seguente ed immutabile ordine:
+\begin{itemize}
+	\item Rotation X
+	\item Rotation Y
+	\item Rotation Z
+	\item Scale and Traslation
+\end{itemize}
+%
+Questo passaggio dev'essere il primo ad essere eseguito, in quanto posiziona tutti i modelli in uno spazio globale in relazione uno con l'altro.
+
+\paragraph{Camera:} Usando una camera e non un punto di vista fisso, dobbiamo spostarci dallo spazio globale a quello della camera, per farlo usiamo la relativa matrice che trasla e ruota la scena. (Immagino che in futuro aggiungerò la possibilità di avere più camere tra cui scegliere; durante la pipeline, basterà switchare la camera attiva). Una volta compiuto questo passaggio, nel caso ci trovassimo in modalità prospettiva, sarà necessario applicare \texttt{frustrum()} e \texttt{proiezione()}, che appunto generano l'effetto di proiezione dato un certo FOV.
+
+\paragraph{Schermo:} In questo programma noi usiamo un sistema di riferimento per cui:
+\begin{itemize}
+	\item la destra locale è X - la destra sullo schermo è X
+	\item l'alto locale è Z - l'alto sullo schermo è -Y
+	\item il profondo locale è Y - il profondo sullo schermo è Z
+\end{itemize} 
+%
+Questo ci porta a dover cambiare la base per avere tutto orientato correttamente. Infine verrà applicata una scala per portarci da uno spazio normalizzato (-1, 1) ad uno spazio nella scala della dimensione dello schermo.
+
+\paragraph{Aggiornamento degli attributi:} Nel caso dei modelli, basterà aggiornare la nuova pos / rot / scala.
+Nel caso della camera il discorso si fa più complesso. Dobbiamo suddividere il discorso in due parti:
+\begin{itemize}
+	\item Orientamento: aggiornato seguendo la sequenza di rotazioni di Eulero (XYZ)
+	\item Posizione: la rotazione attorno al primo asse (Y) è facilmente applicabile, il problema compare quando si cerca di applicare la seconda rotazione (X). Infatti ora la dovremo applicare lungo la X locale, che è diversa dalla X globale. Non possiamo quindi applicare \texttt{rotx()}, ma \texttt{rot\_ax()} attorno all'asse locale X
+\end{itemize}
+
+\newpage
+
+\subsection{Codice delle varie funzioni}
+\begin{lstlisting}[style=Pythonstyle, caption={Matrici di Rotazione (3 con assi globali, 1 con asse custom)}]
+@staticmethod
+def rotx(ang: float) -> np.ndarray[np.ndarray[float]]:
+	return np.array([
+		[1, 0, 0, 0],
+		[0, np.cos(ang), np.sin(ang), 0],
+		[0, -np.sin(ang), np.cos(ang), 0],
+		[0, 0, 0, 1]
+	])
+
+@staticmethod
+def roty(ang: float) -> np.ndarray[np.ndarray[float]]:
+	return np.array([
+		[np.cos(ang), 0, np.sin(ang), 0],
+		[0, 1, 0, 0],
+		[-np.sin(ang), 0, np.cos(ang), 0],
+		[0, 0, 0, 1]
+	])
+
+@staticmethod
+def rotz(ang: float) -> np.ndarray[np.ndarray[float]]:
+	return np.array([
+		[np.cos(ang), np.sin(ang), 0, 0],
+		[-np.sin(ang), np.cos(ang), 0, 0],
+		[0, 0, 1, 0],
+		[0, 0, 0, 1]
+	])
+	
+@staticmethod
+def rot_ax(axis: np.ndarray[float], ang: float) -> np.ndarray[np.ndarray[float]]:
+	K = np.array([
+		[0, -axis[2], axis[1], 0],
+		[axis[2], 0, -axis[0], 0],
+		[-axis[1], axis[0], 0, 0],
+		[0, 0, 0, 1]
+	])
+
+	return np.eye(4) + np.sin(ang) * K + (1 - np.cos(ang)) * np.dot(K, K)
+\end{lstlisting}
+
+\begin{lstlisting}[style=Pythonstyle, caption={Matrice di ScaloTraslazione}]
+@staticmethod
+def scalotrasla(obj):
+	return np.array([
+		[obj.sx, 0, 0, 0],
+		[0, obj.sy, 0, 0],
+		[0, 0, obj.sz, 0],
+		[obj.x, obj.y, obj.z, 1]
+	])
+\end{lstlisting}
+
+\newpage
+
+\begin{lstlisting}[style=Pythonstyle, caption={Matrice di cambio sistema di riferimento (camera)}]
+@staticmethod
+def camera_world(camera: np.ndarray) -> np.ndarray[np.ndarray[float]]:
+	return np.array(
+		[[1, 0, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 1, 0],
+			[-camera.pos[0], -camera.pos[1], -camera.pos[2], 1]]
+	) @ np.array(
+		[[camera.rig[0], camera.dir[0], camera.ups[0], 0],
+			[camera.rig[1], camera.dir[1], camera.ups[1], 0],
+			[camera.rig[2], camera.dir[2], camera.ups[2], 0],
+			[0, 0, 0, 1]]
+	)
+\end{lstlisting}
+
+\begin{lstlisting}[style=Pythonstyle, caption={Matrici di applicazione prospettiva}]
+@staticmethod
+def frustrum(W: int, H: int, h_fov: float = np.pi / 6) -> np.ndarray[np.ndarray[float]]:
+	# qua c'e' un meno per sistemare l'orientamento della camera, altrimenti ottieni un'immagine specchiata in prospettiva
+	v_fov = h_fov * H / W
+	left = np.tan(h_fov / 2)
+	right = -left
+	top = np.tan(v_fov / 2)
+	bottom = -top
+	far = 1000
+	near = 0.01
+	return np.array([
+		[-2 / (right - left), 0, 0, 0],
+		[0, 2 / (top - bottom), 0, 0],
+		[0, 0, (far + near) / (far - near), 1],
+		[0, 0, -2 * near * far / (far - near), 0]
+	])
+
+@staticmethod
+def proiezione(vertici: np.ndarray[np.ndarray[float]]) -> np.ndarray[np.ndarray[float]]:
+	ris = vertici / vertici[:, -1].reshape(-1, 1)
+	ris[(ris < -2) | (ris > 2)] = 0
+	return ris
+\end{lstlisting}
+
+\newpage
+
+\begin{lstlisting}[style=Pythonstyle, caption={Matrice di cambio sistema di riferimento (schermo)}]
+@staticmethod
+def screen_world() -> np.ndarray[np.ndarray[float]]:
+	return np.array([
+		[1,0,0,0],
+		[0,0,1,0],
+		[0,-1,0,0],
+		[0,0,0,1]
+	])
+\end{lstlisting}
+
+\begin{lstlisting}[style=Pythonstyle, caption={Matrice di adattamento spazio normalizzato a dimensione dello schermo in px}]
+@staticmethod
+def centra_schermo(W, H):
+return np.array([
+	[W/2, 0, 0, 0],
+	[0, H/2, 0, 0],
+	[0, 0, 1, 0],
+	[W/2, H/2, 0, 1]
+	])
+\end{lstlisting}
+	
+\begin{lstlisting}[style=Pythonstyle, caption={prima e seconda parte dell'aggiornamento degli attributi della camera}]
+def rotazione_camera(self) -> None:
+	'''
+	Applico le rotazioni in ordine Eulero XYZ ai vari vettori di orientamento della camera
+	'''
+	self.rig = self.rig_o @ Mate.rotx(self.becche)
+	self.ups = self.ups_o @ Mate.rotx(self.becche)
+	self.dir = self.dir_o @ Mate.rotx(self.becche)
+
+	self.rig = self.rig @ Mate.roty(self.rollio)
+	self.dir = self.dir @ Mate.roty(self.rollio)
+	self.ups = self.ups @ Mate.roty(self.rollio)
+
+	self.rig = self.rig @ Mate.rotz(self.imbard)
+	self.ups = self.ups @ Mate.rotz(self.imbard)
+	self.dir = self.dir @ Mate.rotz(self.imbard)
+
+	'------------------------------------------------------------------'
+
+	self.pos -= self.focus
+	self.pos = self.pos @ Mate.rotz(- self.delta_imbard)
+	self.pos = self.pos @ Mate.rot_ax(self.rig, self.delta_becche)
+	self.pos += self.focus
+\end{lstlisting}
+
+% \newpage
+% \section{Raytracer}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \subsection{Guideline}
+
+% \begin{itemize}
+% \item \underline{Cambio scena:} Bisognerà poter switchare da plot a raytracer
+% \item \underline{Schermo per visualizzare un array:} Adattarsi alla dimensione, controllare performance, aggiungere controlli come bottoni di accensione, refresh, noise, dimensione e controlli generici
+% \item \underline{Controlli di zoom:} Provare con zoom in, out, adattamento schermo, pan.
+% \item \underline{Wireframe:} Aggiungere wireframe e pointcloud.
+% \item \underline{Mesh:} Creare classe che contenga: punti, link, attributi
+% \item \underline{Camera:} Creare classe Camera che regga il movimento, orbit pan e info sulla prospettiva
+% \item \underline{UI:} Aggiungere UI per stare dietro ai parametri richiesti 
+% \item \underline{Add / Delete:} Poter gestire la scena aggiungendo e rimuovendo oggetti e controllare i loro attributi
+% \item \underline{Rasterization:} Implementare sistema di renderizzazione per pixel  
+% \item \underline{Affine vs Perspective:} Sistemare Texture Sampler in cui andiamo a dividere per la profondità per mappare i valori e li rimoltiplichiamo per ottenere i veri valori
+% \item \underline{Raytracer:} Impostare un sistema di lancio raggi. test normal, direzione, sphere mapping.
+% \item \underline{Sfere:} 
+% \item \underline{Luce:} 
+% \item \underline{Triangoli:} 
+% \item \underline{AO:} 
+% \item \underline{Textures:} 
+% \end{itemize}
+
+% \newpage
+% \section{Chimica}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Meccanica quantistica}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Cristallografia}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Tavola periodica}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Timer}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Appunti}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{Salvataggio / Impostazioni}
+% \subsection{Overview}
+% \subsection{Implementazioni}
+% \subsection{Integrazione}
+% \newpage
+% \section{UI}
+% \subsection{Integrazione}
+% \subsection{Funzionalità}
+% \newpage
+% \section{TODO}
+% \newpage
+% \section{Cool projects}
+% \subsection{Particle simulator}
+% \subsection{AI for simple physics}
+% \subsection{Terrain simulator}
+% \subsection{Sudoku solver (WFC)}
+% \subsection{Integrazione Bonsai}
+% \subsection{TODO / progress tracker}
+% \subsection{Music}
+
+
+\end{document}
