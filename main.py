@@ -2,12 +2,13 @@ import os, cProfile, configparser
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from pygame.locals import *
 import pygame
+import multiprocessing
     
 def main(config: configparser):
     
     from _modulo_UI import UI, Logica
     from _modulo_plots import Painter
-    from _modulo_3D_grafica import TreDi, Camera
+    from _modulo_3D_grafica import TreDi
 
     ui = UI(config)
     logica = Logica()
@@ -54,7 +55,7 @@ def main(config: configparser):
         # controllo di uscita dal programma ed eventuale aggiornamento dello schermo
         ui.mouse_icon(logica)   # lanciato due volte per evitare flickering a bassi FPS
         ui.aggiornamento_e_uscita_check()
-        
+                        
 
 if __name__ == "__main__":
     

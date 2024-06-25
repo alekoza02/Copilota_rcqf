@@ -8,7 +8,9 @@ import wmi
 import configparser
 import threading
 
+
 from _modulo_MATE import Mate
+from _modulo_multiprocess_classes import AvvioMultiProcess
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -788,11 +790,11 @@ class TabUI:
 
     def disegna_tab(self, logica):
         if self.renderizza:
+            if not self.ui_signs is None: [segno.disegnami() for segno in self.ui_signs]
             if not self.labels is None: [label.disegnami() for label in self.labels]
             if not self.bottoni is None: [bottone.disegnami() for bottone in self.bottoni]
             if not self.entrate is None: [entrata.disegnami(logica) for entrata in self.entrate]
             if not self.scroll_consoles is None: [scrolla.disegnami(logica) for scrolla in self.scroll_consoles]
-            if not self.ui_signs is None: [segno.disegnami() for segno in self.ui_signs]
 
 
     def __str__(self) -> str:
@@ -891,6 +893,8 @@ class UI:
         self.scena["tracer"] = Scena(self.parametri_scena_repeat); self.scena["tracer"].build_tracer()
 
         self.entrata_attiva: Entrata = None
+
+        self.multi_flags: dict[str, bool] = {"gradient" : False}
 
 
     def cambio_opacit(self) -> None:
@@ -1324,24 +1328,70 @@ class UI:
                     # Inizio sezione push events
                     if al_sc.bottoni["mode1"].toggled:
                         al_sc.bottoni["mode1"].push()
-                        tredi.grab_attribute("rgb")
-                        al_sc.label_text["render_mode"].text = "Channel scelto: RGB"
+                        
+                        al_sc.label_text["render_mode"].text = "Channel scelto: gradiente"
+                        
+                        thread = threading.Thread(target=AvvioMultiProcess.avvio_multi_tracer, args=(tredi, "gradiente"))
+                        thread.start()
                     
                     if al_sc.bottoni["mode2"].toggled:
                         al_sc.bottoni["mode2"].push()
-                        tredi.grab_attribute("normal")
-                        al_sc.label_text["render_mode"].text = "Channel scelto: normal"
+                        
+                        al_sc.label_text["render_mode"].text = "Channel scelto: camera dir"
+                        
+                        tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
+
+                        thread = threading.Thread(target=AvvioMultiProcess.avvio_multi_tracer, args=(tredi, "direction"))
+                        thread.start()
                     
                     if al_sc.bottoni["mode3"].toggled:
                         al_sc.bottoni["mode3"].push()
-                        tredi.grab_attribute("rgb")
                         
-                        thread = threading.Thread(target=tredi.pathtracer.gradient, args=(tredi, ))
+                        al_sc.label_text["render_mode"].text = "Channel scelto: Sfere"
+                        
+                        tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
+
+                        thread = threading.Thread(target=AvvioMultiProcess.avvio_multi_tracer, args=(tredi, "sfere"))
+                        thread.start()
+                    
+                    if al_sc.bottoni["mode4"].toggled:
+                        al_sc.bottoni["mode4"].push()
+                        
+                        al_sc.label_text["render_mode"].text = "Channel resettato"
+                        
+                        tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
+
+                        thread = threading.Thread(target=AvvioMultiProcess.avvio_multi_tracer, args=(tredi, "reset"))
                         thread.start()
 
-                        al_sc.label_text["render_mode"].text = "Channel scelto: RGB gradiente"
                     # Fine sezione push events
                     '-----------------------------------------------------------------------------------------------------'
+
+                    # Inizio sezione events toggled:
+                    if al_sc.bottoni["indice"].toggled: 
+                        tredi.pathtracer.mode = 0
+                        if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
+                            tredi.pathtracer.old_mode = tredi.pathtracer.mode
+                            tredi.pathtracer.update_array() 
+                    
+                    if al_sc.bottoni["albedo"].toggled: 
+                        tredi.pathtracer.mode = 1
+                        if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
+                            tredi.pathtracer.old_mode = tredi.pathtracer.mode
+                            tredi.pathtracer.update_array()
+                    
+                    if al_sc.bottoni["normali"].toggled: 
+                        tredi.pathtracer.mode = 2
+                        if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
+                            tredi.pathtracer.old_mode = tredi.pathtracer.mode
+                            tredi.pathtracer.update_array()
+                    
+                    if al_sc.bottoni["ao"].toggled: 
+                        tredi.pathtracer.mode = 3
+                        if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
+                            tredi.pathtracer.old_mode = tredi.pathtracer.mode
+                            tredi.pathtracer.update_array()
+
 
                     # raccolta di tutti i testi già presenti nelle entrate
                     test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
@@ -1637,10 +1687,17 @@ class Scena:
         # statici
         self.bottoni["points"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=65, y=51, text="Points", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["links"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=72, y=51, text="Links", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["mode1"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=65, y=51, text="Background", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["mode2"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=72, y=51, text="Normal", toggled=True, tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["mode3"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=79, y=51, text="Gradiente", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["mode1"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=65, y=51, text="Gradiente", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["mode2"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=65, y=54, text="Direction camera", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["mode3"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=65, y=57, text="Sfera", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["mode4"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=65, y=60, text="Background", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         
+        self.bottoni["indice"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=85, y=60, text="Indice", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["albedo"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=85, y=57, text="Albedo", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["normali"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=85, y=54, text="Normali", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["ao"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=85, y=51, text="Ambient Occlusion", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.multi_box["view_mode"] = MultiBox([self.bottoni["indice"], self.bottoni["albedo"], self.bottoni["normali"], self.bottoni["ao"]])
+
         # scelta TAB
         self.bottoni["tab_scene"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=70, y=6+2, text="Scena", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["tab_raytracer"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=77, y=6+2, text="Render settings", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
@@ -1682,6 +1739,18 @@ class Scena:
         self.ui_signs["titolo_props"] = UI_signs(self.parametri_repeat_elementi, x1=61, y1=33, x2=98, y2=33, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
         self.ui_signs["props_settings"] = UI_signs(self.parametri_repeat_elementi, x1=61, y1=48, x2=98, y2=48, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
         
+        self.ui_signs["coll_normali1"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=55, x2=85, y2=55, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        self.ui_signs["coll_normali2"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=55, x2=76, y2=58, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        
+        self.ui_signs["coll_ao1"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=52, x2=85, y2=52, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        self.ui_signs["coll_ao2"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=52, x2=76, y2=58, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        
+        self.ui_signs["coll_indice1"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=61, x2=85, y2=61, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        self.ui_signs["coll_indice2"] = UI_signs(self.parametri_repeat_elementi, x1=78, y1=61, x2=76, y2=58, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+        
+        self.ui_signs["coll_albedo1"] = UI_signs(self.parametri_repeat_elementi, x1=65, y1=58, x2=85, y2=58, spessore=2, bg=eval(self.config.get(self.tema, 'UI_signs')))
+
+
         segni_ancora = []
         for i in range(100):
             # if i % 10 == 0:
@@ -1704,7 +1773,9 @@ class Scena:
         
         self.tabs["tracer_settings"] = TabUI(name="tracer_settings", abilita=False, renderizza=False,
             labels=[self.label_text["render_mode"]],
-            bottoni=[self.bottoni["mode1"], self.bottoni["mode2"], self.bottoni["mode3"]]
+            bottoni=[self.bottoni["mode1"], self.bottoni["mode2"], self.bottoni["mode3"], self.bottoni["mode4"], self.bottoni["albedo"], self.bottoni["normali"], self.bottoni["ao"], self.bottoni["indice"]],
+            ui_signs=[self.ui_signs["coll_normali1"], self.ui_signs["coll_normali2"], self.ui_signs["coll_ao1"], self.ui_signs["coll_ao2"], self.ui_signs["coll_indice1"], self.ui_signs["coll_indice2"], self.ui_signs["coll_albedo1"]],
+            multi_boxes=[self.multi_box["view_mode"]]
         )
         
         

@@ -110,22 +110,18 @@ class Mate:
         ])
     
     @staticmethod
-    def frustrum(W: int, H: int, h_fov: float = np.pi / 6) -> np.ndarray[np.ndarray[float]]:
+    def frustrum(W: int, H: int, h_fov: float) -> np.ndarray[np.ndarray[float]]:
         # qua c'è un meno per sistemare l'orientamento della camera, altrimenti ottieni un'immagine specchiata in prospettiva
         v_fov = h_fov * H / W
-        left = np.tan(h_fov / 2)
-        right = -left
-        top = np.tan(v_fov / 2)
-        bottom = -top
-        far = 1000
-        near = 0.01
+        ori = np.tan(h_fov / 2)
+        ver = np.tan(v_fov / 2)
         return np.array([
-            [-2 / (right - left), 0, 0, 0],
-            [0, 2 / (top - bottom), 0, 0],
-            [0, 0, (far + near) / (far - near), 1],
-            [0, 0, -2 * near * far / (far - near), 0]
+            [1 / ori, 0, 0, 0],
+            [0, 1 / ver, 0, 0],
+            [0, 0, 1, 1],
+            [0, 0, 0, 0]
         ])
-    
+        
     @staticmethod
     def proiezione(vertici: np.ndarray[np.ndarray[float]]) -> np.ndarray[np.ndarray[float]]:
         ris = vertici / vertici[:, -1].reshape(-1, 1)
@@ -230,11 +226,15 @@ class Mate:
 
 
 class RandomAle:
-    def __init__(self):
+    def __init__(self, seed = None):
         self.modulus = 2**32
         self.a = 1103515245
         self.c = 12345
-        self.state = time.time_ns()
+        
+        if seed is None:
+            self.state = time.time_ns()
+        else:
+            self.state = seed
 
     def next(self):
         self.state = (self.a * self.state + self.c) % self.modulus

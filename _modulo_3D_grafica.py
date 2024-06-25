@@ -2,9 +2,9 @@ from numba import njit
 import numpy as np
 import pygame
 import configparser
-from _modulo_UI import Schermo, WidgetDataTracer, Logica, UI, Scena, ScrollConsole
+from _modulo_UI import Schermo, WidgetDataTracer, Logica, UI
 from _modulo_MATE import Mate, AcceleratedFoo, RandomAle
-import threading
+from _modulo_multiprocess_classes import RayTracer
 randale = RandomAle()
 
 class TreDi:
@@ -18,9 +18,6 @@ class TreDi:
         
         self.w: int
         self.h: int
-
-        self.pixel_array: list[Pixel]
-        self.fast_pixel_array: np.array[np.array[float]]
 
         self.ancoraggio_x: int
         self.ancoraggio_y: int
@@ -39,7 +36,6 @@ class TreDi:
 
         self.bounding_box = pygame.rect.Rect([0, 0, 1, 1])
 
-        self.fov: float = np.pi / 6
         self.scenes: dict[str, Geo_Scene] = {}
         self.mode: int
 
@@ -62,13 +58,6 @@ class TreDi:
         self.w = info_schermo.w
         self.h = info_schermo.h
 
-        import gc
-        gc.disable()
-        self.pixel_array = [Pixel() for i in range(self.w * self.h)]
-        gc.enable()
-        
-        self.grab_attribute("rgb")
-    
         self.ridimensiona_carattere = 1 if info_schermo.shift_x == 0 else 0.7
 
         self.ancoraggio_x = info_schermo.ancoraggio_x
@@ -76,8 +65,9 @@ class TreDi:
         
         self.schermo = info_schermo.schermo
 
-        self.pathtracer = RayTracer(self)
-
+        self.pathtracer = RayTracer()
+        self.pathtracer.build(self.w, self.h, self.scenes["debug"].camera)
+        
 
     def change_UI_stuff(self, ui: UI) -> None:
 
@@ -158,7 +148,7 @@ class TreDi:
                 obj.transformed_vertices @= Mate.camera_world(scena.camera) 
                 obj.transformed_vertices @= Mate.screen_world() 
                 
-                obj.transformed_vertices @= Mate.frustrum(self.w, self.h, self.fov) 
+                obj.transformed_vertices @= Mate.frustrum(self.w, self.h, self.scenes["debug"].camera.fov) 
                 obj.transformed_vertices = Mate.proiezione(obj.transformed_vertices) 
 
                 obj.transformed_vertices @= Mate.centra_schermo(self.w, self.h) 
@@ -177,13 +167,14 @@ class TreDi:
 
 
         if widget_data.tab == "tracer_settings":
-            surface = pygame.surfarray.make_surface(self.fast_pixel_array)
-            self.schermo.blit(surface, (self.ancoraggio_x, self.ancoraggio_y))
+            # match self.mode:
+            #     case 0:
+            #     case 1:
+            #     case 2:
+            #     case 3:
 
-
-    def grab_attribute(self, attribute: str):
-        self.fast_pixel_array = np.array([getattr(pixel_sing, attribute) for pixel_sing in self.pixel_array])
-        self.fast_pixel_array = self.fast_pixel_array.reshape(self.w, self.h, -1)
+            surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array_zoomed)
+            self.schermo.blit(surface, (0,0))
         
 
     def TEMPORARY_GENERATION(self):
@@ -196,10 +187,10 @@ class Geo_Scene:
     def __init__(self) -> None:
         self.objects: list[Object] = []
         self.camera: Camera = Camera()
-        self.camera.pos = np.array([11.121, -80.908, 2.858, 1])
+        self.camera.pos = np.array([2.245, -60.454, 1.752, 1])
+        self.camera.becche = 1.534
         self.camera.rollio = 0.000
-        self.camera.becche = 1.472
-        self.camera.imbard = 0.098
+        self.camera.imbard = 0.060
 
         self.elenco_raw: dict[str, Camera | Object] = {}
         self.elemento_attivo: Camera | Object = None
@@ -233,19 +224,32 @@ class Geo_Scene:
 
         i.verteces = Mate.add_homogenous(i.verteces)
 
-        self.objects.append(Object("Sfera_piccola", i.verteces, i.links, z=-8, x=5, sx=4, sy=4, sz=4))
-        self.objects.append(Object("Sfera_grande", i.verteces, i.links, z=-6, sx=8, sy=8, sz=8))
-        self.objects.append(Object("Sfera_pavimento", i.verteces, i.links, z=-110, sx=200, sy=200, sz=200))
-        self.objects.append(Object("Sfera_cielo", i.verteces, i.links, z=110, sx=200, sy=200, sz=200))
-        self.objects.append(Object("Sfera_parete_sx", i.verteces, i.links, x=-110, sx=200, sy=200, sz=200))
-        self.objects.append(Object("Sfera_parete_dx", i.verteces, i.links, x=110, sx=200, sy=200, sz=200))
-        self.objects.append(Object("Sfera_parete_fondo", i.verteces, i.links, y=110, sx=200, sy=200, sz=200))
-        self.objects.append(Object("Luce", i.verteces, i.links, z=18, sx=20, sy=20, sz=20))
+        self.objects.append(Object("Sfera_piccola", i.verteces, i.links, z=-9, x=5, sx=4, sy=4, sz=4, materiale=Materiale(colore=np.array([1., 0.5, 0.]))))
+        self.objects.append(Object("Sfera_grande", i.verteces, i.links, z=-7, x=-2, sx=8, sy=8, sz=8, materiale=Materiale(colore=np.array([0., 0.5, 1.]))))
+        self.objects.append(Object("Sfera_pavimento", i.verteces, i.links, z=-110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_cielo", i.verteces, i.links, z=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", i.verteces, i.links, x=-110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 0., 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", i.verteces, i.links, x=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([0., 1., 0.]))))
+        self.objects.append(Object("Sfera_parete_fondo", i.verteces, i.links, y=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Luce", i.verteces, i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=3)))
         self.elemento_attivo: Camera | Object = self.objects[0]
+        
+        # self.objects.append(Object("Sfera_piccola", i.verteces, i.links, sx=2, sy=2, sz=2))
+        # self.elemento_attivo: Camera | Object = self.objects[0]
+
+
+
+class Materiale:
+    def __init__(self, colore = np.array([1,1,1]), emissione_forza = 0, emissione_colore = np.array([1,1,1])) -> None:
+        self.colore = colore
+        self.emissione_forza = emissione_forza
+        self.emissione_colore = emissione_colore
+        self.metal = False
+
 
 
 class Object:
-    def __init__(self, nome, vertici, links, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True) -> None:
+    def __init__(self, nome, vertici, links, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True, materiale: Materiale = Materiale()) -> None:
         self.name = nome
         self.vertices: np.ndarray[np.ndarray[float]] = vertici
         self.transformed_vertices: np.ndarray[np.ndarray[int]] = vertici
@@ -265,7 +269,12 @@ class Object:
 
         self.wireframe = wireframe
 
-    
+        self.materiale = materiale
+
+    @property
+    def pos(self):
+        return np.array([self.x, self.y, self.z])
+
     def applica_rotazioni(self) -> None:
         '''
         Applicazioni rotazioni eulero XYZ
@@ -397,6 +406,7 @@ class Camera:
         # up = verso asse y positivo
 
         self.name: str = "Camera"
+        self.fov: float = np.pi / 6
 
         self.pos: np.ndarray[float] = np.array([0.,0.,1.,1])
         self.focus: np.ndarray[float] = np.array([0.,0.,0.,1])
@@ -506,6 +516,8 @@ class Camera:
         if logica.scroll_up > 0: logica.scroll_up -= 3
         else: logica.scroll_up = 0
 
+
+
 class Importer:
     def __init__(self, use_file = True, use_struttura = False) -> None:
         self.use_file = use_file
@@ -559,20 +571,3 @@ class Importer:
                 self.texture = self.texture.transpose(1,0,2)
                 self.texture = self.texture[:,::-1,:]
 
-class Pixel:
-    def __init__(self) -> None:
-        self.rgb = np.array([35, 35, 35])
-        self.AO = 0
-        self.normal = np.array([0,0,0])
-
-
-class RayTracer:
-    def __init__(self, tredi: TreDi) -> None:
-        self.w = tredi.w
-        self.h = tredi.h
-
-    def gradient(self, tredi: TreDi):
-        for x in range(self.w):
-            for y in range(self.h):
-                tredi.pixel_array[x * self.w + y].rgb = np.array([255 * x/self.w, 255 * y/self.h, 255]).astype(int)
-                tredi.fast_pixel_array[x, y, :] = np.array([255 * x/self.w, 255 * y/self.h, 255]).astype(int)

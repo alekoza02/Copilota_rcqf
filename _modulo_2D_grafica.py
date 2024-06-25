@@ -36,6 +36,28 @@ class Image:
         self.zoom = self.image[X, Y, :]
 
 
+class Zoomer:
+    def __init__(self, w, h) -> None:
+
+        self.w = w
+        self.h = h
+
+        self.output = np.zeros((w, h, 3))
+        self.X, self.Y = np.indices((self.w, self.h))
+
+
+    def adatta_input2output(self, input):
+        
+        fattore = self.w / input.shape[0]
+
+        X = np.repeat(np.repeat(self.X, fattore, axis=0), fattore, axis=1).astype(int)
+        Y = np.repeat(np.repeat(self.Y, fattore, axis=0), fattore, axis=1).astype(int)
+
+        self.output = input[X[:self.w, :self.w], Y[:self.h, :self.h], :]
+
+        return self.output
+
+    
 
 if __name__ == "__main__":
 
