@@ -9,3 +9,13 @@
 \contentsline {paragraph}{Schermo:}{3}{}%
 \contentsline {paragraph}{Aggiornamento degli attributi:}{3}{}%
 \contentsline {subsection}{\numberline {1.4}Codice delle varie funzioni}{4}{}%
+\contentsline {section}{\numberline {2}Camera sync}{8}{}%
+\contentsline {subsection}{\numberline {2.1}Approccio matriciale}{8}{}%
+\contentsline {paragraph}{Spigazione:}{8}{}%
+\contentsline {subsection}{\numberline {2.2}Approccio generazione raggi}{8}{}%
+\contentsline {paragraph}{Spigazione:}{8}{}%
+\contentsline {subsection}{\numberline {2.3}Risultati}{9}{}%
+\contentsline {section}{\numberline {3}Ray - Sphere intersection}{10}{}%
+\contentsline {paragraph}{Discussione risultati:}{10}{}%
+\contentsline {paragraph}{Spiegazioni del codice:}{10}{}%
+\contentsline {section}{\numberline {4}Ray - Triangle intersection}{11}{}%

@@ -1,6 +1,7 @@
 \documentclass{article}
 \usepackage{geometry}
 \usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -46,10 +47,10 @@
 \setcounter{page}{0}
 
 \geometry{
-	left=.7in,  
-	right=.7in, 
-	top=.7in,   
-	bottom=.7in,
+	left=.6in,  
+	right=.6in, 
+	top=.6in,   
+	bottom=.6in,
 }
 
 
@@ -262,41 +263,40 @@ def camera_world(camera: np.ndarray) -> np.ndarray[np.ndarray[float]]:
 \begin{lstlisting}[style=Pythonstyle, caption={Matrici di applicazione prospettiva}]
 @staticmethod
 def frustrum(W: int, H: int, h_fov: float = np.pi / 6) -> np.ndarray[np.ndarray[float]]:
-	# qua c'e' un meno per sistemare l'orientamento della camera, altrimenti ottieni un'immagine specchiata in prospettiva
 	v_fov = h_fov * H / W
-	left = np.tan(h_fov / 2)
-	right = -left
-	top = np.tan(v_fov / 2)
-	bottom = -top
-	far = 1000
-	near = 0.01
+	ori = np.tan(h_fov / 2)
+	ver = np.tan(v_fov / 2)
 	return np.array([
-		[-2 / (right - left), 0, 0, 0],
-		[0, 2 / (top - bottom), 0, 0],
-		[0, 0, (far + near) / (far - near), 1],
-		[0, 0, -2 * near * far / (far - near), 0]
+		[1 / ori, 0, 0, 0],
+		[0, 1 / ver, 0, 0],
+		[0, 0, 1, 1],
+		[0, 0, 0, 0]
 	])
 
 @staticmethod
 def proiezione(vertici: np.ndarray[np.ndarray[float]]) -> np.ndarray[np.ndarray[float]]:
+	distanze = vertici[:, -1]
+	indici_dist_neg = np.where(distanze < 0)
+
 	ris = vertici / vertici[:, -1].reshape(-1, 1)
-	ris[(ris < -2) | (ris > 2)] = 0
+	ris[(ris < -12) | (ris > 12)] = 2
+	ris[indici_dist_neg] = np.array([2, 2, 2, 1])
+
 	return ris
 \end{lstlisting}
 
-\newpage
 
 \begin{lstlisting}[style=Pythonstyle, caption={Matrice di cambio sistema di riferimento (schermo)}]
-@staticmethod
-def screen_world() -> np.ndarray[np.ndarray[float]]:
+	@staticmethod
+	def screen_world() -> np.ndarray[np.ndarray[float]]:
 	return np.array([
 		[1,0,0,0],
 		[0,0,1,0],
 		[0,-1,0,0],
 		[0,0,0,1]
-	])
+		])
 \end{lstlisting}
-
+	
 \begin{lstlisting}[style=Pythonstyle, caption={Matrice di adattamento spazio normalizzato a dimensione dello schermo in px}]
 @staticmethod
 def centra_schermo(W, H):
@@ -307,7 +307,9 @@ return np.array([
 	[W/2, H/2, 0, 1]
 	])
 \end{lstlisting}
-	
+
+\newpage
+
 \begin{lstlisting}[style=Pythonstyle, caption={prima e seconda parte dell'aggiornamento degli attributi della camera}]
 def rotazione_camera(self) -> None:
 	'''
@@ -332,6 +334,112 @@ def rotazione_camera(self) -> None:
 	self.pos = self.pos @ Mate.rot_ax(self.rig, self.delta_becche)
 	self.pos += self.focus
 \end{lstlisting}
+
+\newpage
+
+\section{Camera sync}
+Dal momento che usiamo le matrici per generare la prospettiva nel caso del wireframe e generiamo dei raggi per ricreare lo stesso effetto nel raytracer, è necessario trovare un sistema che unifica questi metodi per riottenere la stessa immagine.
+\\
+Ci baseremo sul fornire ad entrambi i sistemi una variabile \texttt{fov} che indicherà l'apertura focale in radianti.
+\subsection{Approccio matriciale}
+\begin{lstlisting}[style=Pythonstyle, caption={Matrici di applicazione prospettiva}]
+@staticmethod
+def frustrum(W: int, H: int, h_fov: float=np.pi/6) -> np.ndarray[float]:
+	v_fov = h_fov * H / W
+	ori = np.tan(h_fov / 2)
+	ver = np.tan(v_fov / 2)
+	return np.array([
+		[1 / ori, 0, 0, 0],
+		[0, 1 / ver, 0, 0],
+		[0, 0, 1, 1],
+		[0, 0, 0, 0]
+	])
+\end{lstlisting}
+%
+\paragraph{Spigazione:}
+Con questo sistema noi possiamo calcolare la divergenza della geometria sfruttando il funzionamento della prospettiva stessa, ovvero che i punti tendono a seguire uno spostamento di $\cot(\text{fov})$, il quale successivamente verrà diviso per la propria distanza.
+
+\subsection{Approccio generazione raggi}
+
+\begin{lstlisting}[style=Pythonstyle, caption={Calcolo della direzione del raggio generato in base al fov}]
+def direzione(i, j) -> float:
+	return camera.dir[:3] * (1 / np.tan(camera.fov / 2)) + (2 * (i / wo) - 1) * camera.rig[:3] + (2 * (j / ho) - 1) * (- camera.ups[:3]) / (wo/ho)
+\end{lstlisting}
+%
+\paragraph{Spigazione:}
+Dal momento che della camera noi conosciamo la direzione, la sua destra e il suo alto, possiamo calcolare di quanto dovrebbe estendersi il versore direzione affinchè sommato con il versore destra e alto, ci restituisca la direzione corretta. Nel codice manca la normalizzazione del risultato (eseguita più avanti). 
+La necessità di dividere per 2 l'angolo del \texttt{fov} è dovuta alla scala usata. Infatti nel calcolo matriciale la base del triangolo isoscele che si forma considerando il vertice coincidente con la posizione della camera, avrà dimensione 1. Nel Case invece dei raggi generati, i versori saranno $\pm$ 1, dandoci un $\Delta$ tot = 2, e che quindi corrisponde a scala doppia.
+
+\subsection{Risultati}
+
+\begin{center}
+    \begin{minipage}{0.49\textwidth}
+        \includegraphics*[width=\linewidth]{../images/rendered.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \includegraphics*[width=\linewidth]{../images/wireframe.png}
+    \end{minipage}
+\end{center}
+
+\newpage
+\section{Ray - Sphere intersection}
+
+Il problema principale risiede nel calcolare il risultato dell'equazione per ottenere l'intersezione (minima e massima).
+Per risolverla dobbiamo risolvere l'equazione che mette in relazione: origine del raggio, direzione del raggio, posizione della sfera e raggio della sfera.
+
+$$| ray.ori + ray.dir * t | ^ 2 = | sphere.pos + sphere.radius | ^ 2$$
+
+Sappiamo che risulta tutto più comodo se la sfera è centrata sull'origine, possiamo quindi fare una trasformazione e chiamare $oc$ la differenza tra $\vec{ray.ori} - \vec{sphere.ori}$.
+
+$$| oc + ray.dir * t | ^ 2 = | sphere.radius | ^ 2$$
+
+$$oc^2 + (ray.dir * t) ^ 2 + 2*oc*ray.dir*t = sphere.radius ^ 2$$
+
+$$ray.dir^2 * t^2 + 2*oc*ray.dir*t + oc^2 - sphere.radius ^ 2 = 0$$
+
+Se volessimo risolvere per t, otterremmo un'equazione di secondo grado di forma: $ax^2 + bx + c = 0$, dove $a = ray.dir^2$, il quale essendo un versore sarà uguale a 1; $b = 2*oc*ray.dir$; $c = oc^2 - sphere.radius^2$. 
+\\
+Da qui risolviamo il discriminante e otteniamo i possibili risultati.
+\paragraph{Discussione risultati:} Dobbiamo sempre considerare il risultato minimo positivo per eseguire la corretta intersezione. Attenzione che nel caso del vetro bisognerà considerare quello più lontano in certi casi, qualora si volesserò simulare trasmissioni ecc.
+\paragraph{Spiegazioni del codice:} Eseguire il prodotto scalare di un vettore per se stesso, ci darà il valore del suo modulo. La presenza del test $> 0.001$ invece, è dovuto per evitare errori di appossimazioni in cui l'origine del raggio successivo è di poco al di sotto della superficie, risultando quindi in una collisione con se stesso.
+
+\begin{lstlisting}[style=Pythonstyle, caption={Codice intersezione raggio - sfera}]
+def collisione_sphere(self, ray, record: Record):
+	oc = ray.pos - self.pos;
+	
+	a = 1.0;
+	b = np.dot(oc, ray.dir) * 2.0;
+	c = np.dot(oc, oc) - (self.radius) ** 2;
+
+	discriminante = b ** 2 - 4.0 * a * c;
+	
+	if discriminante >= 0.0:
+		sqrt_discr = discriminante ** 0.5
+		
+		delta_min = (- b - sqrt_discr) / (2.0*a);
+		delta_max = (- b + sqrt_discr) / (2.0*a);
+		
+		if delta_max > 0.001:
+			t = delta_max
+			if delta_min > 0.001 and delta_min < delta_max:
+				t = delta_min
+
+			if t < record.distanza:
+				record.colpito = True;
+				record.distanza = t;
+				record.indice_oggetti_prox = self.indice;
+				record.punto_colpito = self.punto_colpito(ray, record.distanza);
+				record.norma_colpito = self.normale_colpita(record.punto_colpito);
+				record.materiale = self.materiale;
+		
+	return record
+\end{lstlisting}
+
+\newpage
+\section{Ray - Triangle intersection}
+
+Questo sarà l'algoritmo su cui si baserà la maggior parte dei test. Le sfere verranno usate per la luce, i triangoli invece per le mesh 
 
 % \newpage
 % \section{Raytracer}

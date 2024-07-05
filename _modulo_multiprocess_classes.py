@@ -1,14 +1,19 @@
 import numpy as np
 import multiprocessing
 from _modulo_2D_grafica import Zoomer
-from random import random, uniform, normalvariate
-
+from _modulo_MATE import AcceleratedFoo
+from random import uniform
+from time import perf_counter_ns, perf_counter
+from memory_profiler import profile
+import time
 
 class Settings:
-    def __init__(self, samples, bounces) -> None:
+    def __init__(self, samples, bounces, sample_update, cores, res) -> None:
         self.samples = samples
         self.bounces = bounces
-        self.sample_packet = 4
+        self.sample_packet = sample_update
+        self.cores = cores
+        self.resolution_chunck = (res, res)
 
 
 class Raggio:
@@ -28,7 +33,7 @@ class Record:
 
 
 class RenderChunck:
-    def __init__(self, ori_w, ori_h, w, h, x, y, index, settings) -> None:
+    def __init__(self, ori_w, ori_h, w, h, x, y, index) -> None:
         
         self.ori_w: int = ori_w
         self.ori_h: int = ori_h
@@ -42,10 +47,12 @@ class RenderChunck:
         self.albedo = np.zeros((self.w, self.h, 3))
         self.normal = np.zeros((self.w, self.h, 3))
         self.indici = np.zeros((self.w, self.h, 3))
-        self.amb_oc = np.zeros((self.w, self.h, 3))
-        self.amb_oc_distances = np.zeros((self.w, self.h, settings.samples))
+        self.tempi = np.zeros((self.w, self.h))
+        self.amb_oc = np.zeros((self.w, self.h))
+        self.bounces = np.zeros((self.w, self.h))
 
         self.samples_rendered = 0
+        self.reset = False
 
 
 class RayTracer:
@@ -59,13 +66,22 @@ class RayTracer:
         self.mode = 0
         self.old_mode = 0
 
-        self.settings = Settings(1024, 6)
+        self.stats = "Inizia la renderizzazione per le statistiche"
+        self.start_time_str = "Non ancora avviato"
+        self.start_time = 0.0
+        self.end_time = 0.0
+        self.tempo_avvio = 7
+
+        self.running = False
 
 
-    def build(self, w, h, camera):
+    def build(self, w, h, camera, factor_x=1, factor_y=1, samples=32, bounces=6, sample_update=4, cores=9, res=3):
 
-        self.w = int(w / 6)
-        self.h = int(h / 6) 
+        self.w = int(w * factor_x)
+        self.h = int(h * factor_y)
+
+        self.settings = Settings(1 + samples, bounces, sample_update, cores, res)
+
         self.pixel_array = np.zeros((self.w, self.h, 3), dtype=np.int8)
         self.pixel_array_zoomed = np.zeros((w, h, 3), dtype=np.int8)
         self.chuncks = []
@@ -73,47 +89,94 @@ class RayTracer:
         self.camera = camera
         self.zoomer: Zoomer = Zoomer(w, h)
 
-        self.res_x, self.res_y = 6, 6
-
-        dim_x = int(self.w / (self.res_x - 1))
-        dim_y = int(self.h / (self.res_y - 1))
+        self.res_x, self.res_y = self.settings.resolution_chunck
 
         for x in range(self.res_x):
             for y in range(self.res_y):
-                anchor_x = self.w - (dim_x * (self.res_x - 1)) if x == (self.res_x - 1) else dim_x * x
-                anchor_y = self.h - (dim_y * (self.res_y - 1)) if y == (self.res_y - 1) else dim_y * y
-                    
-                self.chuncks.append(RenderChunck(self.w, self.h, dim_x, dim_y, anchor_x, anchor_y, len(self.chuncks), self.settings))
 
+                dim_x = self.w // self.res_x
+                dim_y = self.h // self.res_y
+                
+                rim_x = self.w % self.res_x
+                rim_y = self.h % self.res_y
+                
+                width_x = self.w - dim_x * (self.res_x - 1) if x == (self.res_x - 1) and rim_x > 0 else dim_x 
+                width_y = self.h - dim_y * (self.res_y - 1) if y == (self.res_y - 1) and rim_y > 0 else dim_y 
 
+                anchor_x = self.w - width_x if x == (self.res_x - 1) else dim_x * x
+                anchor_y = self.h - width_y if y == (self.res_y - 1) else dim_y * y
+
+                self.chuncks.append(RenderChunck(self.w, self.h, width_x, width_y, anchor_x, anchor_y, len(self.chuncks)))
+
+        
     def update_chunck(self, chunck: RenderChunck):
         self.chuncks[chunck.index] = chunck
-        # if chunck.index % 12 == 0:
-            # self.update_array()
+        self.update_array()
 
 
     def update_array(self):
+
+        max_time = 0
         for chunck in self.chuncks:
-            match self.mode:
-                case 0:
-                    self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = chunck.indici
-                case 1:
-                    ris = np.sqrt(chunck.albedo / (chunck.samples_rendered + 1)) * 255
-                    ris[ris > 255] = 255
-                    self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = ris
-                case 2:
-                    self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = chunck.normal
-                case 3:
-                    single_channel = np.clip(np.sum(1 / (chunck.amb_oc_distances[:, :, :chunck.samples_rendered] + 1), axis=2) / (chunck.samples_rendered + 1), 0, 1)
-                    single_channel = 1 - single_channel
-                    chunck.amb_oc = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
-                    self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = chunck.amb_oc
+            max_time = np.maximum(max_time, np.max(chunck.tempi))
+
+        for chunck in self.chuncks:
+            if chunck.samples_rendered > 0:
+                match self.mode:
+                    case 0:
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = 255 * chunck.indici / chunck.samples_rendered
+                    case 1:
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = self.tone_mapping(chunck)
+                    case 2:
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = 255 * chunck.normal / chunck.samples_rendered
+                    case 3:
+                        single_channel = np.clip(chunck.amb_oc / chunck.samples_rendered, 0, 1)
+                        single_channel = 1 - single_channel
+                        multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
+                    case 4:
+                        single_channel = np.clip(chunck.tempi / max_time, 0, 1)
+                        multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
+                    case 5:
+                        multip_channel = np.repeat(chunck.bounces[:,:,None], 3, axis=2) * 255 / (self.settings.bounces * chunck.samples_rendered)
+                        self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
+
+            if chunck.reset:
+                chunck.reset = False
+                self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = chunck.albedo + 30
 
         self.pixel_array_zoomed = self.zoomer.adatta_input2output(self.pixel_array.astype(np.int8))
-    
+        # self.pixel_array_zoomed = self.pixel_array
+        self.analisi_tempi()
+
 
     def update_camera(self, camera):
         self.camera = camera
+
+
+    def tone_mapping(self, chunck):
+        ris = np.sqrt(chunck.albedo / chunck.samples_rendered) * 255
+        ris[ris > 255] = 255
+        return ris
+
+
+    def analisi_tempi(self):
+        if self.running:
+            average_samples = 0
+            for index, chunck in enumerate(self.chuncks):
+                average_samples += chunck.samples_rendered
+
+            average_samples /= len(self.chuncks)
+            if average_samples == 0:
+                self.stats = f"Ora di inizio: {self.start_time_str}"
+            else:
+                self.stats = f"Ora di inizio: {self.start_time_str}\nTrascorso: {time.time() - self.start_time:.2f} secondi\nSamples renderizzati in media: {average_samples:.2f}/{self.settings.samples} ({100 * average_samples / self.settings.samples:.1f}%)\nTempo stimato alla fine: {(self.settings.samples - average_samples) * (time.time() - self.start_time) / (average_samples):.2f} secondi"
+        else:
+            if self.start_time_str == "Non ancora avviato":
+                self.stats = f"Fai partire prima la renderizzazione"
+            else:
+                self.stats = f"Ora di inizio: {self.start_time_str}\nTerminato in: {time.time() - self.start_time:.2f} secondi"
 
 
 class Sphere:
@@ -121,37 +184,46 @@ class Sphere:
     def __init__(self, pos, radius, materiale, indice) -> None:
         self.pos = pos 
         self.radius = radius
+        self.radius_sqr = radius ** 2
         self.materiale = materiale
         self.indice = indice
 
+        self.BB = np.array([self.pos - self.radius, self.pos + self.radius])
+
+
+    def collision_BB_sphere(self, ray: Raggio):
+        return AcceleratedFoo.test(self.BB, ray.pos, ray.dir)
+
 
     def collisione_sphere(self, ray, record: Record):
-        oc = ray.pos - self.pos;
-        
-        a = 1.0;
-        b = np.dot(oc, ray.dir) * 2.0;
-        c = np.dot(oc, oc) - (self.radius) ** 2;
 
-        discriminante = b ** 2 - 4.0 * a * c;
-        
-        if discriminante >= 0.0:
-            sqrt_discr = discriminante ** 0.5
-            
-            delta_min = (- b - sqrt_discr) / (2.0*a);
-            delta_max = (- b + sqrt_discr) / (2.0*a);
-            
-            if delta_max > 0.001:
-                t = delta_max
-                if delta_min > 0.001 and delta_min < delta_max:
-                    t = delta_min
+        if self.collision_BB_sphere(ray):
 
-                if t < record.distanza:
-                    record.colpito = True;
-                    record.distanza = t;
-                    record.indice_oggetti_prox = self.indice;
-                    record.punto_colpito = self.punto_colpito(ray, record.distanza);
-                    record.norma_colpito = self.normale_colpita(record.punto_colpito);
-                    record.materiale = self.materiale;
+            oc = ray.pos - self.pos;
+            
+            b = np.dot(oc, ray.dir) * 2.0;
+            c = np.dot(oc, oc) - self.radius_sqr;
+
+            discriminante = b ** 2 - 4.0 * c;
+            
+            if discriminante >= 0.0:
+                sqrt_discr = discriminante ** 0.5
+                
+                delta_min = (- b - sqrt_discr) / 2.0;
+                delta_max = (- b + sqrt_discr) / 2.0;
+                
+                if delta_max > 0.001:
+                    t = delta_max
+                    if delta_min > 0.001 and delta_min < delta_max:
+                        t = delta_min
+
+                    if t < record.distanza:
+                        record.colpito = True;
+                        record.distanza = t;
+                        record.indice_oggetti_prox = self.indice;
+                        record.punto_colpito = self.punto_colpito(ray, record.distanza);
+                        record.norma_colpito = self.normale_colpita(record.punto_colpito);
+                        record.materiale = self.materiale;
             
         return record
 
@@ -189,32 +261,11 @@ class RenderingModes:
         norma = np.linalg.norm(ris, axis=2)
         ris /= norma[:,:,None]
         return ris
-
-
-    @staticmethod
-    def gradient_chunck(args: tuple[RenderChunck, any]) -> RenderChunck:
-        chunck: RenderChunck = args[0]
-        for x in range(chunck.w):
-            for y in range(chunck.h):
-                chunck.albedo[x, y, :] = np.array([255 * (chunck.x + x)/chunck.ori_w, 255 * (chunck.y + y)/chunck.ori_h, 255]).astype(int)
-        return chunck
-
-
-    @staticmethod
-    def direction_chunck(args: tuple[RenderChunck, any]) -> RenderChunck:
-        chunck: RenderChunck = args[0]
-        camera = args[1]
-
-        direzioni = RenderingModes.direction_bulk(chunck.ori_w, chunck.ori_h, chunck.x, chunck.y, chunck.w, chunck.h, camera)
-        direzioni[direzioni < 0] = 0
-        direzioni *= 255
-        chunck.value = direzioni
-        return chunck
     
 
     @staticmethod
     def test_spheres(args: tuple[RenderChunck, any]) -> RenderChunck:
-        # try:
+        try:
             chunck: RenderChunck = args[0]
             camera = args[1]
             list_object = args[2]
@@ -225,6 +276,7 @@ class RenderingModes:
             for sample in range(settings.sample_packet):
                 for x in range(chunck.w):
                     for y in range(chunck.h):
+                        start = perf_counter()
 
                         ray = Raggio(camera.pos[:3], direzioni[x, y])
                         ray_incoming_light = np.array([0.,0.,0.])
@@ -242,12 +294,12 @@ class RenderingModes:
                             if pixel_analize.colpito:
                                 # first save
                                 if bounce == 0: 
-                                    chunck.normal[x, y, :] = (pixel_analize.norma_colpito + 1) * (255/2)
-                                    chunck.indici[x, y, :] = pixel_analize.materiale.colore * 255
+                                    chunck.normal[x, y, :] += (pixel_analize.norma_colpito + 1) / 2
+                                    chunck.indici[x, y, :] += pixel_analize.materiale.colore * np.dot(pixel_analize.norma_colpito, - ray.dir)
                                 
                                 # AO save
                                 if bounce == 1:
-                                    chunck.amb_oc_distances[x, y, chunck.samples_rendered] = np.linalg.norm(pixel_analize.punto_colpito - ray.pos)
+                                    chunck.amb_oc[x, y] += 1 / (np.linalg.norm(pixel_analize.punto_colpito - ray.pos) + 1)
                             
                                 # materiale
                                 materiale = pixel_analize.materiale
@@ -261,39 +313,100 @@ class RenderingModes:
                                 ray.dir /= np.linalg.norm(ray.dir)
 
                                 if np.dot(pixel_analize.norma_colpito, ray.dir) < 0:
-                                    # print(f"\nResoconto:\n{pixel_analize.norma_colpito =}, {ray.dir =}\n{np.dot(pixel_analize.norma_colpito, ray.dir) =}\n{- ray.dir =}\n--------------------------------------")
                                     ray.dir = - ray.dir
 
                             else:
                                 break
-                        
+
+                        chunck.bounces[x, y] += bounce
                         chunck.albedo[x, y, :] += ray_incoming_light
+          
+                        finish = perf_counter()
+                        if not (x == 0 and y == 0):
+                            chunck.tempi[x, y] += (finish - start)
+            
 
                 chunck.samples_rendered += 1
-                    
+
+
             return chunck
         
-        # except Exception as e:
-        #     print(f"Attenzione, AleDebug in azione:\n{e}") 
-        #     return chunck
+        except Exception as e:
+            print(f"Attenzione, AleDebug in azione:\n{e}") 
+            return chunck
 
     
     @staticmethod
-    def reset_background(args: tuple[RenderChunck, any]) -> RenderChunck:
-        chunck: RenderChunck = args[0]
-        chunck.albedo[:, :, :] = 30
+    def reset_background(chunck: RenderChunck) -> RenderChunck:
+        chunck.albedo[:, :, :] = 0
+        chunck.normal[:, :, :] = 0
+        chunck.indici[:, :, :] = 0
+        chunck.tempi[:, :] = 0
+        chunck.amb_oc[:, :] = 0
+        chunck.bounces[:, :] = 0
+
+        chunck.samples_rendered = 0
+        chunck.reset = True
+
         return chunck
 
 
 class AvvioMultiProcess:
     def __init__(self) -> None:
-        pass
+        self.pool: multiprocessing.Pool = None
+        self.stahp = False
 
-    @staticmethod
-    def avvio_multi_tracer(tredi, render_string: str, numprocess = 12):
 
+    def try_fast_kill(self):
+        if not self.pool is None:
+            self.pool.terminate()
+
+
+    def reset_canvas(self, tredi):
+            
+        self.stahp = True
+        self.try_fast_kill()
         
+        for chunck in tredi.pathtracer.chuncks:
+            tredi.pathtracer.update_chunck(RenderingModes.reset_background(chunck))
+        tredi.pathtracer.running = False
+
+
+    def avvio_multi_tracer(self, tredi):
+        
+        # compilazioni funzioni nel main
+        # AcceleratedFoo.test(np.array([[0.,0.,0.], [0.,0.,0.]]), np.array([0.,0.,0.]), np.array([0.,0.,0.]))
+
+        self.stahp = False
+
+        objects = []
+        for oggetto, stato in zip(tredi.scenes["debug"].objects, tredi.UI_calls_tracer.scrolls["oggetti"].elementi_attivi):
+            if stato: objects.append(oggetto)
+        objects = Sphere.convert_wireframe2tracer(objects)
+
+        tredi.pathtracer.running = True
+        tredi.pathtracer.start_time_str = time.strftime('%H:%M:%S', time.localtime())
+        tredi.pathtracer.start_time = time.time()
+
+        # @profile
+        def execute():
+            start_execution = perf_counter()
+            argomenti = [(chunck, tredi.pathtracer.camera, objects, tredi.pathtracer.settings) for chunck in tredi.pathtracer.chuncks]
+            
+            self.pool = multiprocessing.Pool(processes=tredi.pathtracer.settings.cores)
+
+            for argomento in argomenti:
+                self.pool.apply_async(RenderingModes.test_spheres, args=(argomento,), callback=tredi.pathtracer.update_chunck)
+            
+            stop_execution = perf_counter()
+
+            self.pool.close()
+            self.pool.join()
+
+            return abs(stop_execution - start_execution)
+            
         # DEBUGGER
+        # argomenti = [(chunck, tredi.pathtracer.camera, objects, tredi.pathtracer.settings) for chunck in tredi.pathtracer.chuncks]
         # for sample_group in range(tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet):
         #     for argomento in argomenti:
         #         ris = RenderingModes.test_spheres(argomento)
@@ -301,35 +414,21 @@ class AvvioMultiProcess:
         #         tredi.pathtracer.update_array()
         #     print(ris.samples_rendered)
 
-        objects = Sphere.convert_wireframe2tracer(tredi.scenes["debug"].objects)
 
+        if not self.stahp:
+            temp_swap = tredi.pathtracer.settings.sample_packet 
+            tredi.pathtracer.settings.sample_packet = 1
+            avvio_processi = execute()
+            tredi.pathtracer.tempo_avvio = avvio_processi * tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet
 
-        def execute():
-            pool = multiprocessing.Pool(processes=numprocess)
-            argomenti = [(chunck, tredi.pathtracer.camera, objects, tredi.pathtracer.settings) for chunck in tredi.pathtracer.chuncks]
-            
-            for argomento in argomenti:
-                match render_string:
-                    case "gradiente":
-                        pool.apply_async(RenderingModes.gradient_chunck, args=(argomento,), callback=tredi.pathtracer.update_chunck)
-                    case "direction":
-                        pool.apply_async(RenderingModes.direction_chunck, args=(argomento,), callback=tredi.pathtracer.update_chunck)
-                    case "sfere":
-                        pool.apply_async(RenderingModes.test_spheres, args=(argomento,), callback=tredi.pathtracer.update_chunck)
-                    case "reset":
-                        pool.apply_async(RenderingModes.reset_background, args=(argomento,), callback=tredi.pathtracer.update_chunck)
-                    case _:
-                        pass
-            
-            pool.close()
-            pool.join()
-            tredi.pathtracer.update_array()
-
-
-        temp_swap = tredi.pathtracer.settings.sample_packet 
-        tredi.pathtracer.settings.sample_packet = 1
-        execute()
-
-        tredi.pathtracer.settings.sample_packet = temp_swap
-        for sample_group in range(tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet):
-            execute()
+        if not self.stahp:
+            tredi.pathtracer.settings.sample_packet = temp_swap
+            for sample_group in range(tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet):
+                avvio_processi = execute()
+                tredi.pathtracer.tempo_avvio = avvio_processi * tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet
+                if self.stahp:
+                    return
+        
+        tredi.pathtracer.running = False
+        tredi.pathtracer.end_time = time.time()
+        tredi.pathtracer.update_array()

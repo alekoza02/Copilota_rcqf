@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.integrate import trapz
+from scipy.integrate import trapezoid
 import pygame
 from _modulo_UI import Schermo, WidgetDataPlots, Logica, UI, Scena
 from _modulo_MATE import Mate
@@ -1128,7 +1128,7 @@ class Painter:
                 x_min = x_all[0]
                 x_max = x_all[-1]
 
-                integral = trapz(y_all, x_all)
+                integral = trapezoid(y_all, x_all)
                 derivata = np.gradient(y_all, x_all)
 
                 FWHM_h = np.max(y_all) / 2
@@ -1301,7 +1301,7 @@ class Painter:
                     m_e, q_e = np.sqrt(np.diag(covar))
                 
                 base_data.interpolation_type = "Retta ai minimi quadrati"
-                params_str = f"Interpolazione lineare del grafico {base_data.nome}:\nm: {m:.{self.approx_label}f} \pm {m_e:.{self.approx_label}f}\nq: {q:.{self.approx_label}f} \pm {q_e:.{self.approx_label}f}\n"
+                params_str = f"Interpolazione lineare del grafico {base_data.nome}:\nm: {m:.{self.approx_label}f} \\pm {m_e:.{self.approx_label}f}\nq: {q:.{self.approx_label}f} \\pm {q_e:.{self.approx_label}f}\n"
 
                 errori = (m_e, q_e)
 
@@ -1312,7 +1312,7 @@ class Painter:
                 errori = np.sqrt(np.diag(covar))
 
                 coeff_name = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
-                console_output = [f"{n}: {c:.{self.approx_label}f} \pm {e:.{self.approx_label}f}\n" for n, c, e in zip(coeff_name, coeff, errori)]
+                console_output = [f"{n}: {c:.{self.approx_label}f} \\pm {e:.{self.approx_label}f}\n" for n, c, e in zip(coeff_name, coeff, errori)]
                 params_str = f"Interpolazione polinomiale di grado {grado} del grafico {base_data.nome}:\n"
 
                 base_data.interpolation_type = f"Fit polinomiale di grado {grado}"
@@ -1334,7 +1334,7 @@ class Painter:
             else:
                 correlation_intera = np.sum(((y - (y_i[base_data.maschera]))/ey)**2)
                 correlation_ridotta = np.sum(((y - (y_i[base_data.maschera]))/ey)**2) / (len(x)-2)
-                correlation_type = "\chi quadro"
+                correlation_type = "\\chi quadro"
                 params_str += f"{correlation_type}: {correlation_intera}\n{correlation_type} ridotto: {correlation_ridotta}"
 
             base_data.y_interp_lin = y_i
@@ -1384,7 +1384,7 @@ class Painter:
                     base_data.interpolation_type = "Fit Gaussiano"
 
                     errori = np.sqrt(np.diag(covariance))
-                    console_output = f"Interpolazione Guassiana del grafico {base_data.nome}:\nA: {params_gaus[0]:.{self.approx_label}f} \pm {errori[0]:.{self.approx_label}f}\n\mu: {params_gaus[1]:.{self.approx_label}f} \pm {errori[1]:.{self.approx_label}f}\n\sigma: {params_gaus[2]:.{self.approx_label}f} \pm {errori[2]:.{self.approx_label}f}"
+                    console_output = f"Interpolazione Guassiana del grafico {base_data.nome}:\nA: {params_gaus[0]:.{self.approx_label}f} \\pm {errori[0]:.{self.approx_label}f}\n\\mu: {params_gaus[1]:.{self.approx_label}f} \\pm {errori[1]:.{self.approx_label}f}\n\\sigma: {params_gaus[2]:.{self.approx_label}f} \\pm {errori[2]:.{self.approx_label}f}"
 
                     y_i = gaussian(x, initial_guess_gauss[0], initial_guess_gauss[1], initial_guess_gauss[2])
 
@@ -1411,7 +1411,7 @@ class Painter:
                     base_data.interpolation_type = "Fit Sigmoide"
 
                     errori = np.sqrt(np.diag(covariance))
-                    console_output = f"Interpolazione sigmoide del grafico {base_data.nome}:\na: {params_sigm[0]:.{self.approx_label}f} \pm {errori[0]:.{self.approx_label}f}\nb: {params_sigm[1]:.{self.approx_label}f} \pm {errori[1]:.{self.approx_label}f}\n\lambda0: {params_sigm[2]:.{self.approx_label}f} \pm {errori[2]:.{self.approx_label}f}\n\Delta\lambda: {params_sigm[3]:.{self.approx_label}f} \pm {errori[3]:.{self.approx_label}f}"
+                    console_output = f"Interpolazione sigmoide del grafico {base_data.nome}:\na: {params_sigm[0]:.{self.approx_label}f} \\pm {errori[0]:.{self.approx_label}f}\nb: {params_sigm[1]:.{self.approx_label}f} \\pm {errori[1]:.{self.approx_label}f}\n\\lambda0: {params_sigm[2]:.{self.approx_label}f} \\pm {errori[2]:.{self.approx_label}f}\n\\Delta\\lambda: {params_sigm[3]:.{self.approx_label}f} \\pm {errori[3]:.{self.approx_label}f}"
 
                     y_i = sigmoide(x, initial_guess_sigmo[0], initial_guess_sigmo[1], initial_guess_sigmo[2], initial_guess_sigmo[3])
                     correlation = 1 - np.sum( ( y - y_i )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 )

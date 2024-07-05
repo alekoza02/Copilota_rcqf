@@ -1,9 +1,8 @@
-import os, cProfile, configparser
+import os, cProfile, configparser, yappi
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from pygame.locals import *
 import pygame
-import multiprocessing
-    
+
 def main(config: configparser):
     
     from _modulo_UI import UI, Logica
@@ -65,8 +64,9 @@ if __name__ == "__main__":
     _profiler = eval(config.get('Default', 'profiler'))
     
     if _profiler:
-        profiler = cProfile.Profile()
-        profiler.enable()    
+        # profiler = cProfile.Profile()
+        # profiler.enable()    
+        yappi.start()
 
     import time
     start = time.time()
@@ -74,5 +74,8 @@ if __name__ == "__main__":
     print(f"Finito in {time.time() - start:.1f}s")
     
     if _profiler:
-        profiler.disable()
-        profiler.dump_stats('PROFILATORE/_prof.prof')
+        # profiler.disable()
+        # profiler.dump_stats('PROFILATORE/_prof.prof')
+        yappi.stop()
+        func_stats = yappi.get_func_stats()
+        func_stats.save('PROFILATORE/_prof_yappi.prof', type='pstat')

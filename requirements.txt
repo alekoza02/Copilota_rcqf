@@ -1,0 +1,13 @@
+pygame
+numpy
+scipy
+numba
+
+psutil
+memory_profiler
+reportlab
+wmi
+yappi
+
+pillow
+matplotlib

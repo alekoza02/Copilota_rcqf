@@ -5,7 +5,6 @@ import configparser
 from _modulo_UI import Schermo, WidgetDataTracer, Logica, UI
 from _modulo_MATE import Mate, AcceleratedFoo, RandomAle
 from _modulo_multiprocess_classes import RayTracer
-randale = RandomAle()
 
 class TreDi:
     def __init__(self) -> None:
@@ -65,9 +64,31 @@ class TreDi:
         
         self.schermo = info_schermo.schermo
 
+        self.UI_calls_tracer = ui.scena["tracer"]
+
+        elementi = self.scenes["debug"].objects
+
+        self.UI_calls_tracer.scrolls["oggetti"].elementi = elementi 
+        self.UI_calls_tracer.scrolls["oggetti"].elementi_attivi = [self.UI_calls_tracer.scrolls["oggetti"].all_on for _ in range(len(elementi) + 1)] # il +1 è riferito ad un elemento in più: la camera
+        self.UI_calls_tracer.scrolls["oggetti"].indici = [i for i in range(len(elementi) + 1)] # il +1 è riferito ad un elemento in più: la camera
+        self.UI_calls_tracer.scrolls["oggetti"].update_elements()
+
+        self.build_raytracer()
+
+
+    def build_raytracer(self):
         self.pathtracer = RayTracer()
-        self.pathtracer.build(self.w, self.h, self.scenes["debug"].camera)
-        
+        self.pathtracer.build(
+            self.w, self.h, self.scenes["debug"].camera, 
+            Mate.inp2flo(self.UI_calls_tracer.entrate["resolution_x"].text, 1.0) / 100, 
+            Mate.inp2flo(self.UI_calls_tracer.entrate["resolution_y"].text, 1.0) / 100, 
+            Mate.inp2int(self.UI_calls_tracer.entrate["samples"].text, 32), 
+            Mate.inp2int(self.UI_calls_tracer.entrate["bounces"].text, 6), 
+            Mate.inp2int(self.UI_calls_tracer.entrate["sample_package"].text, 4), 
+            Mate.inp2int(self.UI_calls_tracer.entrate["cores"].text, 9), 
+            Mate.inp2int(self.UI_calls_tracer.entrate["res_chunck"].text, 3)
+        )
+
 
     def change_UI_stuff(self, ui: UI) -> None:
 
@@ -89,6 +110,23 @@ class TreDi:
             ui.scena["tracer"].entrate["sx_modello"].visibile = True
             ui.scena["tracer"].entrate["sy_modello"].visibile = True
             ui.scena["tracer"].entrate["sz_modello"].visibile = True
+
+            if not ui.scena["tracer"].entrate["colore_diff"].toggle: ui.scena["tracer"].entrate["colore_diff"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.colore)}"
+            if not ui.scena["tracer"].entrate["colore_emis"].toggle: ui.scena["tracer"].entrate["colore_emis"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.emissione_colore)}"
+            if not ui.scena["tracer"].entrate["forza_emis"].toggle: ui.scena["tracer"].entrate["forza_emis"].text = f"{self.scenes['debug'].elemento_attivo.materiale.emissione_forza:.3f}"
+            if not ui.scena["tracer"].entrate["roughness"].toggle: ui.scena["tracer"].entrate["roughness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.roughness:.3f}"
+            if not ui.scena["tracer"].entrate["glossiness"].toggle: ui.scena["tracer"].entrate["glossiness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glossiness:.3f}"
+            if not ui.scena["tracer"].entrate["glass"].toggle: ui.scena["tracer"].entrate["glass"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glass:.0f}"
+            if not ui.scena["tracer"].entrate["IOR"].toggle: ui.scena["tracer"].entrate["IOR"].text = f"{self.scenes['debug'].elemento_attivo.materiale.IOR:.3f}"
+            ui.scena["tracer"].entrate["colore_diff"].visibile = True
+            ui.scena["tracer"].entrate["colore_emis"].visibile = True
+            ui.scena["tracer"].entrate["forza_emis"].visibile = True
+            ui.scena["tracer"].entrate["roughness"].visibile = True
+            ui.scena["tracer"].entrate["glossiness"].visibile = True
+            ui.scena["tracer"].entrate["glass"].visibile = True
+            ui.scena["tracer"].entrate["IOR"].visibile = True
+
+
         elif type(self.scenes["debug"].elemento_attivo) == Camera:
             if not ui.scena["tracer"].entrate["px_modello"].toggle: ui.scena["tracer"].entrate["px_modello"].text = f"{self.scenes['debug'].elemento_attivo.pos[0]:.3f}"
             if not ui.scena["tracer"].entrate["py_modello"].toggle: ui.scena["tracer"].entrate["py_modello"].text = f"{self.scenes['debug'].elemento_attivo.pos[1]:.3f}"
@@ -99,6 +137,14 @@ class TreDi:
             ui.scena["tracer"].entrate["sx_modello"].visibile = False
             ui.scena["tracer"].entrate["sy_modello"].visibile = False
             ui.scena["tracer"].entrate["sz_modello"].visibile = False
+
+            ui.scena["tracer"].entrate["colore_diff"].visibile = False
+            ui.scena["tracer"].entrate["colore_emis"].visibile = False
+            ui.scena["tracer"].entrate["forza_emis"].visibile = False
+            ui.scena["tracer"].entrate["roughness"].visibile = False
+            ui.scena["tracer"].entrate["metal"].visibile = False
+            ui.scena["tracer"].entrate["glass"].visibile = False
+            ui.scena["tracer"].entrate["IOR"].visibile = False
 
         ui.scena["tracer"].scrolls["oggetti"].elementi = []
         self.scenes["debug"].elenco_raw = {}
@@ -129,6 +175,14 @@ class TreDi:
                 scena.elemento_attivo.sy = Mate.inp2flo(widget_data.sy, 1)
                 scena.elemento_attivo.sz = Mate.inp2flo(widget_data.sz, 1)
             
+                scena.elemento_attivo.materiale.colore = np.array(Mate.hex2rgb(self.UI_calls_tracer.entrate["colore_diff"].text))  / 255
+                scena.elemento_attivo.materiale.emissione_colore = np.array(Mate.hex2rgb(self.UI_calls_tracer.entrate["colore_emis"].text)) / 255
+                scena.elemento_attivo.materiale.emissione_forza = Mate.inp2flo(self.UI_calls_tracer.entrate["forza_emis"].text)
+                scena.elemento_attivo.materiale.roughness = Mate.inp2flo(self.UI_calls_tracer.entrate["roughness"].text)
+                scena.elemento_attivo.materiale.glossiness = Mate.inp2flo(self.UI_calls_tracer.entrate["glossiness"].text)
+                scena.elemento_attivo.materiale.glass = Mate.inp2int(self.UI_calls_tracer.entrate["glass"].text)
+                scena.elemento_attivo.materiale.IOR = Mate.inp2flo(self.UI_calls_tracer.entrate["IOR"].text)
+            
             elif type(self.scenes["debug"].elemento_attivo) == Camera:
                 scena.elemento_attivo.becche = Mate.inp2flo(widget_data.rx)
                 scena.elemento_attivo.rollio = Mate.inp2flo(widget_data.ry)
@@ -140,39 +194,35 @@ class TreDi:
             scena.camera.aggiorna_attributi(logica)
             scena.camera.rotazione_camera()
 
-            for i, obj in enumerate(scena.objects):
+            for i, obj in enumerate(scena.objects): 
+                if self.UI_calls_tracer.scrolls["oggetti"].elementi_attivi[i]:
 
-                obj.applica_rotazioni()
-                obj.applica_traslazioni()
+                    obj.applica_rotazioni()
+                    obj.applica_traslazioni()
 
-                obj.transformed_vertices @= Mate.camera_world(scena.camera) 
-                obj.transformed_vertices @= Mate.screen_world() 
-                
-                obj.transformed_vertices @= Mate.frustrum(self.w, self.h, self.scenes["debug"].camera.fov) 
-                obj.transformed_vertices = Mate.proiezione(obj.transformed_vertices) 
+                    obj.transformed_vertices @= Mate.camera_world(scena.camera) 
+                    obj.transformed_vertices @= Mate.screen_world() 
+                    
+                    obj.transformed_vertices @= Mate.frustrum(self.w, self.h, self.scenes["debug"].camera.fov) 
+                    obj.transformed_vertices = Mate.proiezione(obj.transformed_vertices) 
 
-                obj.transformed_vertices @= Mate.centra_schermo(self.w, self.h) 
+                    obj.transformed_vertices @= Mate.centra_schermo(self.w, self.h) 
 
-                triangles = obj.transformed_vertices[obj.links]
-                
-                if widget_data.pallini:
-                    for p in obj.transformed_vertices[:, :2]:
-                        pygame.draw.circle(self.schermo, [0,255,255], [p[0], p[1]], 2)    
-                
+                    triangles = obj.transformed_vertices[obj.links]
+                    
+                    if widget_data.pallini:
+                        for p in obj.transformed_vertices[:, :2]:
+                            pygame.draw.circle(self.schermo, obj.materiale.colore * 255, [p[0], p[1]], 4)    
+                    
 
-                if widget_data.links:
-                    for triangle in triangles:
-                        if not AcceleratedFoo.any_fast(triangle, self.w/2, self.h/2):
-                            pygame.draw.polygon(self.schermo, [255,255,255], [triangle[0, :2], triangle[1, :2], triangle[2, :2]], 1)
+                    if widget_data.links:
+                        for triangle in triangles:
+                            if not AcceleratedFoo.any_fast(triangle, self.w * 1.5, self.h * 1.5):
+                                pygame.draw.polygon(self.schermo, obj.materiale.colore * 255, [triangle[0, :2], triangle[1, :2], triangle[2, :2]], 1)
 
 
         if widget_data.tab == "tracer_settings":
-            # match self.mode:
-            #     case 0:
-            #     case 1:
-            #     case 2:
-            #     case 3:
-
+            self.UI_calls_tracer.label_text["eta"].text = self.pathtracer.stats
             surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array_zoomed)
             self.schermo.blit(surface, (0,0))
         
@@ -217,26 +267,34 @@ class Geo_Scene:
     
     def import_model(self):
 
-        i = Importer()
+        self.i = Importer()
         # i.modello("TRACER_DATA/m_hyperion.obj")
         # i.modello("TRACER_DATA/m_ban.obj")
-        i.modello("TRACER_DATA/m_sph.obj")
+        self.i.modello("TRACER_DATA/m_sph.obj")
 
-        i.verteces = Mate.add_homogenous(i.verteces)
+        self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.objects.append(Object("Sfera_piccola", i.verteces, i.links, z=-9, x=5, sx=4, sy=4, sz=4, materiale=Materiale(colore=np.array([1., 0.5, 0.]))))
-        self.objects.append(Object("Sfera_grande", i.verteces, i.links, z=-7, x=-2, sx=8, sy=8, sz=8, materiale=Materiale(colore=np.array([0., 0.5, 1.]))))
-        self.objects.append(Object("Sfera_pavimento", i.verteces, i.links, z=-110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_cielo", i.verteces, i.links, z=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_sx", i.verteces, i.links, x=-110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 0., 0.]))))
-        self.objects.append(Object("Sfera_parete_dx", i.verteces, i.links, x=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([0., 1., 0.]))))
-        self.objects.append(Object("Sfera_parete_fondo", i.verteces, i.links, y=110, sx=200, sy=200, sz=200, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Luce", i.verteces, i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=3)))
-        self.elemento_attivo: Camera | Object = self.objects[0]
+        self.objects.append(Object("Sfera_piccola", self.i.verteces, self.i.links, z=-8.5, x=-5, y=-5, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_media", self.i.verteces, self.i.links, z=-7.5, y=-10, x=6, sx=8, sy=8, sz=8, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_grande", self.i.verteces, self.i.links, z=-5, x=3, sx=13, sy=13, sz=13, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_pavimento", self.i.verteces, self.i.links, z=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_cielo", self.i.verteces, self.i.links, z=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Luce", self.i.verteces, self.i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=5)))
+        self.elemento_attivo: Object = self.objects[0]
         
         # self.objects.append(Object("Sfera_piccola", i.verteces, i.links, sx=2, sy=2, sz=2))
         # self.elemento_attivo: Camera | Object = self.objects[0]
 
+
+    def add_sphere(self):
+        self.objects.append(Object(f"Nuova sfera {len(self.objects)}", self.i.verteces, self.i.links, materiale=Materiale()))
+    
+    
+    def remove_sphere(self, index):
+        self.objects.pop(index)
 
 
 class Materiale:
@@ -244,12 +302,17 @@ class Materiale:
         self.colore = colore
         self.emissione_forza = emissione_forza
         self.emissione_colore = emissione_colore
-        self.metal = False
+        self.roughness = 1
+        self.glossiness = 1
+        self.glass = 1
+        self.IOR = 1.5
 
+    def __str__(self) -> str:
+        return f"{self.colore}"
 
 
 class Object:
-    def __init__(self, nome, vertici, links, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True, materiale: Materiale = Materiale()) -> None:
+    def __init__(self, nome, vertici, links, materiale: Materiale, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True) -> None:
         self.name = nome
         self.vertices: np.ndarray[np.ndarray[float]] = vertici
         self.transformed_vertices: np.ndarray[np.ndarray[int]] = vertici
@@ -288,6 +351,9 @@ class Object:
         Applicazioni traslazioni
         '''
         self.transformed_vertices = self.transformed_vertices @ Mate.scalotrasla(self)
+
+    def __str__(self):
+        return f"{self.name}"
 
 
 class Triangle:

@@ -111,7 +111,6 @@ class Mate:
     
     @staticmethod
     def frustrum(W: int, H: int, h_fov: float) -> np.ndarray[np.ndarray[float]]:
-        # qua c'è un meno per sistemare l'orientamento della camera, altrimenti ottieni un'immagine specchiata in prospettiva
         v_fov = h_fov * H / W
         ori = np.tan(h_fov / 2)
         ver = np.tan(v_fov / 2)
@@ -124,8 +123,13 @@ class Mate:
         
     @staticmethod
     def proiezione(vertici: np.ndarray[np.ndarray[float]]) -> np.ndarray[np.ndarray[float]]:
+        distanze = vertici[:, -1]
+        indici_dist_neg = np.where(distanze < 0)
+
         ris = vertici / vertici[:, -1].reshape(-1, 1)
-        ris[(ris < -2) | (ris > 2)] = 0
+        ris[(ris < -12) | (ris > 12)] = 2
+        ris[indici_dist_neg] = np.array([2, 2, 2, 1])
+
         return ris
 
     @staticmethod
@@ -166,6 +170,7 @@ class Mate:
     def rgb2hex(colore: list[int]) -> str:
         '''Accetta SOLO il formato: [255, 255, 255]'''
         try:
+            colore = [int(col * 255) for col in colore]
             r = hex(colore[0])
             g = hex(colore[1])
             b = hex(colore[2])
@@ -256,8 +261,38 @@ class AcceleratedFoo:
 
     @staticmethod
     @njit(fastmath=True)
-    def any_fast(v: np.ndarray[float], a: float, b: float) -> bool:
+    def any_fast(v: np.ndarray[float], a: float, b: float) -> bool: 
         return np.any((v == a) | (v == b))
+    
+    @staticmethod
+    @njit(fastmath=True)
+    def test(box, ray_pos, ray_dir):
+        # Extract the minimum and maximum corners of the bounding box
+        box_min = box[0]
+        box_max = box[1]
+        
+        t_min = 0.0
+        t_max = 1e6
+        
+        for i in range(3):  # Iterate over the x, y, and z axes
+            if ray_dir[i] != 0.0:
+                inv_dir = 1 / ray_dir[i]
+                t1 = (box_min[i] - ray_pos[i]) * inv_dir 
+                t2 = (box_max[i] - ray_pos[i]) * inv_dir 
+                
+                t_min_i = min(t1, t2)
+                t_max_i = max(t1, t2)
+                
+                t_min = max(t_min, t_min_i)
+                t_max = min(t_max, t_max_i)
+                
+                if t_min > t_max:
+                    return False  # No intersection
+            else:
+                if ray_pos[i] < box_min[i] or ray_pos[i] > box_max[i]:
+                    return False  # Ray is parallel and outside the slab
+
+        return True
 
 
 if __name__ == "__main__":
