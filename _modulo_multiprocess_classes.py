@@ -16,20 +16,132 @@ class Settings:
         self.resolution_chunck = (res, res)
 
 
-class Raggio:
-    def __init__(self, pos, dir) -> None:
-        self.pos = pos
-        self.dir = dir
-
-
 class Record:
     def __init__(self) -> None:
         self.colpito: bool = False
         self.distanza: float = np.inf
         self.indice_oggetti_prox: int
         self.materiale = None
-        self.punto_colpito: np.array[np.array[float]]
-        self.norma_colpito: np.array[np.array[float]]
+        self.punto_colpito: np.array[float] = np.array([np.inf, np.inf, np.inf])
+        self.norma_colpito: np.array[float]
+        self.norma_rifrazione: np.array[float]
+        self.front_face: bool
+
+
+class Raggio:
+    def __init__(self, pos, dir) -> None:
+        self.pos = pos
+        self.dir = dir
+        self.inv_dir = 1 / dir
+
+        self.AO_redo = False
+        self.AO_ray = np.array([0.,0.,0.])
+
+
+    def check_front_face(self, record: Record) -> Record:
+        if np.dot(self.dir, record.norma_colpito) > 0.0:
+            record.front_face = False
+            record.norma_rifrazione = - record.norma_colpito
+        else:
+            record.front_face = True
+            record.norma_rifrazione = record.norma_colpito
+
+        return record
+
+
+    def calc_bounce(self, record: Record):
+
+        self.AO_redo = False
+
+        # calcolo rimbalzo random (roughness - AO) 
+        # NOTE! Il raggio roughness_ray non ha test eseguiti in merito alla concordanza di segno con la normale, questo test viene eseguito solo per AO_ray
+        # Usa AO_ray per test che richiedono il raggio uscente (es. metallo / roughness)
+        # Usa roughness_ray per test che non richiedono un raggio specifico (es. vetro)
+
+        roughness_ray = np.array([uniform(-1, 1) for i in range(3)])
+        roughness_ray /= np.linalg.norm(roughness_ray)
+
+        if np.dot(record.norma_colpito, roughness_ray) < 0:
+            self.AO_ray = - roughness_ray
+        else:
+            self.AO_ray = roughness_ray
+        
+        # BLOCCO MATERIALE DIFFUSE / SPECULAR / GLOSS
+        
+        if not record.materiale.glass:
+
+            # calcolo rimbalzo speculare
+            specular_ray = self.dir - record.norma_colpito * np.dot(self.dir, record.norma_colpito) * 2.0;
+
+            # test specularità (1 True, 0 False)
+            is_specular = record.materiale.glossiness >= uniform(0, 1)
+
+            # combinazione roughness / metal / glossiness
+            dir = Raggio.lerp(self.AO_ray, specular_ray, (1 - record.materiale.roughness) * is_specular)
+            
+            if is_specular: self.AO_redo = True
+
+
+        # BLOCCO MATERIALE VETRO
+
+        elif record.materiale.glass:
+
+            # ricordo di ricalcolare l'AO
+            self.AO_redo = True
+            
+            # calcolo della direzione rifratta:
+            # viene eseguito il check per raggio entrante ed uscente dall'oggetto. 
+            # nel caso di raggio uscente viene testato inoltre l'angolo limite.
+            # alla fine viene calcolata la probabilità di riflettanza dovuta alla legge di Brew.
+
+            # controllo raggio entrante / uscente basato sulla faccia colpita (interna / esterna) 
+            record = self.check_front_face(record)
+
+            # calcolo del rapporto degli indici di rifrazione dei mezzi in base al raggio entrante / uscente (1.0 = aria)
+            ratio_rifrazione = 1 / record.materiale.IOR if record.front_face else record.materiale.IOR
+
+            # calcolo componenti trigonometriche
+            coseno = np.dot(- self.dir, record.norma_rifrazione)
+            seno = (1 - coseno ** 2) ** 0.5            
+            
+            # calcolo probabilità di riflettanza di Brew usando approx. di Schlick
+            schlick_approx = (1 - record.materiale.IOR) / (1 + record.materiale.IOR)
+            schlick_approx = schlick_approx * schlick_approx 
+            
+            # condizioni di rifrazione : 1 = riflettanza, 2 = angolo limite
+            cannot_refract1 = schlick_approx + (1 - schlick_approx) * ((1 - coseno) ** 5) > uniform(0, 1) 
+            cannot_refract2 = ratio_rifrazione * seno > 1
+
+            if cannot_refract1 or cannot_refract2:
+
+                # non può rifrarre -> riflessione basata sulla normale interna
+                dir = self.dir - record.norma_rifrazione * np.dot(self.dir, record.norma_rifrazione) * 2
+
+            else:        
+                
+                # può rifrarre -> calcolo della nuova direzione con componente parallela e perpendicolare alla normale
+                r_out_perp = (self.dir + record.norma_rifrazione * coseno) * ratio_rifrazione
+                r_out_para = - record.norma_rifrazione * (abs(1 - np.linalg.norm(r_out_perp) ** 2)) ** .5
+                dir = r_out_para + r_out_perp
+
+            # combinazione diffusa / vetro
+            dir = self.lerp(dir, roughness_ray, record.materiale.roughness)
+
+
+        # riempimento record
+        self.pos = record.punto_colpito
+        self.dir = dir
+        self.inv_dir = 1 / dir
+
+
+    @staticmethod
+    def lerp(v1, v2, perc):
+        """
+        - perc = 0 -> v1
+        - perc = 1 -> v2
+        """
+        return (1 - perc) * v1 + perc * v2
+
 
 
 class RenderChunck:
@@ -131,6 +243,7 @@ class RayTracer:
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = 255 * chunck.normal / chunck.samples_rendered
                     case 3:
                         single_channel = np.clip(chunck.amb_oc / chunck.samples_rendered, 0, 1)
+                        single_channel[single_channel == 0.0] = 1
                         single_channel = 1 - single_channel
                         multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
@@ -264,6 +377,20 @@ class RenderingModes:
     
 
     @staticmethod
+    def test_AO(ray, list_object, chunck, x, y):
+        # temporary switch
+        temp_memo = ray.dir
+        ray.dir = ray.AO_ray    
+        ao_record = Record()
+
+        for oggetto in list_object:
+            ao_record = oggetto.collisione_sphere(ray, ao_record)
+        chunck.amb_oc[x, y] += 1 / (np.linalg.norm(ao_record.punto_colpito - ray.pos) + 1)
+        
+        # re-switch
+        ray.dir = temp_memo
+
+    @staticmethod
     def test_spheres(args: tuple[RenderChunck, any]) -> RenderChunck:
         try:
             chunck: RenderChunck = args[0]
@@ -286,37 +413,35 @@ class RenderingModes:
 
                             # inizializzazione record
                             pixel_analize = Record()
-                
+                    
                             # collisione con sfera
                             for oggetto in list_object:
                                 pixel_analize = oggetto.collisione_sphere(ray, pixel_analize)
                     
+
+                            # AO save
+                            if bounce == 1:
+                                RenderingModes.test_AO(ray, list_object, chunck, x, y)
+
+
                             if pixel_analize.colpito:
                                 # first save
                                 if bounce == 0: 
                                     chunck.normal[x, y, :] += (pixel_analize.norma_colpito + 1) / 2
                                     chunck.indici[x, y, :] += pixel_analize.materiale.colore * np.dot(pixel_analize.norma_colpito, - ray.dir)
-                                
-                                # AO save
-                                if bounce == 1:
-                                    chunck.amb_oc[x, y] += 1 / (np.linalg.norm(pixel_analize.punto_colpito - ray.pos) + 1)
-                            
+                                    
+                                # nuovo giro settings
+                                ray.calc_bounce(pixel_analize)
+
                                 # materiale
                                 materiale = pixel_analize.materiale
                                 luce_emessa = materiale.emissione_colore * materiale.emissione_forza
                                 ray_incoming_light = ray_incoming_light + luce_emessa * ray_color
                                 ray_color = ray_color * materiale.colore
 
-                                # nuovo giro settings
-                                ray.pos = pixel_analize.punto_colpito
-                                ray.dir = np.array([uniform(-1, 1) for i in range(3)])
-                                ray.dir /= np.linalg.norm(ray.dir)
-
-                                if np.dot(pixel_analize.norma_colpito, ray.dir) < 0:
-                                    ray.dir = - ray.dir
-
-                            else:
+                            elif bounce > 1:
                                 break
+                            
 
                         chunck.bounces[x, y] += bounce
                         chunck.albedo[x, y, :] += ray_incoming_light

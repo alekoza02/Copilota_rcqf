@@ -1,5 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1720084571.96887 "c:/Users/aless/OneDrive/PYTHON/_COPILOTA_RCQF/documents/COPILOTA_rcqf/latex_file/main.tex" "main.pdf" "main" 1720084574.41378 0
+["pdflatex"] 1720460891.12948 "c:/Users/aless/OneDrive/PYTHON/_COPILOTA_RCQF/documents/COPILOTA_rcqf/latex_file/main.tex" "main.pdf" "main" 1720460893.87531 0
+  "../images/glass.png" 1720460721 1702943 d859130607e9f38cc92785ed6da428d0 ""
+  "../images/glossy.png" 1720285058 2155891 1a9c05610f49bd2fde01f013d2e00dc2 ""
   "../images/logo.png" 1716384142 4674866 90bcb3f2155a2af6f9198c4a37cbc123 ""
   "../images/rendered.png" 1719318302 873144 b4bc790e5d7596744ac7ae527446dd23 ""
   "../images/wireframe.png" 1719318317 157021 7ca763bcf2eb4957909cf5925690cc16 ""
@@ -148,10 +150,10 @@
   "C:/Users/aless/AppData/Local/Programs/MiKTeX/tex/latex/pgf/utilities/pgfkeys.sty" 1673775190 274 5ae372b7df79135d240456a1c6f2cf9a ""
   "C:/Users/aless/AppData/Local/Programs/MiKTeX/tex/latex/pgf/utilities/pgfrcs.sty" 1673775190 325 f9f16d12354225b7dd52a3321f085955 ""
   "C:/Users/aless/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1700127522 55487 80a65caedd3722f4c20a14a69e785d8f ""
-  "c:/Users/aless/OneDrive/PYTHON/_COPILOTA_RCQF/documents/COPILOTA_rcqf/latex_file/main.tex" 1720084570 19656 fea86caa00ef1d7707fc90cf54233e63 ""
-  "main.aux" 1720084574 3665 1ff64c401d745104100804d4fb7ba049 "pdflatex"
-  "main.tex" 1720084570 19656 fea86caa00ef1d7707fc90cf54233e63 ""
-  "main.toc" 1720084574 1247 42109ae208ea3d560d2835b00cd26257 "pdflatex"
+  "c:/Users/aless/OneDrive/PYTHON/_COPILOTA_RCQF/documents/COPILOTA_rcqf/latex_file/main.tex" 1720460891 19976 0bd89585f000e2a24b6392b1e3ed6168 ""
+  "main.aux" 1720460893 3763 6aa595febf42f7e4589e9aec14ea654a "pdflatex"
+  "main.tex" 1720460891 19976 0bd89585f000e2a24b6392b1e3ed6168 ""
+  "main.toc" 1720460893 1304 2712d47dc155789848bc7ca93d7e7e4e "pdflatex"
   (generated)
   "main.aux"
   "main.log"

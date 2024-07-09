@@ -111,8 +111,8 @@ class TreDi:
             ui.scena["tracer"].entrate["sy_modello"].visibile = True
             ui.scena["tracer"].entrate["sz_modello"].visibile = True
 
-            if not ui.scena["tracer"].entrate["colore_diff"].toggle: ui.scena["tracer"].entrate["colore_diff"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.colore)}"
-            if not ui.scena["tracer"].entrate["colore_emis"].toggle: ui.scena["tracer"].entrate["colore_emis"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.emissione_colore)}"
+            if not ui.scena["tracer"].entrate["colore_diff"].toggle: ui.scena["tracer"].entrate["colore_diff"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.colore, scala=255)}"
+            if not ui.scena["tracer"].entrate["colore_emis"].toggle: ui.scena["tracer"].entrate["colore_emis"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.emissione_colore, scala=255)}"
             if not ui.scena["tracer"].entrate["forza_emis"].toggle: ui.scena["tracer"].entrate["forza_emis"].text = f"{self.scenes['debug'].elemento_attivo.materiale.emissione_forza:.3f}"
             if not ui.scena["tracer"].entrate["roughness"].toggle: ui.scena["tracer"].entrate["roughness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.roughness:.3f}"
             if not ui.scena["tracer"].entrate["glossiness"].toggle: ui.scena["tracer"].entrate["glossiness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glossiness:.3f}"
@@ -142,7 +142,7 @@ class TreDi:
             ui.scena["tracer"].entrate["colore_emis"].visibile = False
             ui.scena["tracer"].entrate["forza_emis"].visibile = False
             ui.scena["tracer"].entrate["roughness"].visibile = False
-            ui.scena["tracer"].entrate["metal"].visibile = False
+            ui.scena["tracer"].entrate["glossiness"].visibile = False
             ui.scena["tracer"].entrate["glass"].visibile = False
             ui.scena["tracer"].entrate["IOR"].visibile = False
 
@@ -230,17 +230,21 @@ class TreDi:
     def TEMPORARY_GENERATION(self):
         self.scenes["debug"] = Geo_Scene()
         # self.scenes["debug"].default_scene()
-        self.scenes["debug"].import_model()
+        self.scenes["debug"].kornell_box()
 
 
 class Geo_Scene:
     def __init__(self) -> None:
         self.objects: list[Object] = []
         self.camera: Camera = Camera()
-        self.camera.pos = np.array([2.245, -60.454, 1.752, 1])
-        self.camera.becche = 1.534
+        self.camera.pos = np.array([0, -30, 0, 1], dtype=float)
+        # self.camera.pos = np.array([-2.477, -10.520, -2.973, 1], dtype=float)
+        self.camera.becche = 1.57
+        # self.camera.becche = 1.486
         self.camera.rollio = 0.000
-        self.camera.imbard = 0.060
+        self.camera.imbard = 0.0
+        # self.camera.imbard = 0.08
+        self.camera.fov = np.pi / 8
 
         self.elenco_raw: dict[str, Camera | Object] = {}
         self.elemento_attivo: Camera | Object = None
@@ -265,28 +269,43 @@ class Geo_Scene:
         self.elemento_attivo: Camera | Object = self.objects[0]
 
     
-    def import_model(self):
+    def kornell_box(self):
 
         self.i = Importer()
-        # i.modello("TRACER_DATA/m_hyperion.obj")
-        # i.modello("TRACER_DATA/m_ban.obj")
         self.i.modello("TRACER_DATA/m_sph.obj")
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.objects.append(Object("Sfera_piccola", self.i.verteces, self.i.links, z=-8.5, x=-5, y=-5, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_media", self.i.verteces, self.i.links, z=-7.5, y=-10, x=6, sx=8, sy=8, sz=8, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_grande", self.i.verteces, self.i.links, z=-5, x=3, sx=13, sy=13, sz=13, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_piccola", self.i.verteces, self.i.links, z=-3.75, x=-3, y=-2, sx=2.5, sy=2.5, sz=2.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1., roughness=0.0)))
+        self.objects.append(Object("Sfera_media", self.i.verteces, self.i.links, z=-3.25, y=-4, x=2.5, sx=3.5, sy=3.5, sz=3.5, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_grande", self.i.verteces, self.i.links, z=-2, x=1, y=2, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0, roughness=0.0)))
+        self.objects.append(Object("Sfera_pavimento", self.i.verteces, self.i.links, z=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_cielo", self.i.verteces, self.i.links, z=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., .7, 1.]))))
+        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Luce", self.i.verteces, self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
+        self.elemento_attivo: Object = self.objects[0]
+    
+    
+    def kornell_box_glossiness(self):
+
+        self.i = Importer()
+        self.i.modello("TRACER_DATA/m_sph.obj")
+
+        self.i.verteces = Mate.add_homogenous(self.i.verteces)
+
+        self.objects.append(Object("Sfera_piccola1", self.i.verteces, self.i.links, z=-6.75, x=-12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.0)))
+        self.objects.append(Object("Sfera_piccola2", self.i.verteces, self.i.links, z=-6.75, x=-4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.1)))
+        self.objects.append(Object("Sfera_piccola3", self.i.verteces, self.i.links, z=-6.75, x=4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.5)))
+        self.objects.append(Object("Sfera_piccola4", self.i.verteces, self.i.links, z=-6.75, x=12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0)))
         self.objects.append(Object("Sfera_pavimento", self.i.verteces, self.i.links, z=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
         self.objects.append(Object("Sfera_cielo", self.i.verteces, self.i.links, z=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
-        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
         self.objects.append(Object("Luce", self.i.verteces, self.i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
-        
-        # self.objects.append(Object("Sfera_piccola", i.verteces, i.links, sx=2, sy=2, sz=2))
-        # self.elemento_attivo: Camera | Object = self.objects[0]
 
 
     def add_sphere(self):
@@ -298,13 +317,13 @@ class Geo_Scene:
 
 
 class Materiale:
-    def __init__(self, colore = np.array([1,1,1]), emissione_forza = 0, emissione_colore = np.array([1,1,1])) -> None:
+    def __init__(self, colore = np.array([1,1,1]), emissione_forza = 0, emissione_colore = np.array([1,1,1]), roughness=1, glass=0, glossiness=0) -> None:
         self.colore = colore
         self.emissione_forza = emissione_forza
         self.emissione_colore = emissione_colore
-        self.roughness = 1
-        self.glossiness = 1
-        self.glass = 1
+        self.roughness = roughness
+        self.glossiness = glossiness
+        self.glass = glass
         self.IOR = 1.5
 
     def __str__(self) -> str:
@@ -509,16 +528,6 @@ class Camera:
         # - sulla sua sopra l'asse y positivo
 
         # ---------------------------------------------------------------------------------------
-
-        # valori default di partenza
-
-        self.pos[0] = 9.2
-        self.pos[1] = -11.1
-        self.pos[2] = 3.0
-        
-        self.becche = 1.4
-        self.rollio = 0
-        self.imbard = 0.7
     
     
     def rotazione_camera(self) -> None:

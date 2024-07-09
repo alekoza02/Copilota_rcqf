@@ -167,10 +167,10 @@ class Mate:
 
 
     @staticmethod
-    def rgb2hex(colore: list[int]) -> str:
+    def rgb2hex(colore: list[int], scala=1) -> str:
         '''Accetta SOLO il formato: [255, 255, 255]'''
         try:
-            colore = [int(col * 255) for col in colore]
+            colore = [int(col * 255) if scala == 255 else int(col) for col in colore]
             r = hex(colore[0])
             g = hex(colore[1])
             b = hex(colore[2])

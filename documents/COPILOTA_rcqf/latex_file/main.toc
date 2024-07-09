@@ -15,7 +15,8 @@
 \contentsline {subsection}{\numberline {2.2}Approccio generazione raggi}{8}{}%
 \contentsline {paragraph}{Spigazione:}{8}{}%
 \contentsline {subsection}{\numberline {2.3}Risultati}{9}{}%
-\contentsline {section}{\numberline {3}Ray - Sphere intersection}{10}{}%
-\contentsline {paragraph}{Discussione risultati:}{10}{}%
-\contentsline {paragraph}{Spiegazioni del codice:}{10}{}%
-\contentsline {section}{\numberline {4}Ray - Triangle intersection}{11}{}%
+\contentsline {section}{\numberline {3}Materiali}{10}{}%
+\contentsline {section}{\numberline {4}Ray - Sphere intersection}{11}{}%
+\contentsline {paragraph}{Discussione risultati:}{11}{}%
+\contentsline {paragraph}{Spiegazioni del codice:}{11}{}%
+\contentsline {section}{\numberline {5}Ray - Triangle intersection}{12}{}%

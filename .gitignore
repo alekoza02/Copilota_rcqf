@@ -3,16 +3,22 @@ PROFILATORE/
 prove.ipynb
 PLOT_DATA_mine/
 OUTPUT/
+
 TEXTURES/logo.blend
 TEXTURES/logo.blend1
 TEXTURES/logo.ico
 TEXTURES/logo.png
+
 documents/COPILOTA_rcqf/latex_file/main.aux
 documents/COPILOTA_rcqf/latex_file/main.fdb_latexmk
 documents/COPILOTA_rcqf/latex_file/main.fls
 documents/COPILOTA_rcqf/latex_file/main.log
 documents/COPILOTA_rcqf/latex_file/main.synctex.gz
 documents/COPILOTA_rcqf/latex_file/main.toc
+
+LIBRERIE/libreriale/target
+LIBRERIE/libreriale/.github
+LIBRERIE/libreriale/.gitignore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
