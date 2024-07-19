@@ -7,7 +7,7 @@ import psutil
 import wmi
 import configparser
 import threading
-
+import copy
 
 from _modulo_MATE import Mate
 from _modulo_multiprocess_classes import AvvioMultiProcess
@@ -76,50 +76,6 @@ class WidgetData:
         for key, value in attrs_new_obj.items():
             attrs_old_obj[key] = value
 
-class WidgetDataPlots(WidgetData):
-    def __init__(self) -> None:
-
-        self.dim_font: str = ""
-        self.grado_inter: str = ""
-        self.subdivisions: str = ""
-        self.ui_spessore: str = ""
-        self.titolo: str = ""
-        self.labelx: str = ""
-        self.labely: str = ""
-        self.label2y: str = ""
-        self.round_label: str = ""
-        self.color_bg: str = ""
-        self.color_text: str = ""
-        self.area_w: str = ""
-        self.area_h: str = ""
-        self.x_legenda: str = ""
-        self.y_legenda: str = ""
-        self.nome_grafico: str = ""
-        self.color_plot: str = ""
-        self.dim_pallini: str = ""
-        self.dim_link: str = ""
-        self.x_min: str = ""
-        self.x_max: str = ""
-        self.y_min: str = ""
-        self.y_max: str = ""
-        self.input_path: str = ""
-
-        self.use_custom_borders: bool = False
-        self.gradiente: bool = False
-        self.normalizza: bool = False
-        self.latex_check: bool = False
-        self.toggle_2_axis: bool = False
-        self.toggle_plt_bb: bool = False
-        self.toggle_pallini: bool = False
-        self.toggle_collegamenti: bool = False
-        self.acceso: bool = False
-        self.salva_der: bool = False
-        self.toggle_inter: bool = False
-
-        'send back----------------------------------------'
-
-        self.FID: str = ""
-        self.flag_update_save_derivative: bool = False
 
 class WidgetDataTracer(WidgetData):
     def __init__(self) -> None:
@@ -655,7 +611,6 @@ class ScrollConsole:
 
         
         if self.bottoni_foo["su"].push():
-            print("really1")
             if self.scroll_item_selected + self.first_item > 0:
                 self.elementi[self.scroll_item_selected + self.first_item - 1], self.elementi[self.scroll_item_selected + self.first_item] = self.elementi[self.scroll_item_selected + self.first_item], self.elementi[self.scroll_item_selected + self.first_item - 1] 
                 self.indici[self.scroll_item_selected + self.first_item - 1], self.indici[self.scroll_item_selected + self.first_item] = self.indici[self.scroll_item_selected + self.first_item], self.indici[self.scroll_item_selected + self.first_item - 1] 
@@ -669,7 +624,6 @@ class ScrollConsole:
 
         
         if self.bottoni_foo["giu"].push():
-            print("really2")
             if self.scroll_item_selected + self.first_item < len(self.elementi) - 1:
                 self.elementi[self.scroll_item_selected + self.first_item + 1], self.elementi[self.scroll_item_selected + self.first_item] = self.elementi[self.scroll_item_selected + self.first_item], self.elementi[self.scroll_item_selected + self.first_item + 1]
                 self.indici[self.scroll_item_selected + self.first_item + 1], self.indici[self.scroll_item_selected + self.first_item] = self.indici[self.scroll_item_selected + self.first_item], self.indici[self.scroll_item_selected + self.first_item + 1]
@@ -814,12 +768,20 @@ class TabUI:
 
 
 class Schermo:
-    def __init__(self, parametri_locali_elementi: list) -> None:
+    def __init__(self, parametri_locali_elementi: list, w: float = None, h: float = None, x: float = None, y: float = None, default: bool = True) -> None:
 
-        self.w: int = int(parametri_locali_elementi[3] * 0.9)
-        self.h: int = int(parametri_locali_elementi[3] * 0.9)
-        self.ancoraggio_x: int = parametri_locali_elementi[3] * 0.05 + parametri_locali_elementi[1]
-        self.ancoraggio_y: int = parametri_locali_elementi[3] * 0.05
+        if default:
+            self.w: int = int(parametri_locali_elementi[3] * 0.9)
+            self.h: int = int(parametri_locali_elementi[3] * 0.9)
+            self.ancoraggio_x: int = parametri_locali_elementi[3] * 0.05 + parametri_locali_elementi[1]
+            self.ancoraggio_y: int = parametri_locali_elementi[3] * 0.05
+
+        else:
+            self.w: int = int(w * parametri_locali_elementi[2] / 100)
+            self.h: int = int(h * parametri_locali_elementi[3] / 100)
+            self.ancoraggio_x: int = int(x * parametri_locali_elementi[2] / 100 + parametri_locali_elementi[1])
+            self.ancoraggio_y: int = int(y * parametri_locali_elementi[3] / 100)
+
 
         self.shift_x = parametri_locali_elementi[1]
 
@@ -902,6 +864,7 @@ class UI:
         self.scena["main"] = Scena(self.parametri_scena_repeat); self.scena["main"].build_main()
         self.scena["plots"] = Scena(self.parametri_scena_repeat); self.scena["plots"].build_plots()
         self.scena["tracer"] = Scena(self.parametri_scena_repeat); self.scena["tracer"].build_tracer()
+        self.scena["orbitals"] = Scena(self.parametri_scena_repeat); self.scena["orbitals"].build_orbitals()
 
         self.entrata_attiva: Entrata = None
 
@@ -1043,6 +1006,7 @@ class UI:
                     [tab.aggiorna_tab(event, logica) for index, tab in self.scena["main"].tabs.items()]
                     if self.scena["main"].bottoni["plots"].toggled: logica.scena = 0
                     if self.scena["main"].bottoni["tracer"].toggled: logica.scena = 1
+                    if self.scena["main"].bottoni["orbitals"].toggled: logica.scena = 2
 
                 if event.button == 3:
                     logica.dragging = True
@@ -1246,6 +1210,11 @@ class UI:
                     al_sc.tabs["viewport_control"].abilita = not al_sc.bottoni["normalizza"].toggled
                     al_sc.tabs["viewport_control"].renderizza = not al_sc.bottoni["normalizza"].toggled
 
+                    if al_sc.bottoni["save_deriv"].toggled:
+                        al_sc.bottoni["save_deriv"].push()
+                        al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
+                        plot.full_import_plot_data(self.scena["plots"], al_sc.entrate["caricamento"].text)
+
                     # Fine sezione push events
                     '-----------------------------------------------------------------------------------------------------'
 
@@ -1313,16 +1282,6 @@ class UI:
         al_sc.entrate["color_plot"].contorno = Mate.hex2rgb(al_sc.entrate["color_plot"].text)
         al_sc.entrate["color_plot"].color_text_toggled = Mate.hex2rgb(al_sc.entrate["color_plot"].text)
         al_sc.entrate["color_plot"].contorno_toggled = Mate.hex2rgb(al_sc.entrate["color_plot"].text)
-
-        al_sc.label_text["FID"].text = al_sc.data_widgets_plots.FID
-        if al_sc.data_widgets_plots.flag_update_save_derivative: 
-            al_sc.data_widgets_plots.flag_update_save_derivative = False
-            al_sc.bottoni["save_deriv"].push()
-            al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
-            plot.full_import_plot_data(self.scena["plots"], al_sc.entrate["caricamento"].text)
-
-        # resoconto dello stato di tutti i bottoni e entrate
-        al_sc.collect_data_plots()
 
 
     def event_manage_tracer(self, eventi: pygame.event, logica: Logica, tredi):
@@ -1487,6 +1446,91 @@ class UI:
         al_sc.collect_data_tracer()
 
 
+    def event_manage_orbitals(self, eventi: pygame.event, logica: Logica, orbs):
+        
+        al_sc = self.scena["orbitals"]
+
+        # Stato di tutti i tasti
+        keys = pygame.key.get_pressed()
+
+        # scena main UI
+        for event in eventi:
+            # MOUSE
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    [tab.aggiorna_tab(event, logica) for index, tab in al_sc.tabs.items()]
+                    '-----------------------------------------------------------------------------------------------------'
+                    # Inizio sezione push events
+                    # if al_sc.bottoni["nome_bottone"].toggled:
+                    #     al_sc.bottoni["nome_bottone"].push()
+                    # Fine sezione push events
+                    '-----------------------------------------------------------------------------------------------------'
+
+                    # Inizio sezione events toggled:
+                    # if al_sc.bottoni["nome_bottone"].toggled: 
+                    #     ...
+
+                    # raccolta di tutti i testi già presenti nelle entrate
+                    test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
+
+                    # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
+                    if len(test_entr_attiva) > 0:
+                        self.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
+                    else: self.entrata_attiva = None
+
+                    al_sc.tabs["scena_settings"].abilita = False
+                    al_sc.tabs["scena_settings"].renderizza = False
+                    al_sc.tabs["tracer_settings"].abilita = False
+                    al_sc.tabs["tracer_settings"].renderizza = False
+                    
+                    if al_sc.bottoni["tab_scelta_orbitali"].toggled:
+                        al_sc.tabs["scena_settings"].abilita = True
+                        al_sc.tabs["scena_settings"].renderizza = True
+                    elif al_sc.bottoni["tab_settings"].toggled:
+                        al_sc.tabs["tracer_settings"].abilita = True
+                        al_sc.tabs["tracer_settings"].renderizza = True
+
+
+                if event.button == 4:
+                    logica.scroll_up += 10
+                if event.button == 5:
+                    logica.scroll_down += 10
+
+            # TASTIERA
+            # controlli generici -> No inserimento
+            
+            if event.type == pygame.KEYDOWN:
+
+                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                    self.entrata_attiva = None
+                    for key, entrata in al_sc.entrate.items():
+                        entrata.toggle = False
+                    
+                if logica.tab:
+                    if not self.entrata_attiva is None:
+                        possibili_entrate_attive = []
+                        
+                        for index, element in self.scena["tracer"].tabs.items():
+                            if element.renderizza and not element.entrate is None:
+                                for entrata in element.entrate:
+                                    if entrata.visibile:
+                                        possibili_entrate_attive.append(entrata)
+                        
+                        indice_attivo = possibili_entrate_attive.index(self.entrata_attiva)
+
+                        if logica.shift:
+                            if indice_attivo == 0: indice_attivo = len(possibili_entrate_attive)
+                            nuova_chiave = possibili_entrate_attive[indice_attivo - 1].key    
+                        else:
+                            if indice_attivo == len(possibili_entrate_attive) - 1: indice_attivo = -1
+                            nuova_chiave = possibili_entrate_attive[indice_attivo + 1].key
+                            
+                        self.entrata_attiva = al_sc.entrate[nuova_chiave]                    
+                        
+                        for index, i in al_sc.tabs.items(): 
+                            if not i.entrate is None: [elemento.selezionato_ent(event, nuova_chiave) for elemento in i.entrate]
+
+
     def start_cycle(self, logica: Logica):
         # impostazione inizio giro
         self.clock.tick(self.max_fps)
@@ -1515,7 +1559,6 @@ class Scena:
 
         self.entrata_attiva = None
 
-        self.data_widgets_plots =  WidgetDataPlots()
         self.data_widgets_tracer =  WidgetDataTracer()
 
         self.label_text: dict[str, LabelText] = {}
@@ -1551,8 +1594,10 @@ class Scena:
         self.bottoni["plots"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=2, y=2, text="PLOTS", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         toggled = True if indice_scena == 1 else False
         self.bottoni["tracer"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=8.1, y=2, text="RAY-TRACER", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        toggled = True if indice_scena == 2 else False
+        self.bottoni["orbitals"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=14.2, y=2, text="ORBITALI", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         
-        self.multi_box["active_scene"] = MultiBox([self.bottoni["plots"],self.bottoni["tracer"]])
+        self.multi_box["active_scene"] = MultiBox([self.bottoni["plots"],self.bottoni["tracer"],self.bottoni["orbitals"]])
         
         # TABS LINK
         self.tabs["sys_info"] = TabUI(name="sys_info", 
@@ -1560,7 +1605,7 @@ class Scena:
         )
     
         self.tabs["scene_manager"] = TabUI(name="scene_manager", 
-            bottoni=[self.bottoni["plots"], self.bottoni["tracer"]],
+            bottoni=[self.bottoni["plots"], self.bottoni["tracer"], self.bottoni["orbitals"]],
             multi_boxes=[self.multi_box["active_scene"]]
         )
 
@@ -1576,10 +1621,15 @@ class Scena:
         # BOTTONI
         # --------------------------------------------------------------------------------
         # statici
-        self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=84, y=42, text="str to LaTeX", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=84, y=44, text="Toggle 2° axis", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["toggle_plot_bb"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=84, y=46, text="Toggle plot ax", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["normalizza"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=84, y=48, text="Normalizza", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["zero_y"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=40, text="Visualizza zero", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["grad_vert"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=37, text="Grad. Verticale", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["grad_hori"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=35, text="Grad. Orizzontale", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.multi_box["grad_mode"] = MultiBox([self.bottoni["grad_vert"], self.bottoni["grad_hori"]])
+
+        self.bottoni["latex_check"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=42, text="str to LaTeX", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["toggle_2_axis"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=44, text="Toggle 2° axis", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["toggle_plot_bb"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=46, text="Toggle plot ax", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["normalizza"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=82, y=48, text="Normalizza", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["carica"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=91, y=54, tipologia="push", texture="UI_cerca", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["salva"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.8/1.6, h=3.8, x=91, y=59, tipologia="push", texture="UI_save", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["use_custom_borders"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=47.5, y=96, text="Cust. ranges", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
@@ -1596,7 +1646,7 @@ class Scena:
         self.bottoni["usa_sigmoi"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=9, h=1.8, x=80, y=16, text="Sigmoid interpolation", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["comp_inter"] = Button(self.parametri_repeat_elementi, self.fonts["medio"], w=9, h=3.6, x=90, y=16, text="COMPUTE", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.multi_box["interpol_mode"] = MultiBox([self.bottoni["usa_poly"],self.bottoni["usa_gaussi"],self.bottoni["usa_sigmoi"]])
-        self.bottoni["save_deriv"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=9, h=1.8, x=62, y=88, text="Salva derivata", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["save_deriv"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=9, h=1.8, x=62, y=90, text="Salva derivata", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         
         # scelta TAB
         self.bottoni["tab_settings"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=70, y=6+2, text="UI settings", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
@@ -1616,8 +1666,8 @@ class Scena:
         self.entrate["font_size"] = Entrata("font_size", self.parametri_repeat_elementi, self.fonts["piccolo"], w=1.5, h=1.8, x=70, y=32, text=f"{self.fonts['grande'].dim_font}", titolo="Font size", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["round_label"] = Entrata("round_label", self.parametri_repeat_elementi, self.fonts["piccolo"], w=1.5, h=1.8, x=70, y=34, text="2", titolo="Round to", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["subdivisions"] = Entrata("subdivisions", self.parametri_repeat_elementi, self.fonts["piccolo"], w=1.5, h=1.8, x=70, y=36, text="5", titolo="Subdivisions", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
-        self.entrate["color_bg"] = Entrata("color_bg", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=87, y=30, text="#1e1e1e", titolo="Colore bg", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
-        self.entrate["color_text"] = Entrata("color_text", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=87, y=32, text="#b4b4b4", titolo="Colore UI", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+        self.entrate["color_bg"] = Entrata("color_bg", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.5, h=1.8, x=86.5, y=30, text="#1e1e1e", titolo="Colore bg", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+        self.entrate["color_text"] = Entrata("color_text", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.5, h=1.8, x=86.5, y=32, text="#b4b4b4", titolo="Colore UI", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["area_w"] = Entrata("area_w", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=70, y=42, text=".8", titolo="w plot area", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["area_h"] = Entrata("area_h", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=70, y=44, text=".8", titolo="h plot area", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["x_legenda"] = Entrata("x_legenda", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=70, y=46, text=".2", titolo="x legenda", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
@@ -1629,7 +1679,7 @@ class Scena:
 
         # dinamiche
         self.entrate["nome_grafico"] = Entrata("nome_grafico", self.parametri_repeat_elementi, self.fonts["piccolo"], w=20, h=1.8, x=70, y=15, text="Plot 1", titolo="Nome", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
-        self.entrate["color_plot"] = Entrata("color_plot", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3, h=1.8, x=76, y=40, text="#dc143c", titolo="Colore graf.", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+        self.entrate["color_plot"] = Entrata("color_plot", self.parametri_repeat_elementi, self.fonts["piccolo"], w=3.5, h=1.8, x=76, y=40, text="#dc143c", titolo="Colore graf.", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["dim_pallini"] = Entrata("dim_pallini", self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=76, y=44, text="1", titolo="Dim. pallini", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["dim_link"] = Entrata("dim_link", self.parametri_repeat_elementi, self.fonts["piccolo"], w=1, h=1.8, x=76, y=46, text="1", titolo="Dim. links", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         
@@ -1683,9 +1733,10 @@ class Scena:
         )
 
         self.tabs["ui_control"] = TabUI(name="ui_control", 
-            bottoni=[self.bottoni["latex_check"], self.bottoni["toggle_2_axis"], self.bottoni["toggle_plot_bb"], self.bottoni["normalizza"], self.bottoni["carica"], self.bottoni["salva"]],
+            bottoni=[self.bottoni["zero_y"], self.bottoni["grad_vert"], self.bottoni["grad_hori"], self.bottoni["latex_check"], self.bottoni["toggle_2_axis"], self.bottoni["toggle_plot_bb"], self.bottoni["normalizza"], self.bottoni["carica"], self.bottoni["salva"]],
             entrate=[self.entrate["titolo"], self.entrate["labelx"], self.entrate["labely"], self.entrate["label2y"], self.entrate["ui_spessore"], self.entrate["font_size"], self.entrate["round_label"], self.entrate["subdivisions"], self.entrate["color_bg"], self.entrate["color_text"], self.entrate["area_w"], self.entrate["area_h"], self.entrate["x_legenda"], self.entrate["y_legenda"], self.entrate["caricamento"], self.entrate["salvataggio_path"], self.entrate["salvataggio_nome"]],
-            ui_signs=[self.ui_signs["tab_titolo"], self.ui_signs["titolo_settings"], self.ui_signs["settings_import"], self.ui_signs["columns_settings"], self.ui_signs["import_end"]]
+            ui_signs=[self.ui_signs["tab_titolo"], self.ui_signs["titolo_settings"], self.ui_signs["settings_import"], self.ui_signs["columns_settings"], self.ui_signs["import_end"]],
+            multi_boxes=[self.multi_box["grad_mode"]]
         )
         
         self.tabs["plot_control"] = TabUI(name="plot_control", renderizza=False, abilita=False,
@@ -1734,7 +1785,7 @@ class Scena:
 
         # scelta TAB
         self.bottoni["tab_scene"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=70, y=6+2, text="Scena", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
-        self.bottoni["tab_raytracer"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=77, y=6+2, text="Render settings", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["tab_raytracer"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=7, h=1.8, x=77, y=6+2, text="Render settings", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.multi_box["active_tab"] = MultiBox([self.bottoni["tab_scene"],self.bottoni["tab_raytracer"]])
         # --------------------------------------------------------------------------------
 
@@ -1846,6 +1897,40 @@ class Scena:
 
         self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
 
+
+    def build_orbitals(self):
+        # BOTTONI
+        # --------------------------------------------------------------------------------
+        # editor
+        self.bottoni["attiva"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=65, y=17, text="Attiva", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        
+        # scelta TAB
+        self.bottoni["tab_scelta_orbitali"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=6, h=1.8, x=70, y=6+2, text="Orbitali", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["tab_settings"] = Button(self.parametri_repeat_elementi, self.fonts["piccolo"], w=8, h=1.8, x=77, y=6+2, text="Graphics settings", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.multi_box["active_tab"] = MultiBox([self.bottoni["tab_scelta_orbitali"],self.bottoni["tab_settings"]])
+        # --------------------------------------------------------------------------------
+
+
+        self.tabs["scena_settings"] = TabUI(name="scena_settings", 
+            bottoni=[self.bottoni["attiva"]],
+        )
+
+        
+        self.tabs["tracer_settings"] = TabUI(name="tracer_settings", abilita=False, renderizza=False,
+
+        )
+        
+        
+        self.tabs["tab_control"] = TabUI(name="tab_control", 
+            bottoni=[self.bottoni["tab_scelta_orbitali"], self.bottoni["tab_settings"]],
+            multi_boxes=[self.multi_box["active_tab"]]
+        )
+
+        self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
+        self.schermo["helper"] = Schermo(self.parametri_repeat_elementi, 30, 30, 65, 30, False)
+        self.schermo["helper2"] = Schermo(self.parametri_repeat_elementi, 30, 30, 65, 65, False)
+
+
     
     def disegnami(self, logica: Logica) -> None:
         
@@ -1857,44 +1942,6 @@ class Scena:
         [segno.disegnami() for indice, segno in self.ui_signs.items()]
 
 
-    def collect_data_plots(self) -> None:
-        self.data_widgets_plots.titolo = self.entrate["titolo"].text_invio
-        self.data_widgets_plots.labelx = self.entrate["labelx"].text_invio
-        self.data_widgets_plots.labely = self.entrate["labely"].text_invio
-        self.data_widgets_plots.label2y = self.entrate["label2y"].text_invio
-        self.data_widgets_plots.round_label = self.entrate["round_label"].text_invio
-        self.data_widgets_plots.dim_font = self.entrate["font_size"].text_invio
-        self.data_widgets_plots.color_bg = self.entrate["color_bg"].text_invio
-        self.data_widgets_plots.color_text = self.entrate["color_text"].text_invio
-        self.data_widgets_plots.area_w = self.entrate["area_w"].text_invio
-        self.data_widgets_plots.area_h = self.entrate["area_h"].text_invio
-        self.data_widgets_plots.x_legenda = self.entrate["x_legenda"].text_invio
-        self.data_widgets_plots.y_legenda = self.entrate["y_legenda"].text_invio        
-        self.data_widgets_plots.nome_grafico = self.entrate["nome_grafico"].text_invio        
-        self.data_widgets_plots.color_plot = self.entrate["color_plot"].text_invio        
-        self.data_widgets_plots.dim_link = self.entrate["dim_link"].text_invio        
-        self.data_widgets_plots.dim_pallini = self.entrate["dim_pallini"].text_invio        
-        self.data_widgets_plots.grado_inter = self.entrate["grado_inter"].text_invio 
-        self.data_widgets_plots.x_min = self.entrate["x_min"].text_invio
-        self.data_widgets_plots.x_max = self.entrate["x_max"].text_invio
-        self.data_widgets_plots.y_min = self.entrate["y_min"].text_invio
-        self.data_widgets_plots.y_max = self.entrate["y_max"].text_invio       
-        self.data_widgets_plots.subdivisions = self.entrate["subdivisions"].text_invio       
-        self.data_widgets_plots.ui_spessore = self.entrate["ui_spessore"].text_invio       
-        self.data_widgets_plots.input_path = self.entrate["caricamento"].text_invio
-
-        self.data_widgets_plots.acceso = self.scrolls["grafici"].elementi_attivi[self.scrolls["grafici"].first_item + self.scrolls["grafici"].scroll_item_selected]
-        self.data_widgets_plots.normalizza = self.bottoni["normalizza"].toggled 
-        self.data_widgets_plots.use_custom_borders = self.bottoni["use_custom_borders"].toggled 
-        self.data_widgets_plots.toggle_inter = self.bottoni["toggle_inter"].toggled 
-        self.data_widgets_plots.toggle_pallini = self.bottoni["toggle_pallini"].toggled 
-        self.data_widgets_plots.toggle_collegamenti = self.bottoni["toggle_collegamenti"].toggled
-        self.data_widgets_plots.latex_check = self.bottoni["latex_check"].toggled
-        self.data_widgets_plots.toggle_2_axis = self.bottoni["toggle_2_axis"].toggled
-        self.data_widgets_plots.toggle_plt_bb = self.bottoni["toggle_plot_bb"].toggled
-        self.data_widgets_plots.gradiente = self.bottoni["gradiente"].toggled
-        self.data_widgets_plots.salva_der = self.bottoni["save_deriv"].toggled
-    
     def collect_data_tracer(self) -> None:
         self.data_widgets_tracer.px = self.entrate["px_modello"].text
         self.data_widgets_tracer.py = self.entrate["py_modello"].text

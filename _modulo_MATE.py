@@ -22,6 +22,24 @@ class Mate:
             return v / Mate.modulo(v)
     
     @staticmethod
+    def car2pol(coords):
+        r = np.sqrt(coords[:, 0]**2 + coords[:, 1]**2 + coords[:, 2]**2)
+        theta = np.arccos(coords[:, 2] / r)
+        phi = np.arctan2(coords[:, 1], coords[:, 0])
+        return Mate.stack_attributes(r, theta, phi)
+    
+    @staticmethod
+    def pol2car(coords):
+        x = coords[:, 0] * np.sin(coords[:, 1]) * np.cos(coords[:, 2])
+        y = coords[:, 0] * np.sin(coords[:, 1]) * np.sin(coords[:, 2])
+        z = coords[:, 0] * np.cos(coords[:, 1])
+        return Mate.stack_attributes(x, y, z)
+    
+    @staticmethod
+    def stack_attributes(*args):
+        return np.vstack((args)).T
+
+    @staticmethod
     def screen_world() -> np.ndarray[np.ndarray[float]]:
         return np.array([
             [1,0,0,0],

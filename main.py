@@ -5,25 +5,29 @@ import pygame
 
 def main(config: configparser):
     
+    # Zona inizializzazione UI
     from _modulo_UI import UI, Logica
-    from _modulo_plots import Painter
-    from _modulo_3D_grafica import TreDi
-
     ui = UI(config)
     logica = Logica()
-
     logica.scena = int(config.get('Default', 'scena_iniziale'))
     
     # Zona inizializzazione plot
+    from _modulo_plots import Painter
     main_plot = Painter()
     main_plot.link_ui(ui)
     main_plot.full_import_plot_data(ui.scena["plots"])
 
-    # Zone inizializzazione tracer
+    # Zona inizializzazione tracer
+    from _modulo_3D_grafica import TreDi
     tredi = TreDi()
     tredi.TEMPORARY_GENERATION()
     tredi.link_ui(ui)
-    
+
+    # Zona inizializzazione orbitali
+    from _modulo_orbitali import Manager_orbs
+    orbs = Manager_orbs(100000)
+    orbs.link_ui(ui)
+
     while ui.running:
 
         ui.start_cycle(logica)
@@ -39,17 +43,22 @@ def main(config: configparser):
                 ui.event_manage_plots(eventi_in_corso, logica, main_plot)
                 [tab.disegna_tab(logica) for index, tab in ui.scena["plots"].tabs.items()]
         
-                ui.scena["plots"].bottoni["normalizza"].visibile = True if len([plot for plot in main_plot.plots if plot.acceso]) == 2 else False
-            
-                main_plot.disegna(logica, ui.scena["plots"].data_widgets_plots)
-                ui.scena["plots"].schermo["viewport"].aggiorna_schermo()
+                main_plot.disegna(logica)
+                [schermo.aggiorna_schermo() for key, schermo in ui.scena["plots"].schermo.items()]
         
             case 1: 
                 ui.event_manage_tracer(eventi_in_corso, logica, tredi)
                 [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
                 
                 tredi.disegna(logica, ui.scena["tracer"].data_widgets_tracer)
-                ui.scena["tracer"].schermo["viewport"].aggiorna_schermo()
+                [schermo.aggiorna_schermo() for key, schermo in ui.scena["tracer"].schermo.items()]
+
+            case 2: 
+                ui.event_manage_orbitals(eventi_in_corso, logica, orbs)
+                [tab.disegna_tab(logica) for index, tab in ui.scena["orbitals"].tabs.items()]
+                
+                orbs.disegna(logica)
+                [schermo.aggiorna_schermo() for key, schermo in ui.scena["orbitals"].schermo.items()]
                 
         # controllo di uscita dal programma ed eventuale aggiornamento dello schermo
         ui.mouse_icon(logica)   # lanciato due volte per evitare flickering a bassi FPS
@@ -79,3 +88,4 @@ if __name__ == "__main__":
         yappi.stop()
         func_stats = yappi.get_func_stats()
         func_stats.save('PROFILATORE/_prof_yappi.prof', type='pstat')
+        print("Profilatore salvato!")

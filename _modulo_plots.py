@@ -2,11 +2,17 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import trapezoid
 import pygame
-from _modulo_UI import Schermo, WidgetDataPlots, Logica, UI, Scena
+from _modulo_UI import Schermo, Logica, UI, Scena
 from _modulo_MATE import Mate
 import configparser
 import os
 from copy import deepcopy
+
+MIN_BORDER = -10000
+MAX_BORDER = 10000
+
+ZERO_MIN_BORDER = -.001
+ZERO_MAX_BORDER = .001
 
 class Plot:
     def __init__(self, nome: str, x: np.ndarray[float], y: np.ndarray[float], ey: np.ndarray[float] | None) -> None:
@@ -25,9 +31,9 @@ class Plot:
         """
         self.nome = nome
         
-        self.x = x
-        self.y = y
-        self.ey = ey
+        self.x = np.around(x, decimals=8)
+        self.y = np.around(y, decimals=8)
+        self.ey = np.around(ey, decimals=8) if not ey is None else None
         self.y_interp_lin: np.ndarray[float] | None = None
         self.grado_inter: int = 1
 
@@ -52,11 +58,35 @@ class Plot:
 
         self.maschera: np.ndarray[bool] | None = None
         self.interpol_maschera: np.ndarray[bool] | None = None
+
+        self.colors_surface = None
     
+
+    def settings(self, colore: list = [255, 255, 255], gradiente: bool = False, scatter: bool = True, function: bool = False, interpolate: bool = True , interpolation_type: str = "" , dim_pall: int = 1, dim_link: int = 1, acceso: bool = 0):
+        self.colore = colore
+        self.gradiente = gradiente
+        
+        self.scatter = scatter
+        self.function = function
+        self.interpolate = interpolate
+        self.interpolation_type = interpolation_type
+
+        self.dim_pall = dim_pall
+        self.dim_link = dim_link
+
+        self.acceso = acceso
 
 
 class Painter:
-    def __init__(self) -> None:
+    def __init__(self, control: str = "full") -> None:
+
+        match control:
+            case "minimal":
+                self.control = False
+            case "full":
+                self.control = True
+            case _:
+                raise NameError(f"{control} is an invalid mode")
 
         config = configparser.ConfigParser()
         config.read('./DATA/settings.ini')
@@ -119,13 +149,22 @@ class Painter:
         self.max_y: float = 0
         self.max_x: float = 0
 
+        self.zero_y: float = 0
+
         self.dim_font_base = 32
         self.dim_font = 32 
         self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
 
+        self.titolo = ""
+        self.testo_x = ""
+        self.testo_y = ""
+        self.testo_2y = ""
+
         self.approx_label: int = int(config.get('Grafici', 'approx_label'))
         self.visualize_second_ax: bool = eval(config.get('Grafici', 'visualize_second_ax'))
+
+        self.grad_mode = "vert"
 
         self.debug_info: list[str] = [(), "", [], ""] 
         # 0: width, height
@@ -133,13 +172,39 @@ class Painter:
         # 2: names
         # 3: ...
 
-        '---------------ANIMATION----------------'
+    
+    def settings(self, titolo = "Titolo", testo_x = "Asse X", testo_y = "Asse Y", testo_2y = "2° Asse Y", visualize_second_ax = False, visualize_zero_ax = True, approx_label = 2, dim_font_base = 24, w_proportion = 0.7, h_proportion = 0.7, x_legenda = 0.3, y_legenda = 0.3, bg_color = Mate.hex2rgb("#1e1e1e"), text_color = Mate.hex2rgb("#b4b4b4"), use_custom_borders = False, x_min = 0.0, x_max = 1.0, y_min = 0.0, y_max = 1.0, subdivisions = 5, grad_mode = "hori", ui_spessore = 1):
+        self.titolo = self.check_latex(titolo)
+        self.testo_x = self.check_latex(testo_x)
+        self.testo_y = self.check_latex(testo_y)
+        self.testo_2y = self.check_latex(testo_2y)
 
-        self.old_widget_data: WidgetDataPlots = WidgetDataPlots()
+        self.visualize_second_ax = visualize_second_ax
+        self.visualize_zero_ax = visualize_zero_ax
 
-        self.animation: bool = True
-        self.duration: int = 20
-        self.progress: float = 0.0 # goes from 0.0 to 1.0
+        self.approx_label = approx_label
+        self.dim_font_base = dim_font_base
+        
+        self.w_proportion = w_proportion
+        self.h_proportion = h_proportion
+
+        self.x_legenda = x_legenda
+        self.y_legenda = y_legenda
+
+        self.bg_color = bg_color
+        self.text_color = text_color
+
+        self.use_custom_borders = use_custom_borders
+        
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+
+        self.subdivisions = subdivisions
+        self.grad_mode = grad_mode
+
+        self.ui_spessore = ui_spessore
     
     
     def re_compute_font(self, factor: float = 1) -> None:
@@ -156,17 +221,10 @@ class Painter:
         self.font_pixel_dim = self.font_tipo.size("a")
     
 
-    def re_compute_size(self, secondo_asse: bool = False) -> None:
-        """Ricalcola la dimensione dell'UI dei grafici in base alla presenza del secondo asse Y
+    def re_compute_size(self) -> None:
+        """Ricalcola la dimensione dell'UI dei grafici in base alla presenza del secondo asse Y"""
 
-        Parameters
-        ----------
-        secondo_asse : bool, optional
-            Se presente la posizione di tutti gli elementi UI dovranno essere spostati di conseguenza, by default False
-        """
-        self.visualize_second_ax = secondo_asse
-
-        if secondo_asse:
+        if self.visualize_second_ax:
 
             self.w_plot_area = self.w_proportion * self.w
             self.h_plot_area = self.h_proportion * self.h
@@ -271,7 +329,7 @@ class Painter:
         return input_str
 
     
-    def link_ui(self, ui: UI) -> None: 
+    def link_ui(self, ui: UI, scene: str = "plots", schermo: str = "viewport") -> None: 
         """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
 
         Parameters
@@ -280,10 +338,10 @@ class Painter:
             Dato la classe Schermo, posso capire le informazioni che mi servono
         """
 
-        info_schermo = ui.scena["plots"].schermo["viewport"]
+        info_schermo = ui.scena[scene].schermo[schermo]
 
         self.schermo_madre = info_schermo.madre
-        
+    
         self.w = info_schermo.w
         self.h = info_schermo.h
         
@@ -304,6 +362,51 @@ class Painter:
         self.ancoraggio_y = info_schermo.ancoraggio_y 
         
         self.schermo = info_schermo.schermo
+
+        self.UI_calls_plots = ui.scena["plots"]
+
+        self.UI_titolo = self.UI_calls_plots.entrate["titolo"]
+        self.UI_labelx = self.UI_calls_plots.entrate["labelx"]
+        self.UI_labely = self.UI_calls_plots.entrate["labely"]
+        self.UI_label2y = self.UI_calls_plots.entrate["label2y"]
+        self.UI_round_label = self.UI_calls_plots.entrate["round_label"]
+        self.UI_font_size = self.UI_calls_plots.entrate["font_size"]
+        self.UI_color_bg = self.UI_calls_plots.entrate["color_bg"]
+        self.UI_color_text = self.UI_calls_plots.entrate["color_text"]
+        self.UI_area_w = self.UI_calls_plots.entrate["area_w"]
+        self.UI_area_h = self.UI_calls_plots.entrate["area_h"]
+        self.UI_x_legenda = self.UI_calls_plots.entrate["x_legenda"]
+        self.UI_y_legenda = self.UI_calls_plots.entrate["y_legenda"]        
+        self.UI_nome_grafico = self.UI_calls_plots.entrate["nome_grafico"]        
+        self.UI_color_plot = self.UI_calls_plots.entrate["color_plot"]        
+        self.UI_dim_link = self.UI_calls_plots.entrate["dim_link"]        
+        self.UI_dim_pallini = self.UI_calls_plots.entrate["dim_pallini"]        
+        self.UI_grado_inter = self.UI_calls_plots.entrate["grado_inter"] 
+        self.UI_x_min = self.UI_calls_plots.entrate["x_min"]
+        self.UI_x_max = self.UI_calls_plots.entrate["x_max"]
+        self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
+        self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
+        self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
+        self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]       
+        self.UI_caricamento = self.UI_calls_plots.entrate["caricamento"]
+
+        self.UI_scroll_grafici = self.UI_calls_plots.scrolls["grafici"]
+        self.UI_normalizza = self.UI_calls_plots.bottoni["normalizza"] 
+        self.UI_use_custom_borders = self.UI_calls_plots.bottoni["use_custom_borders"] 
+        self.UI_toggle_inter = self.UI_calls_plots.bottoni["toggle_inter"] 
+        self.UI_toggle_pallini = self.UI_calls_plots.bottoni["toggle_pallini"] 
+        self.UI_toggle_collegamenti = self.UI_calls_plots.bottoni["toggle_collegamenti"]
+        self.UI_latex_check = self.UI_calls_plots.bottoni["latex_check"]
+        self.UI_toggle_2_axis = self.UI_calls_plots.bottoni["toggle_2_axis"]
+        self.UI_toggle_plot_bb = self.UI_calls_plots.bottoni["toggle_plot_bb"]
+        self.UI_gradiente = self.UI_calls_plots.bottoni["gradiente"]
+        self.UI_gradiente_hori = self.UI_calls_plots.bottoni["grad_hori"]
+        self.UI_gradiente_vert = self.UI_calls_plots.bottoni["grad_vert"]
+        self.UI_zero_y = self.UI_calls_plots.bottoni["zero_y"]
+        self.UI_save_deriv = self.UI_calls_plots.bottoni["save_deriv"]
+
+        self.UI_FID = self.UI_calls_plots.label_text["FID"]
+
     
     
     def change_active_plot_UIBASED(self, ui: UI) -> None:
@@ -630,6 +733,9 @@ class Painter:
                     for x, y in zip(plot.x_screen, plot.y_screen):
                         dati.append([x, y, index])
 
+            
+            self.zero_y = self.h_plot_area * (0 - self.min_y) / (self.max_y - self.min_y)
+            self.zero_y = - self.zero_y + self.start_y
 
             self.data_points_coords = np.array(dati)
             if len(self.data_points_coords) != 0:
@@ -692,86 +798,150 @@ class Painter:
         self.min_y = self.min_y + self.zoom_min_y * delta_y
 
 
-    def disegna_plots(self, widget_data: WidgetDataPlots) -> None:
-        """
-        Disegna tutti i grafici caricati e abilitati al disegno.
-
-        Parameters
-        ----------
-        widget_data : WidgetData
-            Necessita dei widget data per poter aggiornare gli attributi dei singoli grafici
-        """
-        if not WidgetDataPlots.are_attributes_equal(self.old_widget_data, widget_data):
-            self.animation = True
-            self.progress = 0
-            WidgetDataPlots.update_attributes(self.old_widget_data, widget_data)
-
-        if self.animation:
-            self.progress += 1 / self.duration
-            if self.progress >= 1.0: self.progress = 0; self.animation = False
-
-        self.normalizza = widget_data.normalizza
-
-        # Sezione di impostazioni grafico attuale attivo
-        self.plots[self.active_plot].acceso = widget_data.acceso 
-        self.plots[self.active_plot].interpolate = widget_data.toggle_inter 
-        self.plots[self.active_plot].grado_inter = Mate.inp2int(widget_data.grado_inter, 1) 
-        self.plots[self.active_plot].function = widget_data.toggle_collegamenti 
-        self.plots[self.active_plot].scatter = widget_data.toggle_pallini 
-        self.plots[self.active_plot].gradiente = widget_data.gradiente 
-        self.plots[self.active_plot].colore = Mate.hex2rgb(widget_data.color_plot) 
-
-        self.plots[self.active_plot].dim_link = Mate.inp2int(widget_data.dim_link)
-        self.plots[self.active_plot].dim_pall = Mate.inp2int(widget_data.dim_pallini)
-
-        self.plots[self.active_plot].nome = widget_data.nome_grafico
+    
+    def disegna_gradiente(self) -> None:
 
         self.adattamento_data2schermo()
+
+        if self.control:
+            if self.UI_gradiente_vert.toggled:
+                self.grad_mode = "vert"
+            if self.UI_gradiente_hori.toggled:
+                self.grad_mode = "hori"
+
+        for index, plot in enumerate(self.plots):
+            if plot.acceso:
+                if plot.gradiente:
+                    
+                    if self.grad_mode == "vert":
+                        # VERTICAL
+                        for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                            m = (y2 - y1) / (x2 - x1)
+                            for i in range(0, x2 - x1):
+                                y_interpolated = int(y1 + m * i)
+                                colore = (self.start_y - y_interpolated) / self.start_y
+                                colore_finale = np.array(self.bg_color) + (np.array(plot.colore) - np.array(self.bg_color)) * colore
+                                pygame.draw.line(self.schermo, colore_finale, (x1 + i, self.start_y), (x1 + i, y_interpolated), 1)
+                    
+                    elif self.grad_mode == "hori":
+                        # HORIZONTAL
+
+                        gradient = np.zeros((int(self.w_plot_area), int(self.h_plot_area), 3), dtype=np.uint8)
+                        
+                        # CASO 1 -> 0 In mezzo al range
+                        if self.zero_y > self.end_y and self.zero_y < self.start_y:
+                            
+                            # coloro il gradiente UPPER
+                            limite = int(self.zero_y - self.end_y)
+                            for i in range(3):
+                                gradient[:, :limite, i] = np.tile(np.linspace(plot.colore[i], self.bg_color[i], limite), (int(self.w_plot_area), 1)).reshape(int(self.w_plot_area), limite)
+                            # coloro il gradiente LOWER
+                            limite = int(self.start_y - self.zero_y)
+                            for i in range(3):
+                                gradient[:, -limite:, i] = np.tile(np.linspace(self.bg_color[i], plot.colore[i], limite), (1, int(self.w_plot_area))).reshape(int(self.w_plot_area), limite)
+                            
+                            plot.colors_surface = pygame.surfarray.make_surface(gradient)  
+                            self.schermo.blit(plot.colors_surface, (self.start_x, self.end_y))
+                            
+
+                            # lancio della maschera (zero fuori dagli estremi) UPPER  
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                                m = (y2 - y1) / (x2 - x1)
+                                
+                                for i in range(0, x2 - x1):
+                                    y_interpolated = int(y1 + m * i)
+                                    obiettivo = y_interpolated if y_interpolated < self.zero_y else self.zero_y
+                                    pygame.draw.line(self.schermo, self.bg_color, (x1 + i, self.end_y), (x1 + i, obiettivo), 1)
+
+                            # lancio della maschera (zero fuori dagli estremi) LOWER
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                                m = (y2 - y1) / (x2 - x1)
+                                
+                                for i in range(0, x2 - x1):
+                                    y_interpolated = int(y1 + m * i)
+                                    obiettivo = y_interpolated if y_interpolated > self.zero_y else self.zero_y 
+                                    pygame.draw.line(self.schermo, self.bg_color, (x1 + i, self.start_y), (x1 + i, obiettivo), 1)
+
+
+                        else:
+                            # CASO 2 -> Tutto sotto lo 0
+                            if self.zero_y <= self.end_y: 
+                                from_y = self.start_y
+                                colore_start = self.bg_color
+                                colore_finale = plot.colore
+                            
+                            # CASO 3 -> Tutto sopra lo 0
+                            elif self.zero_y >= self.start_y:
+                                from_y = self.end_y
+                                colore_start = plot.colore
+                                colore_finale = self.bg_color
+
+                            # coloro il gradiente
+                            for i in range(3):
+                                gradient[:, :, i] = np.linspace(colore_start[i], colore_finale[i], int(self.h_plot_area)).reshape(1, int(self.h_plot_area))
+                            plot.colors_surface = pygame.surfarray.make_surface(gradient)  
+                            self.schermo.blit(plot.colors_surface, (self.start_x, self.end_y))
+                            
+                            # lancio della maschera (zero fuori dagli estremi)    
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                                m = (y2 - y1) / (x2 - x1)
+                                
+                                for i in range(0, x2 - x1):
+                                    y_interpolated = int(y1 + m * i)
+                                    pygame.draw.line(self.schermo, self.bg_color, (x1 + i, from_y), (x1 + i, y_interpolated), 1)
+                            
+
+    def disegna_plots(self) -> None:
+        """
+        Disegna tutti i grafici caricati e abilitati al disegno.
+        """
+        
+        if self.control:
+
+            self.normalizza = self.UI_normalizza.toggled
+
+            # Sezione di impostazioni grafico attuale attivo
+            self.plots[self.active_plot].acceso = self.UI_scroll_grafici.elementi_attivi[self.UI_scroll_grafici.first_item + self.UI_scroll_grafici.scroll_item_selected]
+            self.plots[self.active_plot].interpolate = self.UI_toggle_inter.toggled 
+            self.plots[self.active_plot].grado_inter = Mate.inp2int(self.UI_grado_inter.text_invio, 1) 
+            self.plots[self.active_plot].function = self.UI_toggle_collegamenti.toggled 
+            self.plots[self.active_plot].scatter = self.UI_toggle_pallini.toggled 
+            self.plots[self.active_plot].gradiente = self.UI_gradiente.toggled 
+            self.plots[self.active_plot].colore = Mate.hex2rgb(self.UI_color_plot.text_invio) 
+
+            self.plots[self.active_plot].dim_link = Mate.inp2int(self.UI_dim_link.text_invio)
+            self.plots[self.active_plot].dim_pall = Mate.inp2int(self.UI_dim_pallini.text_invio)
+
+            self.plots[self.active_plot].nome = self.UI_nome_grafico.text_invio
         
         self.debug_info[1] = sum([len(i.x) for i in self.plots])
         
         for index, plot in enumerate(self.plots):
 
             if plot.acceso:
-                    
-                    animation_bound, colore_animazione = self.animation_update(plot, index)
-                    
-                    try:
-                        if plot.gradiente:
-                            # Z BASED 
-                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
-                                m = (y2 - y1) / (x2 - x1)
-                                for i in range(0, x2 - x1):
-                                    y_interpolated = int(y1 + m * i)
-                                    colore = (self.start_y - y_interpolated) / self.start_y
-                                    colore_finale = np.array(self.bg_color) + (np.array(plot.colore) - np.array(self.bg_color)) * colore
-                                    pygame.draw.line(self.schermo, colore_finale, (x1 + i, self.start_y), (x1 + i, y_interpolated), 1)
-                    except (TypeError, ValueError) as e:
-                        if self.debugging: print(f"Warning: {e} in gradiente")
-
 
                     try:
                         if plot.scatter:
-                            for x, y in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound]):
-                                pygame.draw.circle(self.schermo, colore_animazione, (x, y), plot.dim_pall)
+                            for x, y in zip(plot.x_screen.astype(int), plot.y_screen.astype(int)):
+                                pygame.draw.circle(self.schermo, plot.colore, (x, y), plot.dim_pall)
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in scatter")
 
 
                     try:
                         if plot.scatter and not plot.ey is None:
-                            for x, y, ey in zip(plot.x_screen.astype(int)[:animation_bound], plot.y_screen.astype(int)[:animation_bound], plot.ey_screen.astype(int)[:animation_bound]):
-                                pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y + ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, colore_animazione, (x, y), (x, y - ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y + ey), (x + ey / 5, y + ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, colore_animazione, (x - ey / 5, y - ey), (x + ey / 5, y - ey), plot.dim_link)
+                            for x, y, ey in zip(plot.x_screen.astype(int), plot.y_screen.astype(int), plot.ey_screen.astype(int)):
+                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y + ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y - ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y + ey), (x + ey / 5, y + ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y - ey), (x + ey / 5, y - ey), plot.dim_link)
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in errors")
 
 
                     try:
                         if plot.interpolate and not plot.y_interp_lin is None:
-                            for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:animation_bound-1], plot.yi_screen.astype(int)[:animation_bound-1], plot.xi_screen.astype(int)[1:animation_bound], plot.yi_screen.astype(int)[1:animation_bound]):
+                            for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:-1], plot.yi_screen.astype(int)[:-1], plot.xi_screen.astype(int)[1:], plot.yi_screen.astype(int)[1:]):
                                 pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), plot.dim_link)
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in interpolate")
@@ -779,8 +949,8 @@ class Painter:
                     
                     try:
                         if plot.function:
-                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:animation_bound-1], plot.y_screen.astype(int)[:animation_bound-1], plot.x_screen.astype(int)[1:animation_bound], plot.y_screen.astype(int)[1:animation_bound]):
-                                pygame.draw.line(self.schermo, colore_animazione, (x1, y1), (x2, y2), plot.dim_link)
+                            for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
+                                pygame.draw.line(self.schermo, plot.colore, (x1, y1), (x2, y2), plot.dim_link)
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in function")
 
@@ -828,7 +998,10 @@ class Painter:
 
 
     def animation_update(self, plot: Plot, index: int, noanim: bool = False) -> tuple[int, list[int]]:
-        """Aggiorna lo stato dell'animazione e switcha tra acceso e spento
+        """
+        IN DISUSO
+        ----------
+        Aggiorna lo stato dell'animazione e switcha tra acceso e spento
 
         Parameters
         ----------
@@ -851,60 +1024,66 @@ class Painter:
         return animation_bound, colore_animazione
 
 
-    def disegna(self, logica: Logica, widget_data: WidgetDataPlots) -> None:
+    def disegna(self, logica: Logica) -> None:
         """Funzione principale richiamata dall'utente che inizia il processo di disegno dell'UI dei grafici e i grafici stessi
 
         Parameters
         ----------
         logica : Logica
             Classe contenente varie informazioni riguardo agli input dell'utente (mos pos, CTRL, SHIFT, click, drag, ecc.)
-        widget_data : WidgetData
-            Classe contenente gli attributi dell'UI che potrebbero servire a cambiare le proprietà dei grafici
         """
 
         self.schermo.fill(self.bg_color)
 
+        self.disegna_gradiente()
+
         # import settings
-        if widget_data.latex_check:
-            titolo = Painter.check_latex(widget_data.titolo) 
-            testo_x = Painter.check_latex(widget_data.labelx)
-            testo_y = Painter.check_latex(widget_data.labely)
-            testo_2y = Painter.check_latex(widget_data.label2y)
-        else:
-            titolo = widget_data.titolo
-            testo_x = widget_data.labelx
-            testo_y = widget_data.labely
-            testo_2y = widget_data.label2y
+        if self.control:
+            if self.UI_latex_check.toggled:
+                self.titolo = Painter.check_latex(self.UI_titolo.text_invio) 
+                self.testo_x = Painter.check_latex(self.UI_labelx.text_invio)
+                self.testo_y = Painter.check_latex(self.UI_labely.text_invio)
+                self.testo_2y = Painter.check_latex(self.UI_label2y.text_invio)
+            else:
+                self.titolo = self.UI_titolo.text_invio
+                self.testo_x = self.UI_labelx.text_invio
+                self.testo_y = self.UI_labely.text_invio
+                self.testo_2y = self.UI_label2y.text_invio
+            
+            # prova di conversione
+            self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
+            self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)
+            
+            self.w_proportion = Mate.conversione_limite(self.UI_area_w.text_invio, 0.8, 0.9)
+            self.h_proportion = Mate.conversione_limite(self.UI_area_h.text_invio, 0.8, 0.9)
 
-        # prova di conversione
-        self.approx_label = Mate.conversione_limite(widget_data.round_label, 2, 9)
-        self.dim_font_base = Mate.conversione_limite(widget_data.dim_font, 32, 128)
-        
-        self.w_proportion = Mate.conversione_limite(widget_data.area_w, 0.8, 0.9)
-        self.h_proportion = Mate.conversione_limite(widget_data.area_h, 0.8, 0.9)
+            self.x_legenda = Mate.conversione_limite(self.UI_x_legenda.text_invio, 0.2, 0.9)
+            self.y_legenda = Mate.conversione_limite(self.UI_y_legenda.text_invio, 0.3, 0.9)
 
-        self.x_legenda = Mate.conversione_limite(widget_data.x_legenda, 0.2, 0.9)
-        self.y_legenda = Mate.conversione_limite(widget_data.y_legenda, 0.3, 0.9)
+            self.bg_color = Mate.hex2rgb(self.UI_color_bg.text_invio)
+            self.text_color = Mate.hex2rgb(self.UI_color_text.text_invio)
 
-        self.bg_color = Mate.hex2rgb(widget_data.color_bg)
-        self.text_color = Mate.hex2rgb(widget_data.color_text)
+            self.use_custom_borders = self.UI_use_custom_borders.toggled
+            
+            self.x_min = Mate.inp2flo(self.UI_x_min.text_invio)
+            self.x_max = Mate.inp2flo(self.UI_x_max.text_invio)
+            self.y_min = Mate.inp2flo(self.UI_y_min.text_invio)
+            self.y_max = Mate.inp2flo(self.UI_y_max.text_invio)
 
-        self.use_custom_borders = widget_data.use_custom_borders
-        
-        self.x_min = Mate.inp2flo(widget_data.x_min)
-        self.x_max = Mate.inp2flo(widget_data.x_max)
-        self.y_min = Mate.inp2flo(widget_data.y_min)
-        self.y_max = Mate.inp2flo(widget_data.y_max)
+            self.subdivisions = Mate.inp2int(self.UI_subdivisions.text_invio)
+            if self.subdivisions < 2: self.subdivisions = 2
 
-        self.subdivisions = Mate.inp2int(widget_data.subdivisions)
-        if self.subdivisions < 2: self.subdivisions = 2
+            self.ui_spessore = Mate.inp2int(self.UI_ui_spessore.text_invio)
+            if self.ui_spessore < 1: self.ui_spessore = 1
 
-        self.ui_spessore = Mate.inp2int(widget_data.ui_spessore)
-        if self.ui_spessore < 1: self.ui_spessore = 1
+            self.UI_normalizza.visibile = True if len([plot for plot in self.plots if plot.acceso]) == 2 else False            
+            self.visualize_second_ax = self.UI_toggle_2_axis.toggled
+            self.visualize_zero_ax = self.UI_zero_y.toggled
+
 
         # recalculation of window
-        self.re_compute_size(widget_data.toggle_2_axis)
-
+        self.re_compute_size()
+        
         "-------------------------------------------------------------"
 
         # X axis
@@ -955,8 +1134,10 @@ class Painter:
                 self.ui_spessore
             )
             
-            self.schermo.blit(self.font_tipo.render(f"{self.min_x + delta_x * i / (self.subdivisions - 1):.{self.approx_label}f}", True, self.text_color), (
-                pos_var_x - self.font_pixel_dim[0] * len(f"{self.min_x + delta_x * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2,
+            value = self.min_x + delta_x * i / (self.subdivisions - 1)
+            formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
+            self.schermo.blit(self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, self.text_color), (
+                pos_var_x - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2,
                 self.start_y + (self.h - self.start_y) // 3
             ))
 
@@ -968,13 +1149,15 @@ class Painter:
                 self.ui_spessore
             )
             
-            label_y_scr = self.font_tipo.render(f"{minimo_locale_label + delta_y * i / (self.subdivisions - 1):.{self.approx_label}f}", True, colori_assi[0])
+            value = minimo_locale_label + delta_y * i / (self.subdivisions - 1)
+            formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
+            label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, colori_assi[0])
             label_y_scr = pygame.transform.rotate(label_y_scr, 90)
         
 
             self.schermo.blit(label_y_scr, (
                 self.start_x - self.start_x // 3 - self.font_pixel_dim[1],
-                pos_var_y - self.font_pixel_dim[0] * len(f"{minimo_locale_label + delta_y * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2
+                pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
             ))
             
             if self.visualize_second_ax:
@@ -985,32 +1168,40 @@ class Painter:
                     self.ui_spessore
                 )
                 
-                label_y_scr = self.font_tipo.render(f"{self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1):.{self.approx_label}f}", True, colori_assi[1])
+                value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1)
+                formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
+                label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, colori_assi[1])
                 label_y_scr = pygame.transform.rotate(label_y_scr, 90)
             
                 self.schermo.blit(label_y_scr, (
                     self.end_x + 1 * self.start_x // 3,
-                    pos_var_y - self.font_pixel_dim[0] * len(f"{self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1):.{self.approx_label}f}") / 2
+                    pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
                 ))
             
             # griglia
-            if widget_data.toggle_plt_bb:
-                pygame.draw.line(self.schermo, [50, 50, 50], 
-                    [pos_var_x, self.start_y],
-                    [pos_var_x, self.end_y],
-                    1
-                )
+            if self.UI_toggle_plot_bb.toggled:
+                if True:
+                    pygame.draw.line(self.schermo, [50, 50, 50], 
+                        [pos_var_x, self.start_y],
+                        [pos_var_x, self.end_y],
+                        1
+                    )
 
-                pygame.draw.line(self.schermo, [50, 50, 50], 
-                    [self.start_x, pos_var_y],
-                    [self.end_x, pos_var_y],
-                    1
-                )
-            
-        self.disegna_plots(widget_data)
+                    pygame.draw.line(self.schermo, [50, 50, 50], 
+                        [self.start_x, pos_var_y],
+                        [self.end_x, pos_var_y],
+                        1
+                    )
+
+        self.disegna_plots()
+
+        # linea dello 0 sulle Y
+        if self.visualize_zero_ax:
+            if self.zero_y > self.end_y and self.zero_y < self.start_y:
+                pygame.draw.line(self.schermo, self.text_color, [self.start_x, self.zero_y], [self.end_x, self.zero_y])
 
         # plots bounding box
-        # if widget_data.toggle_plt_bb:
+        # if self.UI_toggle_plot_bb.toggled:
         #     pygame.draw.rect(self.schermo, self.text_color, [
         #         self.start_x, self.end_y,
         #         self.w_plot_area, self.h_plot_area
@@ -1020,35 +1211,35 @@ class Painter:
         self.re_compute_font()    
         
         # testo asse x
-        self.schermo.blit(self.font_tipo.render(testo_x, True, self.text_color), (
-            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(testo_x) / 2,
+        self.schermo.blit(self.font_tipo.render(self.testo_x, True, self.text_color), (
+            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_x) / 2,
             self.start_y + 3 * (self.h - self.start_y) // 5
         ))
         
         # testo asse y
-        label_y_scr = self.font_tipo.render(testo_y, True, self.text_color)
+        label_y_scr = self.font_tipo.render(self.testo_y, True, self.text_color)
         label_y_scr = pygame.transform.rotate(label_y_scr, 90)
     
         self.schermo.blit(label_y_scr, (
             self.start_x - 3 * self.start_x // 5 - self.font_pixel_dim[1],
-            self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(testo_y) / 2,
+            self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_y) / 2,
         ))
 
         if self.visualize_second_ax:
             # testo asse 2 y
-            label_y_scr = self.font_tipo.render(testo_2y, True, self.text_color)
+            label_y_scr = self.font_tipo.render(self.testo_2y, True, self.text_color)
             label_y_scr = pygame.transform.rotate(label_y_scr, 90)
         
             self.schermo.blit(label_y_scr, (
                 self.end_x + self.start_x - 2 * self.start_x // 5,
-                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(testo_2y) / 2,
+                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_2y) / 2,
             ))
     
         self.re_compute_font(1.125)
         
         # titolo
-        self.schermo.blit(self.font_tipo.render(titolo, True, self.text_color), (
-            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(titolo) / 2,
+        self.schermo.blit(self.font_tipo.render(self.titolo, True, self.text_color), (
+            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(self.titolo) / 2,
             self.end_y // 2 - self.font_pixel_dim[1] / 2
         ))
 
@@ -1087,11 +1278,16 @@ class Painter:
 
         # mouse coordinate
         coords_values = self.value_research_plot_area(logica.mouse_pos)
-        mouse_coords = self.font_tipo.render(f"{coords_values[0]:.{self.approx_label}f}, {coords_values[1]:.{self.approx_label}f}", True, self.text_color)
+        value_x = coords_values[0]
+        
+        formatting_x = "e" if ((value_x > MAX_BORDER or value_x < MIN_BORDER) or (value_x < ZERO_MAX_BORDER and value_x > ZERO_MIN_BORDER)) and value_x != 0 else "f"
+        value_y = coords_values[1]
+        formatting_y = "e" if ((value_y > MAX_BORDER or value_y < MIN_BORDER) or (value_y < ZERO_MAX_BORDER and value_y > ZERO_MIN_BORDER)) and value_y != 0 else "f"
+        mouse_coords = self.font_tipo.render(f"{value_x:.{self.approx_label}{formatting_x}}, {value_y:.{self.approx_label}{formatting_y}}", True, self.text_color)
         self.schermo.blit(mouse_coords, (logica.mouse_pos[0] - self.ancoraggio_x, logica.mouse_pos[1] - self.ancoraggio_y - 1.5 * self.font_pixel_dim[1]))
 
         # zoom BB
-        if logica.dragging:
+        if logica.dragging and self.control:
 
             min_bb_x = min(logica.original_start_pos[0], logica.mouse_pos[0])
             max_bb_x = max(logica.original_start_pos[0], logica.mouse_pos[0])
@@ -1105,17 +1301,12 @@ class Painter:
                 max_bb_y - min_bb_y
             ], self.ui_spessore)
 
-        self.compute_integral_FWHM(widget_data)
+        if self.control:
+            self.compute_integral_FWHM()
 
 
-    def compute_integral_FWHM(self, widget_data: WidgetDataPlots):
-        """Computes the integral, derivative and FWHM
-
-        Parameters
-        ----------
-        widget_data : WidgetData
-            Class to pass flags and attrributes from the scene
-        """
+    def compute_integral_FWHM(self):
+        """Computes the integral, derivative and FWHM"""
         pl_at = self.plots[self.active_plot]
 
         if pl_at.acceso:
@@ -1143,13 +1334,12 @@ class Painter:
 
                 nome = pl_at.nome.split(".")
 
-                widget_data.FID = f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.txt"
+                self.UI_FID.assegna_messaggio(f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.txt")
 
-                if widget_data.salva_der:
-                    widget_data.flag_update_save_derivative = True
+                if self.UI_save_deriv:
 
                     # Writing results to a text file
-                    with open(f"{widget_data.input_path}/{nome[0]}_derivata.{nome[1]}", "w") as file:
+                    with open(f"{self.UI_caricamento.text_invio}/{nome[0]}_derivata.{nome[1]}", "w") as file:
                         # Writing the derivative
                         for i in range(len(x_all)):
                             file.write(f"{x_all[i]}\t{derivata[i]}\n")

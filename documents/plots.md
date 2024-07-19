@@ -36,7 +36,6 @@ SUPPORTA:
 - Sovrapporre
 - Utilizzo di 2 assi Y
 - Aggiunto spostamento con il TAB e SHIFT + TAB
-- Cambia animazione
 - Colorare sottografico
 - Numero di divisioni sugli assi
 - Impostare manualmente min, max (x, y)
@@ -46,6 +45,7 @@ SUPPORTA:
 - [in intervallo] Calcolo integrale
 - [in intervallo] Calcolo FWHM            
 - $\chi^2$ e $R^2$ 
+- Notazione scientifica (fuori dal range $\pm$ 10,000 e sotto il 0,001)
 
 TODO:
 ---
@@ -63,11 +63,12 @@ TODO:
 
 COSMETICS:
 ---
-- Notazione scientifica
+- Cambia animazione
 - Label di chiarimento per bottoni ed entrate (tooltip)
 
 FUTURE PROJECTS:
 ---
+- Grafici in coordinate polari
 - Splines
 - 2D images
 - Grafici multipli

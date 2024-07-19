@@ -249,25 +249,6 @@ class Geo_Scene:
         self.elenco_raw: dict[str, Camera | Object] = {}
         self.elemento_attivo: Camera | Object = None
 
-
-    def default_scene(self):
-
-        # cubo nell'origine
-        v = np.array([[-2,-2,-2,1],[-2,-2,2,1],[-2,2,-2,1],[-2,2,2,1],[2,-2,-2,1],[2,-2,2,1],[2,2,-2,1],[2,2,2,1]])
-        l = np.array([[0,1,2],[1,2,3],[0,2,4],[4,2,6],[4,5,6],[5,6,7],[5,1,3],[5,3,7],[2,3,6],[3,6,7],[0,1,4],[1,4,5]])
-
-        self.objects.append(Object("cubo", v, l))
-        self.objects.append(Object("cubo", v, l, x=4, y=4, z=4))
-        self.objects.append(Object("cubo", v, l, x=4, y=4, z=-4))
-        self.objects.append(Object("cubo", v, l, x=4, y=-4, z=4))
-        self.objects.append(Object("cubo", v, l, x=4, y=-4, z=-4))
-        self.objects.append(Object("cubo", v, l, x=-4, y=4, z=4))
-        self.objects.append(Object("cubo", v, l, x=-4, y=4, z=-4))
-        self.objects.append(Object("cubo", v, l, x=-4, y=-4, z=4))
-        self.objects.append(Object("cubo", v, l, x=-4, y=-4, z=-4))
-
-        self.elemento_attivo: Camera | Object = self.objects[0]
-
     
     def kornell_box(self):
 
@@ -276,15 +257,15 @@ class Geo_Scene:
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.objects.append(Object("Sfera_piccola", self.i.verteces, self.i.links, z=-3.75, x=-3, y=-2, sx=2.5, sy=2.5, sz=2.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1., roughness=0.0)))
-        self.objects.append(Object("Sfera_media", self.i.verteces, self.i.links, z=-3.25, y=-4, x=2.5, sx=3.5, sy=3.5, sz=3.5, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_grande", self.i.verteces, self.i.links, z=-2, x=1, y=2, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0, roughness=0.0)))
-        self.objects.append(Object("Sfera_pavimento", self.i.verteces, self.i.links, z=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_cielo", self.i.verteces, self.i.links, z=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
-        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., .7, 1.]))))
-        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Luce", self.i.verteces, self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
+        self.objects.append(Object("Sfera_piccola", vertici=self.i.verteces, links=self.i.links, z=-3.75, x=-3, y=-2, sx=2.5, sy=2.5, sz=2.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1., roughness=0.0)))
+        self.objects.append(Object("Sfera_media", vertici=self.i.verteces, links=self.i.links, z=-3.25, y=-4, x=2.5, sx=3.5, sy=3.5, sz=3.5, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_grande", vertici=self.i.verteces, links=self.i.links, z=-2, x=1, y=2, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0, roughness=0.0)))
+        self.objects.append(Object("Sfera_pavimento", vertici=self.i.verteces, links=self.i.links, z=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_cielo", vertici=self.i.verteces, links=self.i.links, z=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", vertici=self.i.verteces, links=self.i.links, x=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", vertici=self.i.verteces, links=self.i.links, x=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., .7, 1.]))))
+        self.objects.append(Object("Sfera_parete_fondo", vertici=self.i.verteces, links=self.i.links, y=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
     
     
@@ -295,21 +276,21 @@ class Geo_Scene:
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.objects.append(Object("Sfera_piccola1", self.i.verteces, self.i.links, z=-6.75, x=-12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.0)))
-        self.objects.append(Object("Sfera_piccola2", self.i.verteces, self.i.links, z=-6.75, x=-4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.1)))
-        self.objects.append(Object("Sfera_piccola3", self.i.verteces, self.i.links, z=-6.75, x=4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.5)))
-        self.objects.append(Object("Sfera_piccola4", self.i.verteces, self.i.links, z=-6.75, x=12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0)))
-        self.objects.append(Object("Sfera_pavimento", self.i.verteces, self.i.links, z=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_cielo", self.i.verteces, self.i.links, z=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_sx", self.i.verteces, self.i.links, x=-1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
-        self.objects.append(Object("Sfera_parete_dx", self.i.verteces, self.i.links, x=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
-        self.objects.append(Object("Sfera_parete_fondo", self.i.verteces, self.i.links, y=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Luce", self.i.verteces, self.i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=5)))
+        self.objects.append(Object("Sfera_piccola1", vertici=self.i.verteces, links=self.i.links, z=-6.75, x=-12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.0)))
+        self.objects.append(Object("Sfera_piccola2", vertici=self.i.verteces, links=self.i.links, z=-6.75, x=-4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.1)))
+        self.objects.append(Object("Sfera_piccola3", vertici=self.i.verteces, links=self.i.links, z=-6.75, x=4, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=0.5)))
+        self.objects.append(Object("Sfera_piccola4", vertici=self.i.verteces, links=self.i.links, z=-6.75, x=12, y=8, sx=7.5, sy=7.5, sz=7.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0)))
+        self.objects.append(Object("Sfera_pavimento", vertici=self.i.verteces, links=self.i.links, z=-1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_cielo", vertici=self.i.verteces, links=self.i.links, z=1010, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_sx", vertici=self.i.verteces, links=self.i.links, x=-1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
+        self.objects.append(Object("Sfera_parete_dx", vertici=self.i.verteces, links=self.i.links, x=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_fondo", vertici=self.i.verteces, links=self.i.links, y=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
 
 
     def add_sphere(self):
-        self.objects.append(Object(f"Nuova sfera {len(self.objects)}", self.i.verteces, self.i.links, materiale=Materiale()))
+        self.objects.append(Object(f"Nuova sfera {len(self.objects)}", vertici=self.i.verteces, links=self.i.links, materiale=Materiale()))
     
     
     def remove_sphere(self, index):
@@ -331,7 +312,7 @@ class Materiale:
 
 
 class Object:
-    def __init__(self, nome, vertici, links, materiale: Materiale, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True) -> None:
+    def __init__(self, nome, vertici, materiale: Materiale, links=None, x = 0.0, y = 0.0, z = 0.0, r = 0.0, b = 0.0, i = 0.0, sx = 1.0, sy = 1.0, sz = 1.0, wireframe = True) -> None:
         self.name = nome
         self.vertices: np.ndarray[np.ndarray[float]] = vertici
         self.transformed_vertices: np.ndarray[np.ndarray[int]] = vertici
@@ -493,7 +474,7 @@ class Camera:
         self.name: str = "Camera"
         self.fov: float = np.pi / 6
 
-        self.pos: np.ndarray[float] = np.array([0.,0.,1.,1])
+        self.pos: np.ndarray[float] = np.array([0.,0.,100.,1])
         self.focus: np.ndarray[float] = np.array([0.,0.,0.,1])
 
         self.rig_o: np.ndarray[float] = np.array([1.,0.,0.,1])
@@ -582,14 +563,17 @@ class Camera:
 
         # controllo dello zoom con rotella
         if logica.scroll_up:
-            self.pos[:3] += self.dir[:3]
+            self.pos[:3] += self.dir[:3] * logica.scroll_up / 2
         elif logica.scroll_down:
-            self.pos[:3] -= self.dir[:3]
+            self.pos[:3] -= self.dir[:3] * logica.scroll_down / 2
 
-        if logica.scroll_down > 0: logica.scroll_down -= 3
-        else: logica.scroll_down = 0 
-        if logica.scroll_up > 0: logica.scroll_up -= 3
-        else: logica.scroll_up = 0
+        logica.scroll_down = 0
+        logica.scroll_up = 0
+
+        # if logica.scroll_down > 0: logica.scroll_down -= 3
+        # else: logica.scroll_down = 0 
+        # if logica.scroll_up > 0: logica.scroll_up -= 3
+        # else: logica.scroll_up = 0
 
 
 
