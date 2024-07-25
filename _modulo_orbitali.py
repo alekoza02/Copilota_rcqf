@@ -37,7 +37,10 @@ class Orbitale:
         self.coords = Mate.add_homogenous(self.cartesian)
         self.modello = Object("Orbitale", self.coords, None)
         self.camera = Camera()
-        self.camera.pos = np.array([0.,0.,100.,1])
+        self.camera.pos = np.array([0.,-234.,64.8,1])
+        self.camera.becche = 1.32
+        self.camera.rollio = 0
+        self.camera.imbard = 0
         
         self.mask = np.ones(self.ris)
 
@@ -311,7 +314,7 @@ class Manager_orbs:
             plot_generato.settings([0, 255, 255], True, True, True, False, "linear", 3, 1, 1)
             
             painter.plots.append(plot_generato)
-            painter.settings("Componente Radiale", "Raggi di Bohr [a_0]", "Probabilità")
+            painter.settings("Componente Radiale", "Raggi di Bohr [a_0]", "Probabilità", ridimensionamento=self.ridimensiona_carattere)
 
         elif mode == "angolare":
         
@@ -323,7 +326,7 @@ class Manager_orbs:
             plot_generato.settings([0, 255, 255], True, True, True, False, "linear", 3, 1, 1)
             
             painter.plots.append(plot_generato)
-            painter.settings("Componente Angolare", r"\Theta [rad]", "Probabilità")
+            painter.settings("Componente Angolare", r"\Theta [rad]", "Probabilità", ridimensionamento=self.ridimensiona_carattere)
         
         elif mode == "histogram":
         
@@ -334,7 +337,7 @@ class Manager_orbs:
             plot_generato.settings([0, 255, 255], True, True, True, False, "linear", 3, 1, 1)
             
             painter.plots.append(plot_generato)
-            painter.settings("Histogramma di probabilità", r"Probabilità normalizzata", "Conteggi")
+            painter.settings("Histogramma di probabilità", r"Probabilità normalizzata", "Conteggi", ridimensionamento=self.ridimensiona_carattere)
 
 
     def disegna(self, logica: Logica):

@@ -15,7 +15,7 @@ def main(config: configparser):
     from _modulo_plots import Painter
     main_plot = Painter()
     main_plot.link_ui(ui)
-    main_plot.full_import_plot_data(ui.scena["plots"])
+    main_plot.full_import_plot_data()
 
     # Zona inizializzazione tracer
     from _modulo_3D_grafica import TreDi
@@ -33,32 +33,32 @@ def main(config: configparser):
         ui.start_cycle(logica)
 
         eventi_in_corso = pygame.event.get()
-
         ui.event_manage_ui(eventi_in_corso, logica)
-        [tab.disegna_tab(logica) for index, tab in ui.scena["main"].tabs.items()]
 
         match logica.scena:
             
             case 0: 
                 ui.event_manage_plots(eventi_in_corso, logica, main_plot)
-                [tab.disegna_tab(logica) for index, tab in ui.scena["plots"].tabs.items()]
         
                 main_plot.disegna(logica)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["plots"].schermo.items()]
+                [tab.disegna_tab(logica) for index, tab in ui.scena["plots"].tabs.items()]
         
             case 1: 
                 ui.event_manage_tracer(eventi_in_corso, logica, tredi)
-                [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
                 
                 tredi.disegna(logica, ui.scena["tracer"].data_widgets_tracer)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["tracer"].schermo.items()]
-
+                [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
+                
             case 2: 
                 ui.event_manage_orbitals(eventi_in_corso, logica, orbs)
-                [tab.disegna_tab(logica) for index, tab in ui.scena["orbitals"].tabs.items()]
                 
                 orbs.disegna(logica)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["orbitals"].schermo.items()]
+                [tab.disegna_tab(logica) for index, tab in ui.scena["orbitals"].tabs.items()]
+
+        [tab.disegna_tab(logica) for index, tab in ui.scena["main"].tabs.items()]
                 
         # controllo di uscita dal programma ed eventuale aggiornamento dello schermo
         ui.mouse_icon(logica)   # lanciato due volte per evitare flickering a bassi FPS

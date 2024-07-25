@@ -4,9 +4,12 @@ from scipy.integrate import trapezoid
 import pygame
 from _modulo_UI import Schermo, Logica, UI, Scena
 from _modulo_MATE import Mate
+from _modulo_database import Dizionario
 import configparser
 import os
 from copy import deepcopy
+
+diction = Dizionario()
 
 MIN_BORDER = -10000
 MAX_BORDER = 10000
@@ -48,7 +51,7 @@ class Plot:
         
         self.scatter: bool = True
         self.function: bool = False
-        self.interpolate: bool = True 
+        self.interpolate: bool = False 
         self.interpolation_type: str = "" 
 
         self.dim_pall: int = 1
@@ -144,6 +147,8 @@ class Painter:
         self.min_y_l: list[float] = [0.0, 0.0]
         self.max_y_l: list[float] = [1.0, 1.0]
 
+        self.salva_derivata: bool = False
+        
         self.min_y: float = 0
         self.min_x: float = 0
         self.max_y: float = 0
@@ -173,7 +178,7 @@ class Painter:
         # 3: ...
 
     
-    def settings(self, titolo = "Titolo", testo_x = "Asse X", testo_y = "Asse Y", testo_2y = "2° Asse Y", visualize_second_ax = False, visualize_zero_ax = True, approx_label = 2, dim_font_base = 24, w_proportion = 0.7, h_proportion = 0.7, x_legenda = 0.3, y_legenda = 0.3, bg_color = Mate.hex2rgb("#1e1e1e"), text_color = Mate.hex2rgb("#b4b4b4"), use_custom_borders = False, x_min = 0.0, x_max = 1.0, y_min = 0.0, y_max = 1.0, subdivisions = 5, grad_mode = "hori", ui_spessore = 1):
+    def settings(self, titolo = "Titolo", testo_x = "Asse X", testo_y = "Asse Y", testo_2y = "2° Asse Y", visualize_second_ax = False, visualize_zero_ax = True, approx_label = 2, dim_font_base = 24, w_proportion = 0.7, h_proportion = 0.7, x_legenda = 0.3, y_legenda = 0.3, bg_color = Mate.hex2rgb("#1e1e1e"), text_color = Mate.hex2rgb("#b4b4b4"), use_custom_borders = False, x_min = 0.0, x_max = 1.0, y_min = 0.0, y_max = 1.0, subdivisions = 5, grad_mode = "hori", ui_spessore = 1, ridimensionamento = 1):
         self.titolo = self.check_latex(titolo)
         self.testo_x = self.check_latex(testo_x)
         self.testo_y = self.check_latex(testo_y)
@@ -183,7 +188,7 @@ class Painter:
         self.visualize_zero_ax = visualize_zero_ax
 
         self.approx_label = approx_label
-        self.dim_font_base = dim_font_base
+        self.dim_font_base = dim_font_base * ridimensionamento
         
         self.w_proportion = w_proportion
         self.h_proportion = h_proportion
@@ -216,7 +221,7 @@ class Painter:
         factor : float, optional
             Fattore di scala rispetto alla dimensione precedente. Con questo approccio, il cambio di dimensione dello schermo non è più un problema, by default 1
         """
-        self.dim_font = int(self.dim_font_base * factor)
+        self.dim_font = int(round(self.dim_font_base * factor, 0))
         self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
     
@@ -269,65 +274,95 @@ class Painter:
             Stringa analizzata
         """
 
-        dizionario = {
-            r"\alpha": "α",
-            r"\beta": "β",
-            r"\gamma": "γ",
-            r"\delta": "δ",
-            r"\epsilon": "ε",
-            r"\zeta": "ζ",
-            r"\eta": "η",
-            r"\theta": "θ",
-            r"\NULL": "ι",
-            r"\kappa": "κ",
-            r"\lambda": "λ",
-            r"\mu": "μ",
-            r"\nu": "ν",
-            r"\NULL": "ξ",
-            r"\NULL": "ο",
-            r"\pi": "π",
-            r"\rho": "ρ",
-            r"\NULL": "ς",
-            r"\sigma": "σ",
-            r"\tau": "τ",
-            r"\NULL": "υ",
-            r"\phi": "φ",
-            r"\chi": "χ",
-            r"\psi": "ψ",
-            r"\omega": "ω",
-            r"\Alpha": "Α",
-            r"\Beta": "Β",
-            r"\Gamma": "Γ",
-            r"\Delta": "Δ",
-            r"\Epsilon": "Ε",
-            r"\Zeta": "Ζ",
-            r"\Eta": "Η",
-            r"\Theta": "Θ",
-            r"\NULL": "Ι",
-            r"\Kappa": "Κ",
-            r"\Lambda": "Λ",
-            r"\Mu": "Μ",
-            r"\NULL": "Ν",
-            r"\NULL": "Ξ",
-            r"\NULL": "Ο",
-            r"\Pi": "Π",
-            r"\Rho": "Ρ",
-            r"\Sigma": "Σ",
-            r"\Tau": "Τ",
-            r"\NULL": "Υ",
-            r"\Phi": "Φ",
-            r"\Chi": "Χ",
-            r"\Psi": "Ψ",
-            r"\Omega": "Ω",
-            r"\pm": "±",
-            r"\sqrt": "√"
-        }
-
-        for indice, segno in dizionario.items():
+        for indice, segno in diction.simboli.items():
             if indice in input_str: input_str = input_str.replace(indice, segno)
 
         return input_str
 
+
+    def check_esponente_pedice(self, texto, posx, posy, angolo = None):
+        
+        def trova_indici_elemento(testo):
+            maschera_apice = []
+            indici = []
+            for i, lettera in enumerate(testo):
+                if lettera == "^":
+                    indici.append(i)
+                    maschera_apice.append(True)
+                if lettera == "_":
+                    indici.append(i)
+                    maschera_apice.append(False)
+
+            return indici, maschera_apice
+        
+
+        def elimina_apici_e_pedici_salva_exponenti(text, index_list):
+            
+            text_list = list(text)
+            text_list.append("")
+
+            indici = []
+            for index in index_list:
+                text_list[index] = ""
+                indici.append(index - len(indici) * 2)
+
+            esponenti = []
+            for index in index_list:
+                esponenti.append(text_list[index + 1])
+                text_list[index + 1] = ""
+
+            finale = []
+            stringa = ""
+            for ch in text_list:
+                if ch != "":
+                    stringa += ch
+                elif stringa != "":
+                    finale.append(stringa)
+                    stringa = ""                
+
+            return finale, esponenti, indici
+        
+        if self.UI_latex_check.toggled:
+
+            dimensione_grande = np.array(self.font_pixel_dim)
+            dimensione_piccola = np.array(self.font_pixel_dim) * 0.6
+
+            indici, maschera_apice = trova_indici_elemento(texto)
+
+            test_copy = texto
+            test_copy, exponents, indici = elimina_apici_e_pedici_salva_exponenti(test_copy, indici)
+            
+            for index, text in enumerate(test_copy):
+                offset_esponente = 0 if index == 0 else dimensione_grande[0] * index
+                
+                scritta = self.font_tipo.render(text, True, self.text_color)
+
+                if not angolo is None:
+                    scritta = pygame.transform.rotate(scritta, angolo)
+
+                self.schermo.blit(scritta, (posx + dimensione_grande[0] * sum([len(ch) for ch in test_copy[:index]]) + offset_esponente, posy))
+
+            self.re_compute_font(0.6)
+            
+            for index, tupla in enumerate(zip(indici, exponents, maschera_apice)):
+                i, text, booleano = tupla
+                
+                offset_y = - dimensione_grande[1] / 5 if booleano else 2 * dimensione_grande[1] / 3
+                offset_x = sum([1 for i in maschera_apice[:index] if i == True]) if booleano else sum([1 for i in maschera_apice[:index] if i == False])
+
+                scritta = self.font_tipo.render(text, True, self.text_color)
+
+                if not angolo is None:
+                    scritta = pygame.transform.rotate(scritta, angolo)
+                    offset_x, offset_y = offset_y, offset_x
+
+                self.schermo.blit(scritta, (posx + dimensione_grande[0] * i + dimensione_grande[0] * offset_x, posy + offset_y))
+
+            self.re_compute_font()
+
+        else:
+            self.schermo.blit(self.font_tipo.render(texto, True, self.text_color), (posx, posy))
+        
     
     def link_ui(self, ui: UI, scene: str = "plots", schermo: str = "viewport") -> None: 
         """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
@@ -354,8 +389,6 @@ class Painter:
         self.end_x = self.start_x + self.w_plot_area
         self.end_y = self.start_y - self.h_plot_area
         
-        self.ridimensiona_carattere = 1 if info_schermo.shift_x == 0 else 0.7
-
         self.debug_info[0] = (self.w, self.h)
 
         self.ancoraggio_x = info_schermo.ancoraggio_x
@@ -567,7 +600,7 @@ class Painter:
             print(f"Impossibile caricare il file: {path}")
     
 
-    def full_import_plot_data(self, link_scena: Scena, path_input: str = 'PLOT_DATA/default') -> None:
+    def full_import_plot_data(self) -> None:
         """Dato un path importa tutti i file con estensioni accettate (txt, ASCII, dat, csv) e ci genera un plot.
 
         Parameters
@@ -575,21 +608,21 @@ class Painter:
         path_input : str, optional
             Path alla cartella con i grafici, by default 'PLOT_DATA/default'
         """
-        files = os.listdir(path_input)
+        files = os.listdir(self.UI_caricamento.text)
 
         self.plots = []
         self.debug_info[2] = []
 
         for f in files:
-            path = os.path.join(path_input, f)
+            path = os.path.join(self.UI_caricamento.text, f)
             if os.path.isfile(path):    
                 self.import_plot_data(path)
 
         self.original_plot_order = self.plots
-        link_scena.scrolls["grafici"].elementi = [self.plots[index].nome for index in range(len(self.plots))]
-        link_scena.scrolls["grafici"].elementi_attivi = [False for _ in range(len(self.plots))]
-        link_scena.scrolls["grafici"].indici = [i for i in range(len(self.plots))]
-        link_scena.scrolls["grafici"].update_elements()
+        self.UI_scroll_grafici.elementi = [self.plots[index].nome for index in range(len(self.plots))]
+        self.UI_scroll_grafici.elementi_attivi = [False for _ in range(len(self.plots))]
+        self.UI_scroll_grafici.indici = [i for i in range(len(self.plots))]
+        self.UI_scroll_grafici.update_elements()
 
 
     def riordina_plots(self, indici: list[int]):
@@ -834,11 +867,11 @@ class Painter:
                             # coloro il gradiente UPPER
                             limite = int(self.zero_y - self.end_y)
                             for i in range(3):
-                                gradient[:, :limite, i] = np.tile(np.linspace(plot.colore[i], self.bg_color[i], limite), (int(self.w_plot_area), 1)).reshape(int(self.w_plot_area), limite)
+                                gradient[:, :limite, i] = np.tile(np.linspace(plot.colore[i] / 3, self.bg_color[i], limite), (int(self.w_plot_area), 1)).reshape(int(self.w_plot_area), limite)
                             # coloro il gradiente LOWER
                             limite = int(self.start_y - self.zero_y)
                             for i in range(3):
-                                gradient[:, -limite:, i] = np.tile(np.linspace(self.bg_color[i], plot.colore[i], limite), (1, int(self.w_plot_area))).reshape(int(self.w_plot_area), limite)
+                                gradient[:, -limite:, i] = np.tile(np.linspace(self.bg_color[i], plot.colore[i] / 3, limite), (1, int(self.w_plot_area))).reshape(int(self.w_plot_area), limite)
                             
                             plot.colors_surface = pygame.surfarray.make_surface(gradient)  
                             self.schermo.blit(plot.colors_surface, (self.start_x, self.end_y))
@@ -953,48 +986,6 @@ class Painter:
                                 pygame.draw.line(self.schermo, plot.colore, (x1, y1), (x2, y2), plot.dim_link)
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in function")
-
-
-                # elif plot.gradiente:
-
-                    # # Horizontal colorgrade
-                    # np.array([[[0., 0.], [100., 200.], [600., 300.]]])
-                
-                    # x_var1 = plot.x_screen.astype(int)[:len(plot.x_screen)-1] - self.start_x
-                    # x_var2 = plot.x_screen.astype(int)[1:len(plot.x_screen)] - self.start_x
-                    # y_var1 = plot.y_screen.astype(int)[:len(plot.x_screen)-1] - self.end_y
-                    # y_var2 = plot.y_screen.astype(int)[1:len(plot.x_screen)] - self.end_y
-
-                    # limite_y_min = np.min(plot.y_screen) - self.end_y
-                    # limite_y_max = np.max(plot.y_screen) - self.end_y
-
-                    # v0 = np.stack((x_var1, y_var1), axis=1)
-                    # v1 = np.stack((x_var2, y_var2), axis=1)
-                    # v2 = np.stack((x_var2, np.ones_like(x_var2) * (self.start_y - self.end_y) - limite_y_min), axis=1)
-                    # v3 = np.stack((x_var1, np.ones_like(x_var2) * (self.start_y - self.end_y) - limite_y_min), axis=1)
-
-                    # triangles = np.concatenate((np.stack((v2, v1, v0), axis=1), np.stack((v3, v2, v0), axis=1)))
-
-                    # if update_gradient:
-                    #     self.colors_array = Triangle.rasterization(int(self.w_plot_area), int(self.h_plot_area), triangles, np.array(self.bg_color), np.array(plot.colore), limite_y_min, limite_y_max)
-                    
-                    # colors_surface = pygame.surfarray.make_surface(self.colors_array)  
-                    # self.schermo.blit(colors_surface, (self.start_x, self.end_y))
-                
-                    # ATTEMPTED ALPHA CHANNEL
-                    # mask = np.any(colors_array != (0, 0, 0), axis=-1).astype(np.uint8) * 255
-
-                    # # Convert the mask into an alpha channel for the surface
-                    # alpha_surface = pygame.Surface(colors_surface.get_size(), pygame.SRCALPHA)
-                    # alpha_surface.fill((255, 255, 255, 0))  # Fill with transparent
-                    # alpha_surface.blit(colors_surface, (0, 0))  # Blit the new_surface onto alpha_surface
-                    
-                    # # Apply the mask to the alpha channel
-                    # mask_surface = pygame.Surface(colors_surface.get_size(), pygame.SRCALPHA)
-                    # pygame.surfarray.pixels_alpha(mask_surface)[:, :] = mask  # Apply mask to alpha channel
-                    
-                    # # Blit the alpha_surface (with mask) onto the screen
-                    # self.schermo.blit(alpha_surface, (self.start_x, self.end_y), special_flags=pygame.BLEND_RGBA_MULT)
 
 
     def animation_update(self, plot: Plot, index: int, noanim: bool = False) -> tuple[int, list[int]]:
@@ -1140,7 +1131,6 @@ class Painter:
                 pos_var_x - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2,
                 self.start_y + (self.h - self.start_y) // 3
             ))
-
             
             # data y
             pygame.draw.line(self.schermo, colori_assi[0], 
@@ -1209,40 +1199,44 @@ class Painter:
 
         "------------------------------------------------------------------------------------------------"
         self.re_compute_font()    
-        
+    
+
         # testo asse x
-        self.schermo.blit(self.font_tipo.render(self.testo_x, True, self.text_color), (
-            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_x) / 2,
-            self.start_y + 3 * (self.h - self.start_y) // 5
-        ))
+        self.check_esponente_pedice(
+                f"{self.testo_x}",
+                self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_x)) / 2,
+                self.start_y + 3 * (self.h - self.start_y) // 5
+            )
+    
         
         # testo asse y
-        label_y_scr = self.font_tipo.render(self.testo_y, True, self.text_color)
-        label_y_scr = pygame.transform.rotate(label_y_scr, 90)
-    
-        self.schermo.blit(label_y_scr, (
-            self.start_x - 3 * self.start_x // 5 - self.font_pixel_dim[1],
-            self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_y) / 2,
-        ))
-
+        self.check_esponente_pedice(
+                f"{self.testo_y}",
+                self.start_x - 3 * self.start_x // 5 - self.font_pixel_dim[1],
+                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_y)) / 2,
+                90
+            )
+        
         if self.visualize_second_ax:
             # testo asse 2 y
-            label_y_scr = self.font_tipo.render(self.testo_2y, True, self.text_color)
-            label_y_scr = pygame.transform.rotate(label_y_scr, 90)
-        
-            self.schermo.blit(label_y_scr, (
+            self.check_esponente_pedice(
+                f"{self.testo_2y}",
                 self.end_x + self.start_x - 2 * self.start_x // 5,
-                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * len(self.testo_2y) / 2,
-            ))
-    
+                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_2y)) / 2,
+                90
+            )
+
+        
         self.re_compute_font(1.125)
+    
         
         # titolo
-        self.schermo.blit(self.font_tipo.render(self.titolo, True, self.text_color), (
-            self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * len(self.titolo) / 2,
-            self.end_y // 2 - self.font_pixel_dim[1] / 2
-        ))
-
+        self.check_esponente_pedice(
+                f"{self.titolo}",
+                self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * (len(self.titolo)) / 2,
+                self.end_y // 2 - self.font_pixel_dim[1] / 2
+            )
+        
         "------------------------------------------------------------------------------------------------"
 
         self.re_compute_font(.5)
@@ -1302,10 +1296,10 @@ class Painter:
             ], self.ui_spessore)
 
         if self.control:
-            self.compute_integral_FWHM()
+            self.compute_integral_FWHM(logica)
 
 
-    def compute_integral_FWHM(self):
+    def compute_integral_FWHM(self, logica):
         """Computes the integral, derivative and FWHM"""
         pl_at = self.plots[self.active_plot]
 
@@ -1336,13 +1330,18 @@ class Painter:
 
                 self.UI_FID.assegna_messaggio(f"Informazioni sul grafico attivo ora [{self.plots[self.active_plot].nome}]\n\nIntegrale nell'intervallo: {integral:.{self.approx_label}f}\nFWHM del massimo nell'intervallo: {FWHM:.{self.approx_label}f}\n\nRange: {x_min} - {x_max}\n\nSalva la derivata come {nome[0]}_derivata.txt")
 
-                if self.UI_save_deriv:
+                if self.UI_save_deriv.toggled:
+                    self.UI_save_deriv.push()
+                    self.salva_derivata = True
 
                     # Writing results to a text file
                     with open(f"{self.UI_caricamento.text_invio}/{nome[0]}_derivata.{nome[1]}", "w") as file:
                         # Writing the derivative
                         for i in range(len(x_all)):
                             file.write(f"{x_all[i]}\t{derivata[i]}\n")
+                    
+                    self.UI_scroll_grafici.aggiorna_externo("reload", logica)
+                    self.full_import_plot_data()
 
 
     def reset_zoom(self, logica: Logica | None = None) -> None:
@@ -1601,7 +1600,7 @@ class Painter:
                     base_data.interpolation_type = "Fit Sigmoide"
 
                     errori = np.sqrt(np.diag(covariance))
-                    console_output = f"Interpolazione sigmoide del grafico {base_data.nome}:\na: {params_sigm[0]:.{self.approx_label}f} \\pm {errori[0]:.{self.approx_label}f}\nb: {params_sigm[1]:.{self.approx_label}f} \\pm {errori[1]:.{self.approx_label}f}\n\\lambda0: {params_sigm[2]:.{self.approx_label}f} \\pm {errori[2]:.{self.approx_label}f}\n\\Delta\\lambda: {params_sigm[3]:.{self.approx_label}f} \\pm {errori[3]:.{self.approx_label}f}"
+                    console_output = f"Interpolazione sigmoide del grafico {base_data.nome}:\na: {params_sigm[0]:.{self.approx_label}f} \\pm {errori[0]:.{self.approx_label}f}\nb: {params_sigm[1]:.{self.approx_label}f} \\pm {errori[1]:.{self.approx_label}f}\n\\lambda^2_0: {params_sigm[2]:.{self.approx_label}f} \\pm {errori[2]:.{self.approx_label}f}\n\\Delta\\lambda: {params_sigm[3]:.{self.approx_label}f} \\pm {errori[3]:.{self.approx_label}f}"
 
                     y_i = sigmoide(x, initial_guess_sigmo[0], initial_guess_sigmo[1], initial_guess_sigmo[2], initial_guess_sigmo[3])
                     correlation = 1 - np.sum( ( y - y_i )**2 ) /np.sum( ( y - (np.sum(y)/len(y)) )**2 )
