@@ -8,6 +8,9 @@ from _modulo_database import Dizionario
 import configparser
 import os
 from copy import deepcopy
+import sys
+ 
+sys.setrecursionlimit(20)
 
 diction = Dizionario()
 
@@ -280,90 +283,182 @@ class Painter:
         return input_str
 
 
-    def check_esponente_pedice(self, texto, posx, posy, angolo = None):
-        
-        def trova_indici_elemento(testo):
-            maschera_apice = []
-            indici = []
-            for i, lettera in enumerate(testo):
-                if lettera == "^":
-                    indici.append(i)
-                    maschera_apice.append(True)
-                if lettera == "_":
-                    indici.append(i)
-                    maschera_apice.append(False)
+    def check_esponente_pedice(self, texto, posx, posy, centered = False, vertical = False):
+    
+        self.re_compute_font()
 
-            return indici, maschera_apice
-        
-
-        def elimina_apici_e_pedici_salva_exponenti(text, index_list):
-            
-            text_list = list(text)
-            text_list.append("")
-
-            indici = []
-            for index in index_list:
-                text_list[index] = ""
-                indici.append(index - len(indici) * 2)
-
-            esponenti = []
-            for index in index_list:
-                esponenti.append(text_list[index + 1])
-                text_list[index + 1] = ""
-
-            finale = []
-            stringa = ""
-            for ch in text_list:
-                if ch != "":
-                    stringa += ch
-                elif stringa != "":
-                    finale.append(stringa)
-                    stringa = ""                
-
-            return finale, esponenti, indici
-        
         if self.UI_latex_check.toggled:
 
-            dimensione_grande = np.array(self.font_pixel_dim)
-            dimensione_piccola = np.array(self.font_pixel_dim) * 0.6
-
-            indici, maschera_apice = trova_indici_elemento(texto)
-
-            test_copy = texto
-            test_copy, exponents, indici = elimina_apici_e_pedici_salva_exponenti(test_copy, indici)
+            testo_aggiornato = texto
             
-            for index, text in enumerate(test_copy):
-                offset_esponente = 0 if index == 0 else dimensione_grande[0] * index
-                
-                scritta = self.font_tipo.render(text, True, self.text_color)
-
-                if not angolo is None:
-                    scritta = pygame.transform.rotate(scritta, angolo)
-
-                self.schermo.blit(scritta, (posx + dimensione_grande[0] * sum([len(ch) for ch in test_copy[:index]]) + offset_esponente, posy))
-
-            self.re_compute_font(0.6)
+            elemento_testi = []
+            elemento_anchors = []
+            elemento_tipo = []
             
-            for index, tupla in enumerate(zip(indici, exponents, maschera_apice)):
-                i, text, booleano = tupla
+            def check(testo_aggiornato: str, depth = 0):
+
+                # blocco ricerca della prima occorrenza -> decido se è un apice o un pedice
+                occorrenza_apice = testo_aggiornato.find("^{")
+                occorrenza_pedic = testo_aggiornato.find("_{")
+
+                if occorrenza_apice < 0:
+                    test = False
+                elif occorrenza_pedic < 0:
+                    test = True
+                elif occorrenza_apice < occorrenza_pedic:
+                    test = True
+                elif occorrenza_apice > occorrenza_pedic:
+                    test = False
+
+                primo_ch = "^{" if test else "_{"
+                secon_ch = "_{" if test else "^{"
+                testo_lista = list(testo_aggiornato)
+                old_start = 0
+                old_len = 0
+                # fine blocco ricerca
                 
-                offset_y = - dimensione_grande[1] / 5 if booleano else 2 * dimensione_grande[1] / 3
-                offset_x = sum([1 for i in maschera_apice[:index] if i == True]) if booleano else sum([1 for i in maschera_apice[:index] if i == False])
+                if len(testo_lista) > 0:
 
-                scritta = self.font_tipo.render(text, True, self.text_color)
+                    # verifico che effettivamente sia ancora presente il carattere scelto
+                    if testo_aggiornato.count(primo_ch) > 0:
+                        
+                        # trovo l'intervallo interessato
+                        start = testo_aggiornato.find(primo_ch)
+                        end = testo_aggiornato.find("}", start) 
 
-                if not angolo is None:
-                    scritta = pygame.transform.rotate(scritta, angolo)
-                    offset_x, offset_y = offset_y, offset_x
+                        # test nel caso non venisse trovato l'inizio o la fine
+                        if start == -1 or end == -1:
+                            return None
 
-                self.schermo.blit(scritta, (posx + dimensione_grande[0] * i + dimensione_grande[0] * offset_x, posy + offset_y))
+                        lunghezza = end - start - 2
 
-            self.re_compute_font()
+                        # popolo il record con tipologia di carattere, testo e posizione
+                        tipo_ch = True if primo_ch == "^{" else False
+                        
+                        elemento_tipo.append(tipo_ch)
+                        elemento_testi.append(testo_aggiornato[start + 2:end])
+                        elemento_anchors.append(start) 
+                        
+                        # elimino dal testo originale la sintassi di comando e il testo dell'apice / pedice (già salvato in precedenza)
+                        for i in range(lunghezza + 3):
+                            testo_lista.pop(start)
 
-        else:
-            self.schermo.blit(self.font_tipo.render(texto, True, self.text_color), (posx, posy))
+                        # riaggiungo l'equivalente in spazi di dimensione del carattere base
+                        ceiling = np.ceil(lunghezza / 2).astype(int)
+
+                        for _ in range(ceiling):
+                            testo_lista.insert(start, " ")
+                
+                        # testo pronto per lo step successivo
+                        testo_aggiornato = "".join(testo_lista)
+                    
+                        # testo se per caso esiste un carattere speciale subito dopo la fine 
+                        if testo_aggiornato.find(secon_ch) == start + ceiling:
+                            old_start = start
+                            old_len = ceiling
+
+                        # se è così, testo se esiste il carattere opposto (pedice e apice messi vicini avranno X uguale)
+                        if testo_aggiornato.count(secon_ch) > 0:
+                            
+                            # rieseguo le stesse cose, popolando però per il secondo tipo si segno
+                            start = testo_aggiornato.find(secon_ch)
+                            end = testo_aggiornato.find("}", start) 
+
+                            if start == -1 or end == -1:
+                                return None
+
+                            if start == old_start + old_len:
+                                
+                                start_text = start
+                                end_text = end
+
+                                start_anchor = start - old_len
+                                
+                                lunghezza = end - start - 2
+
+                                tipo_ch = not tipo_ch
+                        
+                                elemento_tipo.append(tipo_ch)
+                            
+                                elemento_testi.append(testo_aggiornato[start_text + 2:end_text])
+                                elemento_anchors.append(start_anchor) 
+
+                                for i in range(lunghezza + 3):
+                                    testo_lista.pop(start)
+
+                                ceiling = np.ceil(lunghezza / 2).astype(int)
+
+                                # unico cambiamento, lo spazio allocato dipenderà dal confronto delle due lunghezze
+                                delta_offset_anchor = ceiling - old_len
+
+                                if delta_offset_anchor > 0:
+                                    for _ in range(delta_offset_anchor):
+                                        testo_lista.insert(start, " ")
+
+                testo_aggiornato = "".join(testo_lista)
+
+                # se ci sono ancora segni speciali, continua l'analisi
+                if testo_aggiornato.count("^{") > 0 or testo_aggiornato.count("_{") > 0:
+                    return check(testo_aggiornato, depth + 1)
+
+                return "".join(testo_lista)
+            
+            texto_mod = check(testo_aggiornato)
+            
+            if not texto_mod is None:
+                lunghezza = len(texto_mod) * self.font_pixel_dim[0] / 2
+                
+                rendered_label = self.font_tipo.render(texto_mod, True, self.text_color)
+                if vertical:
+                    rendered_label = pygame.transform.rotate(rendered_label, 90)
+
+                if centered:
+                    if not vertical:
+                        posx -= lunghezza
+                    elif vertical:
+                        posy -= lunghezza
+
+                self.schermo.blit(rendered_label, (posx, posy))
+
+                larghezza_grande = self.font_pixel_dim[0]
+
+                self.re_compute_font(0.6)
+
+                for exp, anchor, tipo in zip(elemento_testi, elemento_anchors, elemento_tipo):
+                    offset_y = 0 if tipo else self.font_pixel_dim[1]
+                    # colore = [255, 100, 100] if tipo else [100, 255, 255]
+
+                    rendered_label = self.font_tipo.render(exp, True, self.text_color)
+                    if vertical:
+                        rendered_label = pygame.transform.rotate(rendered_label, 90)
+
+                    if not vertical:
+                        bias_x = anchor * larghezza_grande
+                        bias_y = offset_y
+                    elif vertical:
+                        bias_x = offset_y
+                        bias_y = (len(texto_mod) - anchor) * larghezza_grande - len(exp) * self.font_pixel_dim[0]
+                    
+                    self.schermo.blit(rendered_label, (posx + bias_x, posy + bias_y))
+                    
+            return
+
+        rendered_label = self.font_tipo.render(texto, True, self.text_color)
+        if vertical:
+            rendered_label = pygame.transform.rotate(rendered_label, 90)
+
+        if centered:
+            lunghezza = len(texto) * self.font_pixel_dim[0] / 2
+            
+            if not vertical:
+                posx -= lunghezza
+            elif vertical:
+                posy -= lunghezza
+
+        self.schermo.blit(rendered_label, (posx, posy))
         
-    
+
+
     def link_ui(self, ui: UI, scene: str = "plots", schermo: str = "viewport") -> None: 
         """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
 
@@ -1198,43 +1293,49 @@ class Painter:
         #     ], self.ui_spessore)
 
         "------------------------------------------------------------------------------------------------"
+        bias_asse_y_sinistro = self.font_pixel_dim[1] * 1.25
         self.re_compute_font()    
     
 
         # testo asse x
         self.check_esponente_pedice(
                 f"{self.testo_x}",
-                self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_x)) / 2,
-                self.start_y + 3 * (self.h - self.start_y) // 5
+                self.start_x + self.w_plot_area // 2,
+                self.start_y + 3 * (self.h - self.start_y) // 5,
+                centered=True
             )
     
         
         # testo asse y
         self.check_esponente_pedice(
                 f"{self.testo_y}",
-                self.start_x - 3 * self.start_x // 5 - self.font_pixel_dim[1],
-                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_y)) / 2,
-                90
+                self.start_x - 3 * self.start_x // 5 - bias_asse_y_sinistro,
+                self.start_y - self.h_plot_area // 2,
+                vertical=True,
+                centered=True
             )
+
         
         if self.visualize_second_ax:
             # testo asse 2 y
             self.check_esponente_pedice(
                 f"{self.testo_2y}",
                 self.end_x + self.start_x - 2 * self.start_x // 5,
-                self.start_y - self.h_plot_area // 2 - self.font_pixel_dim[0] * (len(self.testo_2y)) / 2,
-                90
+                self.start_y - self.h_plot_area // 2,
+                vertical=True,
+                centered=True
             )
 
         
         self.re_compute_font(1.125)
     
         
-        # titolo
+        # titolo 
         self.check_esponente_pedice(
                 f"{self.titolo}",
-                self.start_x + self.w_plot_area // 2 - self.font_pixel_dim[0] * (len(self.titolo)) / 2,
-                self.end_y // 2 - self.font_pixel_dim[1] / 2
+                self.start_x + self.w_plot_area // 2,
+                self.end_y // 2 - self.font_pixel_dim[1] / 2,
+                centered=True
             )
         
         "------------------------------------------------------------------------------------------------"
