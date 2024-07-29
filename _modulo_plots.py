@@ -8,9 +8,6 @@ from _modulo_database import Dizionario
 import configparser
 import os
 from copy import deepcopy
-import sys
- 
-sys.setrecursionlimit(20)
 
 diction = Dizionario()
 
@@ -21,7 +18,7 @@ ZERO_MIN_BORDER = -.001
 ZERO_MAX_BORDER = .001
 
 class Plot:
-    def __init__(self, nome: str, x: np.ndarray[float], y: np.ndarray[float], ey: np.ndarray[float] | None) -> None:
+    def __init__(self, nome: str, x: np.ndarray[float], y: np.ndarray[float], ey: np.ndarray[float] | None, metadata: list[str] = [""]) -> None:
         """Generazione di un grafico
 
         Parameters
@@ -66,6 +63,8 @@ class Plot:
         self.interpol_maschera: np.ndarray[bool] | None = None
 
         self.colors_surface = None
+
+        self.metadata: list[str] = metadata
     
 
     def settings(self, colore: list = [255, 255, 255], gradiente: bool = False, scatter: bool = True, function: bool = False, interpolate: bool = True , interpolation_type: str = "" , dim_pall: int = 1, dim_link: int = 1, acceso: bool = 0):
@@ -534,6 +533,7 @@ class Painter:
         self.UI_save_deriv = self.UI_calls_plots.bottoni["save_deriv"]
 
         self.UI_FID = self.UI_calls_plots.label_text["FID"]
+        self.UI_metadata = self.UI_calls_plots.label_text["metadata"]
 
     
     
@@ -660,15 +660,41 @@ class Painter:
             if "\n" in coordinate:
                 coordinate.remove("\n")
     
-        # controllo tipologia float dei dati
+        # controllo tipologia float dei dati, se non è un float lo carico nel metadata
+        metadata_str = ""
+        counter_non_metadata = 0
+        counter_domanda = True
+
         for coordinate in data[::-1]:
             for elemento in coordinate:
                 try:
                     float(elemento)
+                    if counter_domanda:
+                        counter_non_metadata += 1
+                        if counter_non_metadata > 3:
+                            counter_non_metadata = 0
+                            counter_domanda = False
+                            metadata_str += f"...\n"
+
                 except ValueError:
                     data.remove(coordinate)
+                    for _ in coordinate:
+                        metadata_str += f"{_}\t"
+                    metadata_str += f"\n"
+                    counter_domanda = True
                     break
     
+        metadata_str += "Metadata / Non converted lines:\n"
+
+        # reverse metadata
+        metadata_lst = [f"{i}\n" if f"{i[-1:]}" != "\n" else f"{i}" for i in metadata_str.split("\n")][::-1]
+        
+        # remove "\n" and "\t\n"
+        for _ in range(metadata_lst.count("\n")):
+            metadata_lst.remove("\n")
+        for _ in range(metadata_lst.count("\t\n")):
+            metadata_lst.remove("\t\n")
+
         # controllo presenza dati None 
         data = [i for i in data if i]
     
@@ -688,7 +714,7 @@ class Painter:
             y = y[indici]
             ey = ey[indici] if data.shape[1] == 3 else None 
 
-            self.plots.append(Plot(nome, x, y, ey))
+            self.plots.append(Plot(nome, x, y, ey, metadata_lst))
             self.debug_info[2].append(nome)
         
         except:
@@ -962,11 +988,11 @@ class Painter:
                             # coloro il gradiente UPPER
                             limite = int(self.zero_y - self.end_y)
                             for i in range(3):
-                                gradient[:, :limite, i] = np.tile(np.linspace(plot.colore[i] / 3, self.bg_color[i], limite), (int(self.w_plot_area), 1)).reshape(int(self.w_plot_area), limite)
+                                gradient[:, :limite, i] = np.tile(np.linspace(plot.colore[i] / 2, self.bg_color[i], limite), (int(self.w_plot_area), 1)).reshape(int(self.w_plot_area), limite)
                             # coloro il gradiente LOWER
                             limite = int(self.start_y - self.zero_y)
                             for i in range(3):
-                                gradient[:, -limite:, i] = np.tile(np.linspace(self.bg_color[i], plot.colore[i] / 3, limite), (1, int(self.w_plot_area))).reshape(int(self.w_plot_area), limite)
+                                gradient[:, -limite:, i] = np.tile(np.linspace(self.bg_color[i], plot.colore[i] / 2, limite), (1, int(self.w_plot_area))).reshape(int(self.w_plot_area), limite)
                             
                             plot.colors_surface = pygame.surfarray.make_surface(gradient)  
                             self.schermo.blit(plot.colors_surface, (self.start_x, self.end_y))
@@ -996,12 +1022,12 @@ class Painter:
                             if self.zero_y <= self.end_y: 
                                 from_y = self.start_y
                                 colore_start = self.bg_color
-                                colore_finale = plot.colore
+                                colore_finale = np.array(plot.colore) / 2
                             
                             # CASO 3 -> Tutto sopra lo 0
                             elif self.zero_y >= self.start_y:
                                 from_y = self.end_y
-                                colore_start = plot.colore
+                                colore_start = np.array(plot.colore) / 2
                                 colore_finale = self.bg_color
 
                             # coloro il gradiente
@@ -1136,6 +1162,9 @@ class Painter:
                 self.testo_y = self.UI_labely.text_invio
                 self.testo_2y = self.UI_label2y.text_invio
             
+            if self.plots[self.active_plot].acceso:
+                self.UI_metadata.assegna_messaggio(self.plots[self.active_plot].metadata)
+
             # prova di conversione
             self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
             self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)

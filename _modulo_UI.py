@@ -183,8 +183,8 @@ class LabelText:
         if self.renderizza_bg:
             pygame.draw.rect(self.screen, self.bg, [self.x, self.y, self.w, self.h], border_top_left_radius=10, border_bottom_right_radius=10)
         
-        if self.text.count("£") == 2:
-        
+        if type(self.text) == str and self.text.count("£") == 2:
+            
             start_index = self.text.find("£") + 1
             end_index = self.text.find("£", start_index)
         
@@ -203,8 +203,32 @@ class LabelText:
                 contatore_righe += 1
 
         else:
-            for i, riga in enumerate(self.text.split("\n")):
-                self.screen.blit(self.font_locale_d.font_tipo.render(f"{riga}", True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + i * 1.5 * self.font_locale_d.font_pixel_dim[1]))
+            if type(self.text) == list:
+            
+                numero_linee = 15
+
+                if len(self.text) > numero_linee:
+                    for i, riga in enumerate(self.text[:np.ceil(numero_linee / 2).astype(int)]):
+                        text = f"{riga}" if len(riga) < 93 else f"{riga[:90]}..." 
+                        self.screen.blit(self.font_locale_d.font_tipo.render(text, True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + i * 1.5 * self.font_locale_d.font_pixel_dim[1]))
+                    
+                    self.screen.blit(self.font_locale_d.font_tipo.render(f"-- {len(self.text) - numero_linee} righe non visualizzate --", True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + (i + 1.5) * 1.5 * self.font_locale_d.font_pixel_dim[1]))
+
+                    for i, riga in enumerate(self.text[-10:]):
+                        text = f"{riga}" if len(riga) < 93 else f"{riga[:90]}..." 
+                        self.screen.blit(self.font_locale_d.font_tipo.render(text, True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + + (i + np.floor(numero_linee / 2) + 3) * 1.5 * self.font_locale_d.font_pixel_dim[1]))
+
+                else:
+
+                    for i, riga in enumerate(self.text):
+                        text = f"{riga}" if len(riga) < 93 else f"{riga[:90]}..." 
+                        self.screen.blit(self.font_locale_d.font_tipo.render(text, True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + i * 1.5 * self.font_locale_d.font_pixel_dim[1]))
+
+            elif type(self.text) == str:
+                
+                for i, riga in enumerate(self.text.split("\n")):
+                    text = f"{riga}" if len(riga) < 93 else f"{riga[:90]}..." 
+                    self.screen.blit(self.font_locale_d.font_tipo.render(text, True, self.color_text), (self.x + 2 * self.font_locale_d.font_pixel_dim[0], self.y + self.h // 2 - self.font_locale_d.font_pixel_dim[1] // 2 + i * 1.5 * self.font_locale_d.font_pixel_dim[1]))
 
 
     def assegna_messaggio(self, str: str = "Empty!") -> None:
@@ -1714,6 +1738,7 @@ class Scena:
         # interpolazioni
         self.label_text["params"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=26, renderizza_bg=False, text="Seleziona un tipo di interpolazione.\nSuccessivamente schiaccia il bottone 'Compute Interpolation'", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
         self.label_text["FID"]  = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=66, renderizza_bg=False, text="", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
+        self.label_text["metadata"] = LabelText(self.parametri_repeat_elementi, self.fonts, size="piccolo", w=37, h=1.8, x=61, y=50, renderizza_bg=True, text="Prova metadata", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
         # --------------------------------------------------------------------------------
 
         # BOTTONI
@@ -1733,7 +1758,7 @@ class Scena:
         self.bottoni["use_custom_borders"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=47.5, y=96, text="Cust. ranges", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         
         # dinamici
-        self.bottoni["toggle_inter"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=82, y=50, text="Interpol", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+        self.bottoni["toggle_inter"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=89, y=44, text="Interpol", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["toggle_pallini"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=82, y=44, text="Pallini", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["toggle_collegamenti"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=82, y=46, text="Links", toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["gradiente"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=82, y=40, text="Gradiente", toggled=False, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
@@ -1842,6 +1867,7 @@ class Scena:
             ui_signs=[self.ui_signs["tab_titolo_plot"], self.ui_signs["titolo_settings_plot"]],
             bottoni=[self.bottoni["toggle_inter"], self.bottoni["toggle_pallini"], self.bottoni["toggle_collegamenti"], self.bottoni["gradiente"]],
             entrate=[self.entrate["nome_grafico"], self.entrate["color_plot"], self.entrate["dim_pallini"], self.entrate["dim_link"]],
+            labels=[self.label_text["metadata"]]
         )
         
         self.tabs["stats_control"] = TabUI(name="stats_control", renderizza=False, abilita=False,
