@@ -39,15 +39,14 @@ SUPPORTA:
 - [in intervallo] Calcolo integrale
 - [in intervallo] Calcolo FWHM            
 - $\chi^2$ e $R^2$ 
+- Scelta delle colonne da plottare
+- Visualizza METADATA
 
 TODO:
 ---
 - T-test
 - Report linee dell'intervallo di confidenza con colorazione basata sul risultato
 - Report linee dell'intervallo di media + $\sigma_{std}$ 
----
-- Scelta delle colonne da plottare
-- Visualizza METADATA
 
 COSMETICS:
 ---
@@ -55,6 +54,7 @@ COSMETICS:
 
 FUTURE PROJECTS:
 ---
+- Estrattore di grafici da immagine
 - Grafici in coordinate polari
 - Splines
 - 2D images

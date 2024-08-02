@@ -310,7 +310,7 @@ class Manager_orbs:
             y = self.orbitale.radial_wave_function(x, self.orbitale.n, self.orbitale.l, self.orbitale.Z)
             x /= self.orbitale.a_0
             
-            plot_generato = Plot("Pippo", x, y, None)
+            plot_generato = Plot("Pippo", Mate.stack_attributes(x, y))
             plot_generato.settings([0, 255, 255], True, True, True, False, "linear", 3, 1, 1)
             
             painter.plots.append(plot_generato)
@@ -322,7 +322,7 @@ class Manager_orbs:
             y = self.orbitale.angular_wave_function(x, 0, self.orbitale.l, self.orbitale.m)
             y = y.real.astype(float)
             
-            plot_generato = Plot("Pippo", x, y, None)
+            plot_generato = Plot("Pippo", Mate.stack_attributes(x, y))
             plot_generato.settings([0, 255, 255], True, True, True, False, "linear", 3, 1, 1)
             
             painter.plots.append(plot_generato)

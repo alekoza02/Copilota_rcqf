@@ -1,6 +1,5 @@
 import numpy as np
 import multiprocessing
-from _modulo_2D_grafica import Zoomer
 from _modulo_MATE import AcceleratedFoo
 from random import uniform
 from time import perf_counter_ns, perf_counter
@@ -195,11 +194,9 @@ class RayTracer:
         self.settings = Settings(1 + samples, bounces, sample_update, cores, res)
 
         self.pixel_array = np.zeros((self.w, self.h, 3), dtype=np.int8)
-        self.pixel_array_zoomed = np.zeros((w, h, 3), dtype=np.int8)
         self.chuncks = []
 
         self.camera = camera
-        self.zoomer: Zoomer = Zoomer(w, h)
 
         self.res_x, self.res_y = self.settings.resolution_chunck
 
@@ -259,8 +256,6 @@ class RayTracer:
                 chunck.reset = False
                 self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = chunck.albedo + 30
 
-        self.pixel_array_zoomed = self.zoomer.adatta_input2output(self.pixel_array.astype(np.int8))
-        # self.pixel_array_zoomed = self.pixel_array
         self.analisi_tempi()
 
 

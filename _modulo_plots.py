@@ -18,25 +18,32 @@ ZERO_MIN_BORDER = -.001
 ZERO_MAX_BORDER = .001
 
 class Plot:
-    def __init__(self, nome: str, x: np.ndarray[float], y: np.ndarray[float], ey: np.ndarray[float] | None, metadata: list[str] = [""]) -> None:
+    def __init__(self, nome: str, matrix_data: np.ndarray[float], metadata: list[str] | None = None) -> None:
         """Generazione di un grafico
 
         Parameters
         ----------
         nome : str
             Nome con cui verrà visualizzato il grafico
-        x : np.ndarray[float]
-            Array dei valori X
-        y : np.ndarray[float]
-            Array dei valori Y
-        ey : np.ndarray[float] | None
-            Array dei valori degli errori sulle Y
+        matrix_data : np.ndarray[float]
+            Array data importata
+        metadata : list[str]
+            metadata ordinata in lista
         """
         self.nome = nome
         
-        self.x = np.around(x, decimals=8)
-        self.y = np.around(y, decimals=8)
-        self.ey = np.around(ey, decimals=8) if not ey is None else None
+        self.data = matrix_data
+
+        self.toggle_errorbar = True
+
+        self.x_column = 0
+        self.y_column = 1
+        self.ey_column = 2
+
+        self.recompute_data(0, 1, 2)
+
+        self.metadata: list[str] = metadata if not metadata is None else [""]
+        
         self.y_interp_lin: np.ndarray[float] | None = None
         self.grado_inter: int = 1
 
@@ -64,8 +71,28 @@ class Plot:
 
         self.colors_surface = None
 
-        self.metadata: list[str] = metadata
     
+    def recompute_data(self, x_index: int | None = None, y_index: int | None = None, ey_index: int | None = None):
+        
+        if not x_index is None and not y_index is None and not ey_index is None: 
+            
+            if x_index >= 0 and x_index < self.data.shape[1]:
+                self.x_column = x_index
+            
+            if y_index >= 0 and y_index < self.data.shape[1]:
+                self.y_column = y_index
+            
+            if ey_index >= 0 and ey_index < self.data.shape[1]:
+                self.ey_column = ey_index
+
+        self.x = np.around(self.data[:, self.x_column], decimals=8)
+        self.y = np.around(self.data[:, self.y_column], decimals=8)
+        
+        if not self.toggle_errorbar:
+            self.ey = np.zeros(len(self.x))
+        else:
+            self.ey = np.around(self.data[:, self.ey_column], decimals=8) if self.data.shape[1] > 2 else np.zeros(len(self.x))
+
 
     def settings(self, colore: list = [255, 255, 255], gradiente: bool = False, scatter: bool = True, function: bool = False, interpolate: bool = True , interpolation_type: str = "" , dim_pall: int = 1, dim_link: int = 1, acceso: bool = 0):
         self.colore = colore
@@ -509,6 +536,9 @@ class Painter:
         self.UI_dim_link = self.UI_calls_plots.entrate["dim_link"]        
         self.UI_dim_pallini = self.UI_calls_plots.entrate["dim_pallini"]        
         self.UI_grado_inter = self.UI_calls_plots.entrate["grado_inter"] 
+        self.UI_x_column = self.UI_calls_plots.entrate["x_column"]
+        self.UI_y_column = self.UI_calls_plots.entrate["y_column"]
+        self.UI_ey_column = self.UI_calls_plots.entrate["ey_column"]
         self.UI_x_min = self.UI_calls_plots.entrate["x_min"]
         self.UI_x_max = self.UI_calls_plots.entrate["x_max"]
         self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
@@ -522,6 +552,7 @@ class Painter:
         self.UI_use_custom_borders = self.UI_calls_plots.bottoni["use_custom_borders"] 
         self.UI_toggle_inter = self.UI_calls_plots.bottoni["toggle_inter"] 
         self.UI_toggle_pallini = self.UI_calls_plots.bottoni["toggle_pallini"] 
+        self.UI_toggle_errorbar = self.UI_calls_plots.bottoni["toggle_errorbar"] 
         self.UI_toggle_collegamenti = self.UI_calls_plots.bottoni["toggle_collegamenti"]
         self.UI_latex_check = self.UI_calls_plots.bottoni["latex_check"]
         self.UI_toggle_2_axis = self.UI_calls_plots.bottoni["toggle_2_axis"]
@@ -556,9 +587,13 @@ class Painter:
         ui.scena["plots"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
         ui.scena["plots"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
         ui.scena["plots"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
+        ui.scena["plots"].entrate["x_column"].text = str(self.plots[self.active_plot].x_column)
+        ui.scena["plots"].entrate["y_column"].text = str(self.plots[self.active_plot].y_column)
+        ui.scena["plots"].entrate["ey_column"].text = str(self.plots[self.active_plot].ey_column)
 
         ui.scena["plots"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
         ui.scena["plots"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
+        ui.scena["plots"].bottoni["toggle_errorbar"].toggled = self.plots[self.active_plot].toggle_errorbar 
         ui.scena["plots"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
         ui.scena["plots"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
@@ -593,9 +628,13 @@ class Painter:
         ui.scena["plots"].entrate["color_plot"].text = f"{Mate.rgb2hex(self.plots[self.active_plot].colore)}"
         ui.scena["plots"].entrate["dim_link"].text = str(self.plots[self.active_plot].dim_link)
         ui.scena["plots"].entrate["dim_pallini"].text = str(self.plots[self.active_plot].dim_pall)
+        ui.scena["plots"].entrate["x_column"].text = str(self.plots[self.active_plot].x_column)
+        ui.scena["plots"].entrate["y_column"].text = str(self.plots[self.active_plot].y_column)
+        ui.scena["plots"].entrate["ey_column"].text = str(self.plots[self.active_plot].ey_column)
 
         ui.scena["plots"].bottoni["toggle_inter"].toggled = self.plots[self.active_plot].interpolate 
         ui.scena["plots"].bottoni["toggle_pallini"].toggled = self.plots[self.active_plot].scatter 
+        ui.scena["plots"].bottoni["toggle_errorbar"].toggled = self.plots[self.active_plot].toggle_errorbar 
         ui.scena["plots"].bottoni["toggle_collegamenti"].toggled = self.plots[self.active_plot].function
         ui.scena["plots"].bottoni["gradiente"].toggled = self.plots[self.active_plot].gradiente
 
@@ -702,19 +741,14 @@ class Painter:
             # CONVERSIONE ARRAY DI FLOATS
             if len(data[0]) != len(data[1]): data.pop(0)
             data = np.array(data).astype(float)    
-            x = data[:, 0]
-            y = data[:, 1]
-            ey = data[:, 2] if data.shape[1] == 3 else None 
             
             nome = path.split('\\')[-1]
             
             # test ordinamento x
-            indici = np.argsort(x)
-            x = x[indici]
-            y = y[indici]
-            ey = ey[indici] if data.shape[1] == 3 else None 
+            indici = np.argsort(data[:, 0])
+            data = data[indici]
 
-            self.plots.append(Plot(nome, x, y, ey, metadata_lst))
+            self.plots.append(Plot(nome, data, metadata_lst))
             self.debug_info[2].append(nome)
         
         except:
@@ -786,7 +820,7 @@ class Painter:
                             self.max_y = np.maximum(self.max_y, np.max(plot.y[plot.maschera]))
                             self.min_y = np.minimum(self.min_y, np.min(plot.y[plot.maschera]))
 
-                            if not plot.ey is None:
+                            if plot.toggle_errorbar:
                                 error_plus = plot.y + plot.ey
                                 error_minus = plot.y - plot.ey
                                 
@@ -816,7 +850,7 @@ class Painter:
                     self.min_y_l[conteggio_assi_diversi] = min(plot.y[plot.maschera])
                     self.max_y_l[conteggio_assi_diversi] = max(plot.y[plot.maschera])
 
-                    if not plot.ey is None:
+                    if plot.toggle_errorbar:
                         error_plus = plot.y + plot.ey
                         error_minus = plot.y - plot.ey
                         
@@ -841,7 +875,7 @@ class Painter:
                     plot.x_screen = x_adattata
                     plot.y_screen = y_adattata
 
-                    if not plot.ey is None: 
+                    if plot.toggle_errorbar: 
                         ey_adattata = self.h_plot_area * plot.ey[plot.maschera] / (self.max_y_l[conteggio_assi_diversi] - self.min_y_l[conteggio_assi_diversi])
                         plot.ey_screen = ey_adattata
                         
@@ -870,7 +904,7 @@ class Painter:
                     plot.x_screen = x_adattata
                     plot.y_screen = y_adattata
 
-                    if not plot.ey is None: 
+                    if plot.toggle_errorbar: 
                         ey_adattata = self.h_plot_area * plot.ey[plot.maschera] / (self.max_y - self.min_y)
                         plot.ey_screen = ey_adattata
                         
@@ -1055,6 +1089,12 @@ class Painter:
             self.normalizza = self.UI_normalizza.toggled
 
             # Sezione di impostazioni grafico attuale attivo
+            
+            self.UI_ey_column.visibile = True if self.UI_toggle_errorbar.toggled else False
+
+            self.plots[self.active_plot].toggle_errorbar = self.UI_toggle_errorbar.toggled
+            self.plots[self.active_plot].recompute_data(Mate.inp2int(self.UI_x_column.text_invio, 0), Mate.inp2int(self.UI_y_column.text_invio, 1), Mate.inp2int(self.UI_ey_column.text_invio, 2)) 
+            
             self.plots[self.active_plot].acceso = self.UI_scroll_grafici.elementi_attivi[self.UI_scroll_grafici.first_item + self.UI_scroll_grafici.scroll_item_selected]
             self.plots[self.active_plot].interpolate = self.UI_toggle_inter.toggled 
             self.plots[self.active_plot].grado_inter = Mate.inp2int(self.UI_grado_inter.text_invio, 1) 
@@ -1067,6 +1107,7 @@ class Painter:
             self.plots[self.active_plot].dim_pall = Mate.inp2int(self.UI_dim_pallini.text_invio)
 
             self.plots[self.active_plot].nome = self.UI_nome_grafico.text_invio
+
         
         self.debug_info[1] = sum([len(i.x) for i in self.plots])
         
@@ -1083,7 +1124,7 @@ class Painter:
 
 
                     try:
-                        if plot.scatter and not plot.ey is None:
+                        if plot.scatter and plot.toggle_errorbar:
                             for x, y, ey in zip(plot.x_screen.astype(int), plot.y_screen.astype(int), plot.ey_screen.astype(int)):
                                 pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y + ey), plot.dim_link)
                                 pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y - ey), plot.dim_link)
@@ -1097,7 +1138,7 @@ class Painter:
                         if plot.interpolate and not plot.y_interp_lin is None:
                             for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:-1], plot.yi_screen.astype(int)[:-1], plot.xi_screen.astype(int)[1:], plot.yi_screen.astype(int)[1:]):
                                 pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), plot.dim_link)
-                    except (TypeError, ValueError) as e:
+                    except (TypeError, ValueError, AttributeError) as e:
                         if self.debugging: print(f"Warning: {e} in interpolate")
 
                     
@@ -1593,7 +1634,7 @@ class Painter:
             
             x = base_data.x[base_data.maschera]
             y = base_data.y[base_data.maschera]
-            ey = base_data.ey[base_data.maschera] if not base_data.ey is None else None
+            ey = base_data.ey[base_data.maschera] if base_data.toggle_errorbar else None
 
             if len(x) < grado + 2: return f"Punti insufficienti.\nGrado: {grado}\nPunti minimi richiesti: {grado + 2}\nPunti presenti nel grafico: {len(x)}"
 

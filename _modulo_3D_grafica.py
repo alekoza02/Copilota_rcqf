@@ -223,8 +223,8 @@ class TreDi:
 
         if widget_data.tab == "tracer_settings":
             self.UI_calls_tracer.label_text["eta"].text = self.pathtracer.stats
-            surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array_zoomed)
-            self.schermo.blit(surface, (0,0))
+            surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array)
+            self.schermo.blit(pygame.transform.scale(surface, (self.w, self.h)), (0,0))
         
 
     def TEMPORARY_GENERATION(self):

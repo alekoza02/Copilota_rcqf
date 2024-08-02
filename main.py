@@ -17,6 +17,11 @@ def main(config: configparser):
     main_plot.link_ui(ui)
     main_plot.full_import_plot_data()
 
+    # Zona inizializzazione plot import
+    from _modulo_analizzatore import Analizzatore
+    analizzatore = Analizzatore()
+    analizzatore.link_ui(ui)
+    
     # Zona inizializzazione tracer
     from _modulo_3D_grafica import TreDi
     tredi = TreDi()
@@ -45,13 +50,20 @@ def main(config: configparser):
                 [tab.disegna_tab(logica) for index, tab in ui.scena["plots"].tabs.items()]
         
             case 1: 
+                ui.event_manage_plot_import(eventi_in_corso, logica, analizzatore)
+        
+                analizzatore.disegna(logica)
+                [schermo.aggiorna_schermo() for key, schermo in ui.scena["plot_import"].schermo.items()]
+                [tab.disegna_tab(logica) for index, tab in ui.scena["plot_import"].tabs.items()]
+
+            case 2: 
                 ui.event_manage_tracer(eventi_in_corso, logica, tredi)
                 
                 tredi.disegna(logica, ui.scena["tracer"].data_widgets_tracer)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["tracer"].schermo.items()]
                 [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
                 
-            case 2: 
+            case 3: 
                 ui.event_manage_orbitals(eventi_in_corso, logica, orbs)
                 
                 orbs.disegna(logica)
