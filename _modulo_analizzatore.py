@@ -13,6 +13,8 @@ class Analizzatore:
         self.primo_y: int = None 
         self.secondo_y: int = None 
 
+        self.punto_attivo: int = None
+
         self.reference = None
 
         self.lista_coordinate_calibrazione: list[tuple[float]] = []
@@ -91,13 +93,10 @@ class Analizzatore:
 
         self.step_progresso_completamento = 0
 
-        if self.UI_calibrazione.toggled:
+        if self.UI_calibrazione.toggled or len(self.lista_coordinate_calibrazione) > 0:
             self.step_progresso_completamento = 1
-
-            # resetta i valori di inserimento
-            self.lista_coordinate_inserimento = []
         
-        elif self.UI_inserimento.toggled:
+        if self.UI_inserimento.toggled:
             self.step_progresso_completamento = 2
 
 
@@ -130,7 +129,57 @@ class Analizzatore:
                     self.lista_coordinate_finali.append((x, y))
 
 
+    def select_point(self, logica: Logica):
+        array = self.lista_coordinate_calibrazione if self.UI_calibrazione.toggled else self.lista_coordinate_inserimento
+        
+        if len(array) > 0:
+
+            numpy_coords = np.array(array)
+            
+            coordinate = numpy_coords[:, :2]
+            mouse_pos = np.array(logica.mouse_pos)
+
+            coordinate -= mouse_pos
+            distanze = np.linalg.norm(coordinate, axis=1)
+
+            minima = np.argmin(distanze)
+
+            if distanze[minima] < 50:
+                self.punto_attivo = int(numpy_coords[minima, 2])
+                return 
+            else:
+                return
+
+        self.punto_attivo = None
+
+    
+    def delete_point(self):
+        if not self.punto_attivo is None:
+            try:
+                array = self.lista_coordinate_calibrazione if self.UI_calibrazione.toggled else self.lista_coordinate_inserimento 
+                array.pop(self.punto_attivo)
+                array = np.array(array) 
+                array[self.punto_attivo:, 2] -= 1
+                array = list(array)
+            except IndexError:
+                ...
+
+            self.punto_attivo = None
+
+
+    def move_point(self, x=0, y=0):
+        array = self.lista_coordinate_calibrazione if self.UI_calibrazione.toggled else self.lista_coordinate_inserimento
+        modify = np.array(array[self.punto_attivo])
+        modify[0] += x
+        modify[1] += y
+        array[self.punto_attivo] = modify
+
+
     def disegna(self, logica: Logica):
+
+        if logica.dragging and not self.punto_attivo is None:
+            self.move_point(logica.dragging_dx / 3, - logica.dragging_dy / 3)
+
 
         self.update_progress()
         self.update_calibration()
@@ -160,7 +209,8 @@ class Analizzatore:
             cali_coords_numpy[:, 1] -= self.ancoraggio_y
 
             for coords in cali_coords_numpy:
-                pygame.draw.circle(self.schermo, [255, 100, 100], coords, 10)     
+                colore = [100, 255, 100] if coords[2] == self.punto_attivo and self.step_progresso_completamento == 1 else [255, 100, 100]
+                pygame.draw.circle(self.schermo, colore, coords[:2], 10)     
         
         if len(inse_coords_numpy) > 0:
 
@@ -168,8 +218,10 @@ class Analizzatore:
             inse_coords_numpy[:, 1] -= self.ancoraggio_y
 
             for coords in inse_coords_numpy:
-                pygame.draw.circle(self.schermo, [100, 255, 255], coords, 10)        
+                colore = [100, 255, 100] if coords[2] == self.punto_attivo and self.step_progresso_completamento != 1 else [100, 255, 255]
+                pygame.draw.circle(self.schermo, colore, coords[:2], 10)        
         
         if self.step_progresso_completamento == 2:
             for coords, text in zip(inse_coords_numpy, self.lista_coordinate_finali):
-                self.schermo.blit(self.font.render(f"({text[0]:.2f}, {text[1]:.2f})", True, [100, 255, 255]), (coords[0], coords[1] - 30))   
+                colore = [100, 255, 100] if coords[2] == self.punto_attivo else [100, 255, 255]
+                self.schermo.blit(self.font.render(f"({text[0]:.2f}, {text[1]:.2f})", True, colore), (coords[0], coords[1] - 30))   

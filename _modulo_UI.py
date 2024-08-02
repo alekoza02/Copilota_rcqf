@@ -1424,10 +1424,8 @@ class UI:
                     '-----------------------------------------------------------------------------------------------------'
 
                     # Inizio sezione events toggled:
-                    if analizzatore.UI_calibrazione.toggled: 
-                        # controllo per il reset (bottone riacceso con lista piena)
-                        if len(analizzatore.lista_coordinate_calibrazione) == 4:
-                            analizzatore.lista_coordinate_calibrazione = []
+                    # if analizzatore.UI_calibrazione.toggled: 
+                    #    ...
 
 
                     # raccolta di tutti i testi già presenti nelle entrate
@@ -1438,24 +1436,27 @@ class UI:
                         self.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
                     else: self.entrata_attiva = None
 
+                    if pygame.Rect(analizzatore.ancoraggio_x, analizzatore.ancoraggio_y, analizzatore.w, analizzatore.h).collidepoint(event.pos):
+                        
+
+                        if analizzatore.step_progresso_completamento == 1:
+
+                            # controllo per aggiunta dati
+                            if len(analizzatore.lista_coordinate_calibrazione) < 4:
+                                analizzatore.lista_coordinate_calibrazione.append([logica.mouse_pos[0], logica.mouse_pos[1], len(analizzatore.lista_coordinate_calibrazione)])
+                                analizzatore.punto_attivo = analizzatore.lista_coordinate_calibrazione[-1][2]
+                        
+                        elif analizzatore.step_progresso_completamento == 2:
+
+                            # controllo per aggiunta dati
+                            analizzatore.lista_coordinate_inserimento.append([logica.mouse_pos[0], logica.mouse_pos[1], len(analizzatore.lista_coordinate_inserimento)])
+                            analizzatore.punto_attivo = analizzatore.lista_coordinate_inserimento[-1][2]
+                            print(analizzatore.lista_coordinate_inserimento)
+
+
                 if event.button == 3:
-
-                    if analizzatore.step_progresso_completamento == 1:
-
-                        # controllo per aggiunta dati
-                        if len(analizzatore.lista_coordinate_calibrazione) < 4:
-                            analizzatore.lista_coordinate_calibrazione.append(logica.mouse_pos)
-                        
-                        # controllo per spegnimento bottone
-                        if len(analizzatore.lista_coordinate_calibrazione) == 4:
-                            analizzatore.UI_calibrazione.toggled = False
-                            analizzatore.UI_inserimento.toggled = True
-                    
-                    elif analizzatore.step_progresso_completamento == 2:
-
-                        # controllo per aggiunta dati
-                        analizzatore.lista_coordinate_inserimento.append(logica.mouse_pos)
-                        
+                    # zona controllo punto attivo
+                    analizzatore.select_point(logica)
 
                 if event.button == 4:
                     logica.scroll_up += 10
@@ -1467,13 +1468,20 @@ class UI:
             
             if event.type == pygame.KEYDOWN:
 
-                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                    self.entrata_attiva = None
-                    for key, entrata in al_sc.entrate.items():
-                        entrata.toggle = False
+                if event.key == pygame.K_UP and not analizzatore.punto_attivo is None:
+                    analizzatore.move_point(x=0, y=-1)
+                if event.key == pygame.K_DOWN and not analizzatore.punto_attivo is None:
+                    analizzatore.move_point(x=0, y=1)
+                if event.key == pygame.K_LEFT and not analizzatore.punto_attivo is None:
+                    analizzatore.move_point(x=-1, y=0)
+                if event.key == pygame.K_RIGHT and not analizzatore.punto_attivo is None:
+                    analizzatore.move_point(x=1, y=0)
                     
                 if event.key == pygame.K_RETURN:
                     analizzatore.load_image()
+
+                if event.key == pygame.K_DELETE:
+                    analizzatore.delete_point()
 
                 if logica.tab:
                     if not self.entrata_attiva is None:
