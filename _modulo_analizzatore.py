@@ -70,8 +70,7 @@ class Analizzatore:
         self.UI_calibrazione = self.UI_calls_plot_import.bottoni["calibrazione"]
         self.UI_inserimento = self.UI_calls_plot_import.bottoni["inserimento"]
 
-        self.UI_dump_path = self.UI_calls_plot_import.entrate["path_export"]
-        self.UI_import_path = self.UI_calls_plot_import.entrate["path_import"]
+        self.UI_import_path = self.UI_calls_plot_import.paths["path_import"]
         
         self.UI_x1 = self.UI_calls_plot_import.entrate["x1"]
         self.UI_x2 = self.UI_calls_plot_import.entrate["x2"]
@@ -79,9 +78,9 @@ class Analizzatore:
         self.UI_y2 = self.UI_calls_plot_import.entrate["y2"]
 
 
-    def dump_data(self):
+    def dump_data(self, path):
         try:
-            with open(self.UI_dump_path.text, 'w') as file:
+            with open(path, 'w') as file:
                 for coords in self.lista_coordinate_finali:
                     file.write(f"{coords[0]}\t{coords[1]}\n")
     
@@ -178,7 +177,7 @@ class Analizzatore:
     def disegna(self, logica: Logica):
 
         if logica.dragging and not self.punto_attivo is None:
-            self.move_point(logica.dragging_dx / 3, - logica.dragging_dy / 3)
+            self.move_point(logica.dragging_dx, - logica.dragging_dy)
 
 
         self.update_progress()

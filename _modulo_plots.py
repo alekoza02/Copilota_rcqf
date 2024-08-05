@@ -121,7 +121,8 @@ class Painter:
                 raise NameError(f"{control} is an invalid mode")
 
         config = configparser.ConfigParser()
-        config.read('./DATA/settings.ini')
+        path = os.path.join('DATA', 'settings.ini')
+        config.read(path)
 
         self.debugging = eval(config.get('Default', 'debugging'))
 
@@ -187,7 +188,8 @@ class Painter:
 
         self.dim_font_base = 32
         self.dim_font = 32 
-        self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
+        path = os.path.join('TEXTURES', 'f_full_font.ttf')
+        self.font_tipo = pygame.font.Font(path, self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
 
         self.titolo = ""
@@ -251,7 +253,8 @@ class Painter:
             Fattore di scala rispetto alla dimensione precedente. Con questo approccio, il cambio di dimensione dello schermo non è più un problema, by default 1
         """
         self.dim_font = int(round(self.dim_font_base * factor, 0))
-        self.font_tipo = pygame.font.Font("TEXTURES/f_full_font.ttf", self.dim_font)
+        path = os.path.join('TEXTURES', 'f_full_font.ttf')
+        self.font_tipo = pygame.font.Font(path, self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
     
 
@@ -531,7 +534,6 @@ class Painter:
         self.UI_area_h = self.UI_calls_plots.entrate["area_h"]
         self.UI_x_legenda = self.UI_calls_plots.entrate["x_legenda"]
         self.UI_y_legenda = self.UI_calls_plots.entrate["y_legenda"]        
-        self.UI_nome_grafico = self.UI_calls_plots.entrate["nome_grafico"]        
         self.UI_color_plot = self.UI_calls_plots.entrate["color_plot"]        
         self.UI_dim_link = self.UI_calls_plots.entrate["dim_link"]        
         self.UI_dim_pallini = self.UI_calls_plots.entrate["dim_pallini"]        
@@ -544,8 +546,10 @@ class Painter:
         self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
         self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
         self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
-        self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]       
-        self.UI_caricamento = self.UI_calls_plots.entrate["caricamento"]
+        self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]  
+
+        self.UI_nome_grafico = self.UI_calls_plots.entrate["nome_grafico"]        
+        self.UI_caricamento = self.UI_calls_plots.paths["caricamento"]
 
         self.UI_scroll_grafici = self.UI_calls_plots.scrolls["grafici"]
         self.UI_normalizza = self.UI_calls_plots.bottoni["normalizza"] 
@@ -566,7 +570,9 @@ class Painter:
         self.UI_FID = self.UI_calls_plots.label_text["FID"]
         self.UI_metadata = self.UI_calls_plots.label_text["metadata"]
 
+        self.UI_path_import = self.UI_calls_plots.paths["caricamento"]
     
+
     
     def change_active_plot_UIBASED(self, ui: UI) -> None:
         """Cambio del grafico attivo in focus basato sull'iterazione dell'ui. Richiede l'UI per funzionare
@@ -580,6 +586,8 @@ class Painter:
         self.riordina_plots(ui.scena["plots"].scrolls["grafici"].indici)
         self.attiva_plots(ui.scena["plots"].scrolls["grafici"].elementi_attivi)
         self.active_plot = ui.scena["plots"].scrolls["grafici"].scroll_item_selected + ui.scena["plots"].scrolls["grafici"].first_item
+
+        # TODO: FIX WHEN < 5 PLOTS IN FOLDER 
 
         # aggiorno le entry box con i valori del nuovo grafico
         ui.scena["plots"].entrate["nome_grafico"].text = str(self.plots[self.active_plot].nome)
@@ -1187,6 +1195,15 @@ class Painter:
         """
 
         self.schermo.fill(self.bg_color)
+
+        if self.UI_path_import.execute_action:
+            self.UI_path_import.execute_action = False
+            try:
+                self.full_import_plot_data()
+                self.UI_scroll_grafici.aggiorna_externo("reload", logica)
+            except FileNotFoundError as e:
+                print(e)
+
 
         self.disegna_gradiente()
 

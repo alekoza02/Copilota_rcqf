@@ -41,6 +41,7 @@ SUPPORTA:
 - $\chi^2$ e $R^2$ 
 - Scelta delle colonne da plottare
 - Visualizza METADATA
+- Estrattore di grafici da immagine
 
 TODO:
 ---
@@ -54,7 +55,6 @@ COSMETICS:
 
 FUTURE PROJECTS:
 ---
-- Estrattore di grafici da immagine
 - Grafici in coordinate polari
 - Splines
 - 2D images

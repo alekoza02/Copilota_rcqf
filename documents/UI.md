@@ -12,10 +12,11 @@ SUPPORTA:
 - Notazione scientifica (fuori dal range $\pm$ 10,000 e sotto il 0,001)
 - Label di chiarimento per bottoni ed entrate (tooltip)
 - Esponente / Pedice -> $lato^2 \space lato_2$
+- Implementare in tutti i labels e scritte il check pedice / apice
+- Aggiunto esplora risorse
 
 TODO:
 ---
-- Implementare in tutti i labels e scritte il check pedice / apice
 - Text selection
 - Puntatore text box con mouse
 - Copia / Incolla

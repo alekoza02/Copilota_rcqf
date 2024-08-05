@@ -81,7 +81,15 @@ if __name__ == "__main__":
     
     config = configparser.ConfigParser()
     config.read('./DATA/settings.ini')
-    
+
+    _compilatore = eval(config.get('Default', 'compila_c'))
+
+    if _compilatore:
+        import subprocess, ctypes
+        subprocess.run("gcc -fPIC -shared -o .\\LIBRERIE\\librerialec\\lib.so .\\LIBRERIE\\librerialec\\libreria.c")
+        tmp = ctypes.CDLL(".\\LIBRERIE\\librerialec\\lib.so")
+        tmp.introduce()
+
     _profiler = eval(config.get('Default', 'profiler'))
     
     if _profiler:

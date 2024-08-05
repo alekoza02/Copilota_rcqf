@@ -38,4 +38,4 @@ TODO:
 
 FUTURE PROJECTS:
 ---
-- Rewrite main routines in Rust
+- Rewrite main routines in C
