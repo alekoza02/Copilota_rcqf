@@ -265,6 +265,7 @@ class Geo_Scene:
         self.objects.append(Object("Sfera_parete_sx", vertici=self.i.verteces, links=self.i.links, x=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
         self.objects.append(Object("Sfera_parete_dx", vertici=self.i.verteces, links=self.i.links, x=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., .7, 1.]))))
         self.objects.append(Object("Sfera_parete_fondo", vertici=self.i.verteces, links=self.i.links, y=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_dietro", vertici=self.i.verteces, links=self.i.links, y=-1060, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([.1, 1., .1]))))
         self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
     
@@ -285,6 +286,7 @@ class Geo_Scene:
         self.objects.append(Object("Sfera_parete_sx", vertici=self.i.verteces, links=self.i.links, x=-1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
         self.objects.append(Object("Sfera_parete_dx", vertici=self.i.verteces, links=self.i.links, x=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., 1., 1.]))))
         self.objects.append(Object("Sfera_parete_fondo", vertici=self.i.verteces, links=self.i.links, y=1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        self.objects.append(Object("Sfera_parete_dietro", vertici=self.i.verteces, links=self.i.links, y=-1020, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([.1, 1., .1]))))
         self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=18, sx=20, sy=20, sz=20, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
 
@@ -299,13 +301,13 @@ class Geo_Scene:
 
 class Materiale:
     def __init__(self, colore = np.array([1,1,1]), emissione_forza = 0, emissione_colore = np.array([1,1,1]), roughness=1, glass=0, glossiness=0) -> None:
-        self.colore = colore
-        self.emissione_forza = emissione_forza
-        self.emissione_colore = emissione_colore
-        self.roughness = roughness
-        self.glossiness = glossiness
-        self.glass = glass
-        self.IOR = 1.5
+        self.colore = colore                        # 3 float
+        self.emissione_forza = emissione_forza      # 1 float
+        self.emissione_colore = emissione_colore    # 3 float
+        self.roughness = roughness                  # 1 float
+        self.glossiness = glossiness                # 1 float
+        self.glass = glass                          # 1 int
+        self.IOR = 1.5                              # 1 float
 
     def __str__(self) -> str:
         return f"{self.colore}"

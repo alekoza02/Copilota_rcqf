@@ -29,6 +29,7 @@ class Dizionario:
             "links":                "Abilita la visualizzazione\nWireframe.",
             "add_sphere":           "Aggiunge una sfera alla scena.",
             "remove_sphere":        "Rimuove una sfera dalla scena.",
+            "Crender":              "Se abilitata la funzione di compilazione\ncercherà di lanciare il render usando\nil motore di renderizzazione scritto in C.",
             "mode1":                "Renderizza la scena contenente sfere.",
             "mode2":                "Resetta la tavolozza e arresta\nla renderizzazione in corso.",
             "indice":               "Mostra il canale basic shader:\n- colore base\n- illuminazione basata sulla normale",

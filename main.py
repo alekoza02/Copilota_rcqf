@@ -86,8 +86,8 @@ if __name__ == "__main__":
 
     if _compilatore:
         import subprocess, ctypes
-        subprocess.run("gcc -fPIC -shared -o .\\LIBRERIE\\librerialec\\lib.so .\\LIBRERIE\\librerialec\\libreria.c")
-        tmp = ctypes.CDLL(".\\LIBRERIE\\librerialec\\lib.so")
+        # subprocess.run("gcc -fPIC -shared -o .\\LIBRERIE\\bin\\libreria.dll .\\LIBRERIE\\source\\libreria.c")
+        tmp = ctypes.CDLL(".\\LIBRERIE\\bin\\libreria.dll")
         tmp.introduce()
 
     _profiler = eval(config.get('Default', 'profiler'))

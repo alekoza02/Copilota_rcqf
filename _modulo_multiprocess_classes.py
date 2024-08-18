@@ -172,6 +172,7 @@ class RayTracer:
         self.h: int
 
         self.pixel_array: np.array[np.array[float]]
+        self.C_pixel_array: np.array[np.array[float]]
 
         self.chuncks: list[RenderChunck]
         self.mode = 0
@@ -194,6 +195,7 @@ class RayTracer:
         self.settings = Settings(1 + samples, bounces, sample_update, cores, res)
 
         self.pixel_array = np.zeros((self.w, self.h, 3), dtype=np.int8)
+        self.C_pixel_array = np.zeros((self.w, self.h, 3), dtype=float)
         self.chuncks = []
 
         self.camera = camera
@@ -473,8 +475,9 @@ class RenderingModes:
 
 class AvvioMultiProcess:
     def __init__(self) -> None:
-        self.pool: multiprocessing.Pool = None
+        self.pool = None
         self.stahp = False
+        self.c_stopped = True
 
 
     def try_fast_kill(self):
@@ -482,14 +485,72 @@ class AvvioMultiProcess:
             self.pool.terminate()
 
 
+    def launch_c_renderer(self, tredi, librerie):
+        self.stahp = True
+        self.try_fast_kill()
+        tredi.pathtracer.running = False
+        
+        self.stahp = False
+        x, y, _ = tredi.pathtracer.pixel_array.shape
+        objects = []
+        for oggetto, stato in zip(tredi.scenes["debug"].objects, tredi.UI_calls_tracer.scrolls["oggetti"].elementi_attivi):
+            if stato: objects.append(oggetto)
+        objects = Sphere.convert_wireframe2tracer(objects)
+
+        tredi.pathtracer.running = True
+        tredi.pathtracer.start_time_str = time.strftime('%H:%M:%S', time.localtime())
+        tredi.pathtracer.start_time = time.time()
+
+        tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}"
+        
+        self.c_stopped = False
+
+        if not self.stahp:
+
+            for sample in range(tredi.pathtracer.settings.samples):
+                
+                try:
+                    tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (sample):.2f} secondi"
+                except ZeroDivisionError:
+                    tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (0.0001):.2f} secondi"
+
+
+                tmp = librerie.c_renderer(x, y, objects, tredi.pathtracer.camera, tredi.pathtracer.settings)
+                tredi.pathtracer.C_pixel_array = tredi.pathtracer.C_pixel_array + tmp
+                
+                tmp2 = np.sqrt(tredi.pathtracer.C_pixel_array / sample) * 255
+                tmp2[tmp2 > 255] = 255
+                tmp2 = tmp2.astype(np.int8)
+
+                tredi.pathtracer.pixel_array = tmp2
+
+                if self.stahp:
+                    self.c_stopped = True
+                    return
+
+        self.c_stopped = True
+        tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTerminato in: {time.time() - tredi.pathtracer.start_time:.2f} secondi"
+
+        tredi.pathtracer.running = False
+        tredi.pathtracer.end_time = time.time()
+        tredi.pathtracer.update_array()
+
+
     def reset_canvas(self, tredi):
             
         self.stahp = True
         self.try_fast_kill()
+
+        while not self.c_stopped:
+            ...
         
         for chunck in tredi.pathtracer.chuncks:
             tredi.pathtracer.update_chunck(RenderingModes.reset_background(chunck))
         tredi.pathtracer.running = False
+
+        tredi.pathtracer.stats = f"Fai partire una renderizzazione!"
+
+        self.c_stopped = True
 
 
     def avvio_multi_tracer(self, tredi):
@@ -497,6 +558,7 @@ class AvvioMultiProcess:
         # compilazioni funzioni nel main
         # AcceleratedFoo.test(np.array([[0.,0.,0.], [0.,0.,0.]]), np.array([0.,0.,0.]), np.array([0.,0.,0.]))
 
+        self.c_stopped = True
         self.stahp = False
 
         objects = []

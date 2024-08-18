@@ -15,7 +15,9 @@ from tkinter import filedialog
 from _modulo_MATE import Mate
 from _modulo_multiprocess_classes import AvvioMultiProcess
 from _modulo_database import Dizionario
+from _modulo_wrapper_librerie import LibrerieC
 
+librerie = LibrerieC()
 diction = Dizionario()
 
 from typing import TYPE_CHECKING
@@ -1307,6 +1309,7 @@ class UI:
                 if " " in self.entrata_attiva.text: ricercatore = " " 
                 elif "\\" in self.entrata_attiva.text: ricercatore = "\\"
                 elif "/" in self.entrata_attiva.text: ricercatore = "/"
+                else: ricercatore = None
 
                 if event.type == pygame.TEXTINPUT:           
                     self.entrata_attiva.text = self.entrata_attiva.text[:self.entrata_attiva.puntatore] + event.text + self.entrata_attiva.text[self.entrata_attiva.puntatore:]
@@ -1319,10 +1322,14 @@ class UI:
                             
                     if event.key == pygame.K_BACKSPACE:
                         if logica.ctrl:
-                            nuovo_puntatore = tx[:self.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
-                            text2eli = tx[nuovo_puntatore : self.entrata_attiva.puntatore]
-                            self.entrata_attiva.puntatore = nuovo_puntatore
-                            self.entrata_attiva.text = tx.replace(text2eli, "") 
+                            if ricercatore is None:
+                                self.entrata_attiva.puntatore = 0
+                                self.entrata_attiva.text = "" 
+                            else:
+                                nuovo_puntatore = tx[:self.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
+                                text2eli = tx[nuovo_puntatore : self.entrata_attiva.puntatore]
+                                self.entrata_attiva.puntatore = nuovo_puntatore
+                                self.entrata_attiva.text = tx.replace(text2eli, "") 
 
                         else:
                             if self.entrata_attiva.puntatore != 0:
@@ -1333,7 +1340,10 @@ class UI:
                     if event.key == pygame.K_LEFT:
                         if self.entrata_attiva.puntatore > 0:
                             if logica.ctrl:
-                                self.entrata_attiva.puntatore = tx[:self.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
+                                if ricercatore is None:
+                                    self.entrata_attiva.puntatore = 0
+                                else:
+                                    self.entrata_attiva.puntatore = tx[:self.entrata_attiva.puntatore].rstrip().rfind(ricercatore)+1
                             else: 
                                 self.entrata_attiva.puntatore -= 1
 
@@ -1341,18 +1351,22 @@ class UI:
                         if self.entrata_attiva.puntatore < len(self.entrata_attiva.text):
                             if logica.ctrl:
 
-                                # trovo l'indice di dove inizia la frase
-                                start = tx.find(tx[self.entrata_attiva.puntatore:].lstrip(), self.entrata_attiva.puntatore, len(tx))
-                                # se non la trovo mi blocco dove sono partito
-                                if start == -1: start = self.entrata_attiva.puntatore
+                                if ricercatore is None:
+                                    self.entrata_attiva.puntatore = len(self.entrata_attiva.text)
+                                else:
 
-                                # se la trovo, cerco la parola successiva
-                                found = tx.find(ricercatore, start, len(tx))
-                                # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
-                                if found == -1: found = len(tx.rstrip())
+                                    # trovo l'indice di dove inizia la frase
+                                    start = tx.find(tx[self.entrata_attiva.puntatore:].lstrip(), self.entrata_attiva.puntatore, len(tx))
+                                    # se non la trovo mi blocco dove sono partito
+                                    if start == -1: start = self.entrata_attiva.puntatore
 
-                                self.entrata_attiva.puntatore = found
-                                
+                                    # se la trovo, cerco la parola successiva
+                                    found = tx.find(ricercatore, start, len(tx))
+                                    # se non la trovo guardo mi posizione nell'ultimo carattere diverso da uno spazio
+                                    if found == -1: found = len(tx.rstrip())
+
+                                    self.entrata_attiva.puntatore = found
+                                    
                             else:
                                 self.entrata_attiva.puntatore += 1
 
@@ -1688,6 +1702,19 @@ class UI:
 
                         thread = threading.Thread(target=self.gestore_multiprocess.reset_canvas, args=(tredi, ))
                         thread.start()
+                    
+                    if al_sc.bottoni["Crender"].toggled:
+                        al_sc.bottoni["Crender"].push()
+                        
+                        al_sc.label_text["render_mode"].text = "Motore C avviato."
+                        
+                        tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
+
+                        tredi.build_raytracer()
+                        
+                        thread = threading.Thread(target=self.gestore_multiprocess.launch_c_renderer, args=(tredi, librerie))
+                        thread.start()
+
 
                     if al_sc.bottoni["add_sphere"].toggled:
                         al_sc.bottoni["add_sphere"].push()
@@ -2203,6 +2230,7 @@ class Scena:
         self.bottoni["mode2"] = Button(self.parametri_repeat_elementi, self.fonts, w=8, h=1.8, x=65, y=60 - 30, text="Background", tipologia="push", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         
         # raytracer
+        self.bottoni["Crender"] = Button(self.parametri_repeat_elementi, self.fonts, w=15, h=1.8*3, x=80, y=45, size="grande", tipologia="push", text="C RENDERER", bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["indice"] = Button(self.parametri_repeat_elementi, self.fonts, w=8, h=1.8, x=85, y=30, text="Basic Shader", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["albedo"] = Button(self.parametri_repeat_elementi, self.fonts, w=8, h=1.8, x=85, y=27, text="Albedo", multi_box=True, toggled=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
         self.bottoni["normali"] = Button(self.parametri_repeat_elementi, self.fonts, w=8, h=1.8, x=85, y=24, text="Normali", multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
@@ -2311,7 +2339,7 @@ class Scena:
         
         self.tabs["tracer_settings"] = TabUI(name="tracer_settings", abilita=False, renderizza=False,
             labels=[self.label_text["render_mode"], self.label_text["eta"]],
-            bottoni=[self.bottoni["mode1"], self.bottoni["mode2"], self.bottoni["albedo"], self.bottoni["normali"], self.bottoni["ao"], self.bottoni["indice"], self.bottoni["tempo"], self.bottoni["bounces_tab"]],
+            bottoni=[self.bottoni["Crender"], self.bottoni["mode1"], self.bottoni["mode2"], self.bottoni["albedo"], self.bottoni["normali"], self.bottoni["ao"], self.bottoni["indice"], self.bottoni["tempo"], self.bottoni["bounces_tab"]],
             ui_signs=[self.ui_signs["coll_normali1"], self.ui_signs["coll_normali2"], self.ui_signs["coll_ao1"], self.ui_signs["coll_ao2"], self.ui_signs["coll_indice1"], self.ui_signs["coll_indice2"], self.ui_signs["coll_albedo1"], self.ui_signs["coll_tempo1"], self.ui_signs["coll_tempo2"], self.ui_signs["coll_bounces1"], self.ui_signs["coll_bounces2"]],
             multi_boxes=[self.multi_box["view_mode"]],
             entrate=[self.entrate["samples"], self.entrate["bounces"], self.entrate["sample_package"], self.entrate["resolution_x"], self.entrate["resolution_y"], self.entrate["cores"], self.entrate["res_chunck"]]
