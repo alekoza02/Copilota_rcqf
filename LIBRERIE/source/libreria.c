@@ -33,6 +33,7 @@ void introduce(){
 
 void free_array(float *array) {
     free(array);
+    array = NULL;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -42,7 +43,7 @@ void free_array(float *array) {
 // --------------------------------------------------------------------------------------------
 
 
-Vec init_vettore(float values[3]){
+static inline Vec init_vettore(float values[3]){
     
     Vec vettore;
 
@@ -54,15 +55,15 @@ Vec init_vettore(float values[3]){
 };
 
 
-float randomale(){
+static inline float randomale(){
     return (float)(rand() % 1000) / 1000;
 };
 
-float randomale_neg(){
+static inline float randomale_neg(){
     return (1 - (float)(rand() % 1000) / 500);
 };
 
-void modulo_vettore(Vec *vettore){
+static inline void modulo_vettore(Vec *vettore){
     float modulo = 0.0;
     
     for (int i = 0; i < 3; i++){
@@ -72,7 +73,7 @@ void modulo_vettore(Vec *vettore){
     vettore->modulo = sqrt(modulo);
 };
 
-float no_void_modulo_vettore(Vec *vettore){
+static inline float no_void_modulo_vettore(Vec *vettore){
     float modulo = 0.0;
     
     for (int i = 0; i < 3; i++){
@@ -83,7 +84,7 @@ float no_void_modulo_vettore(Vec *vettore){
 };
 
 
-void versore_vettore(Vec *vettore){
+static inline void versore_vettore(Vec *vettore){
     modulo_vettore(vettore);
     
     for (int i = 0; i < 3; i++){
@@ -95,14 +96,14 @@ void versore_vettore(Vec *vettore){
 };
 
 
-void inverti_vettore(Vec *vettore){
+static inline void inverti_vettore(Vec *vettore){
     for (int i = 0; i < 3; i++){
         vettore->valore[i] = - vettore->valore[i];
     };
 };
 
 
-Vec somma_vettori(Vec *vettore1, Vec *vettore2){
+static inline Vec somma_vettori(Vec *vettore1, Vec *vettore2){
     float ris[3] = {0., 0., 0.};
     for (int i = 0; i < 3; i++){
         ris[i] = vettore1->valore[i] + vettore2->valore[i];
@@ -111,7 +112,7 @@ Vec somma_vettori(Vec *vettore1, Vec *vettore2){
 };
 
 
-Vec differenza_vettori(Vec *vettore1, Vec *vettore2){
+static inline Vec differenza_vettori(Vec *vettore1, Vec *vettore2){
     float ris[3] = {0., 0., 0.};
     for (int i = 0; i < 3; i++){
         ris[i] = vettore1->valore[i] - vettore2->valore[i];
@@ -120,7 +121,7 @@ Vec differenza_vettori(Vec *vettore1, Vec *vettore2){
 };
 
 
-float prodotto_scalare(Vec *vettore1, Vec *vettore2){
+static inline float prodotto_scalare(Vec *vettore1, Vec *vettore2){
 
     float ris = 0.;
     for (int i = 0; i < 3; i++){
@@ -131,7 +132,7 @@ float prodotto_scalare(Vec *vettore1, Vec *vettore2){
 };
 
 
-Vec scala_vettore(Vec *vettore1, float t){
+static inline Vec scala_vettore(Vec *vettore1, float t){
     float ris[3] = {0., 0., 0.};
     for (int i = 0; i < 3; i++){
         ris[i] = vettore1->valore[i] * t;
@@ -140,7 +141,7 @@ Vec scala_vettore(Vec *vettore1, float t){
 };
 
 
-Vec prodotto_vettoriale(Vec *vettore1, Vec *vettore2){
+static inline Vec prodotto_vettoriale(Vec *vettore1, Vec *vettore2){
     float ris[3] = {0., 0., 0.};
     ris[0] = vettore1->valore[1] * vettore2->valore[2] - vettore1->valore[2] * vettore2->valore[1];
     ris[1] = vettore1->valore[2] * vettore2->valore[0] - vettore1->valore[0] * vettore2->valore[2];
@@ -149,7 +150,7 @@ Vec prodotto_vettoriale(Vec *vettore1, Vec *vettore2){
 };
 
 
-Vec prodotto_element_wise(Vec *vettore1, Vec *vettore2){
+static inline Vec prodotto_element_wise(Vec *vettore1, Vec *vettore2){
     float ris[3] = {0., 0., 0.};
     ris[0] = vettore1->valore[0] * vettore2->valore[0];
     ris[1] = vettore1->valore[1] * vettore2->valore[1];
@@ -158,7 +159,7 @@ Vec prodotto_element_wise(Vec *vettore1, Vec *vettore2){
 };
 
 
-Vec random_vector(){
+static inline Vec random_vector(){
     Vec ris;
     float arg[3];
 
@@ -173,7 +174,7 @@ Vec random_vector(){
     return ris;
 }
 
-Vec rifletti(Vec *vettore1, Vec *normale){
+static inline Vec rifletti(Vec *vettore1, Vec *normale){
     Vec ris;
     Vec tmp_v;
 
@@ -185,7 +186,7 @@ Vec rifletti(Vec *vettore1, Vec *normale){
 
 }
 
-Vec lerp(Vec *vettore1, Vec *vettore2, float perc){
+static inline Vec lerp(Vec *vettore1, Vec *vettore2, float perc){
     Vec ris;
 
     ris.valore[0] = (1.0 - perc) * vettore1->valore[0] + perc * vettore2->valore[0];
@@ -443,32 +444,27 @@ int hit_BB_sphere(Sphere *sfera, Ray *raggio){
 
     float inv_dir;
 
-    float t1, t2, t_min_i, t_max_i;
+    float t1, t2;
     
     for (int i = 0; i < 3; i++){
 
-        if (raggio->dir.valore[i] != 0.0){
-
-            inv_dir = 1 / raggio->dir.valore[i];
-            t1 = (sfera->min_box.valore[i] - raggio->pos.valore[i]) * inv_dir; 
-            t2 = (sfera->max_box.valore[i] - raggio->pos.valore[i]) * inv_dir; 
-            
-            t_min_i = (t1 < t2) ? t1 : t2;
-            t_max_i = (t1 > t2) ? t1 : t2;
-            
-            t_min = (t_min > t_min_i) ? t_min : t_min_i;
-            t_max = (t_max < t_max_i) ? t_max : t_max_i;
-            
-            if (t_min > t_max){
-                return 0;
-            }
+        inv_dir = 1 / raggio->dir.valore[i];
+        t1 = (sfera->min_box.valore[i] - raggio->pos.valore[i]) * inv_dir; 
+        t2 = (sfera->max_box.valore[i] - raggio->pos.valore[i]) * inv_dir; 
         
-        } else {
+        if (inv_dir < 0.0) {
+            float tmp = t1;
+            t1 = t2;
+            t2 = tmp;
+        } 
 
-            if (raggio->pos.valore[i] < sfera->min_box.valore[i] | raggio->pos.valore[i] > sfera->max_box.valore[i]){
-                return 0;
-            }
+        t_min = fmax(t_min, t1);
+        t_max = fmax(t_max, t2);
+    
+        if (t_max < t_min){
+            return 0;
         }
+
     }  
 
     return 1;

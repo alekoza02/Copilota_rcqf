@@ -1,1 +1,1 @@
-x86_64-w64-mingw32-gcc -fPIC -shared -static -o ./bin/libreria.dll ./source/libreria.c -lwinpthread
+x86_64-w64-mingw32-gcc -fPIC -shared -static -O3 -o ./bin/libreria.dll ./source/libreria.c -lwinpthread

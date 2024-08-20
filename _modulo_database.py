@@ -37,7 +37,7 @@ class Dizionario:
             "normali":              "Mostra il canale normali:\n- RGB -> XYZ\n- map range: [-1,1] -> [0, 255]",
             "ao":                   "Mostra il canale Ambient Occlusion.\nFormula usata:\nΣ (1 / (distance + 1))",
             "tempo":                "Mostra il canale Tempo medio:\n- bianco -> tempo maggiore\n- nero -> tempo minore\n- il primo elemento di ogni chunck\nnon è riportato",
-            "bounces_tab":          "Mostra il canale _tab:\n- bianco -> maggior numero di buonces\n- nero -> minor numero di buonces\nTIP: se la mappa è completamente bianca,\naumentare i bounce massimi.",
+            "bounces_tab":          "Mostra il canale Sphere tests:\n- bianco -> maggior numero di test eseguiti\n- nero -> minor numero di test eseguiti\nTIP: se la mappa è completamente bianca,\naumentare i bounce massimi.",
             "tab_scene":            "Pagina con le impostazioni\nrelative alla scena.",
             "tab_raytracer":        "Pagina con le impostazioni\nrelative al motore di renderizzazione.",
             "3D":                   "Visualizza l'orbitale come:\n- Point Cloud 3D",

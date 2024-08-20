@@ -17,6 +17,7 @@ class Settings:
 
 class Record:
     def __init__(self) -> None:
+        self.test_eseguito: bool = False
         self.colpito: bool = False
         self.distanza: float = np.inf
         self.indice_oggetti_prox: int
@@ -306,8 +307,12 @@ class Sphere:
 
 
     def collisione_sphere(self, ray, record: Record):
+            
+        record.test_eseguito = False
 
         if self.collision_BB_sphere(ray):
+
+            record.test_eseguito = True
 
             oc = ray.pos - self.pos;
             
@@ -400,6 +405,9 @@ class RenderingModes:
             for sample in range(settings.sample_packet):
                 for x in range(chunck.w):
                     for y in range(chunck.h):
+
+                        test_count = 0
+
                         start = perf_counter()
 
                         ray = Raggio(camera.pos[:3], direzioni[x, y])
@@ -414,7 +422,7 @@ class RenderingModes:
                             # collisione con sfera
                             for oggetto in list_object:
                                 pixel_analize = oggetto.collisione_sphere(ray, pixel_analize)
-                    
+                                test_count += pixel_analize.test_eseguito
 
                             # AO save
                             if bounce == 1:
@@ -440,7 +448,7 @@ class RenderingModes:
                                 break
                             
 
-                        chunck.bounces[x, y] += bounce
+                        chunck.bounces[x, y] += test_count
                         chunck.albedo[x, y, :] += ray_incoming_light
           
                         finish = perf_counter()
@@ -507,14 +515,10 @@ class AvvioMultiProcess:
 
         if not self.stahp:
 
-            for sample in range(tredi.pathtracer.settings.samples):
+            for sample in range(1, tredi.pathtracer.settings.samples + 1):
                 
-                try:
-                    tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (sample):.2f} secondi"
-                except ZeroDivisionError:
-                    tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (0.0001):.2f} secondi"
-
-
+                tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (sample):.2f} secondi"
+                
                 tmp = librerie.c_renderer(x, y, objects, tredi.pathtracer.camera, tredi.pathtracer.settings)
                 tredi.pathtracer.C_pixel_array = tredi.pathtracer.C_pixel_array + tmp
                 
