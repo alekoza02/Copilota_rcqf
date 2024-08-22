@@ -55,12 +55,13 @@ static inline Vec init_vettore(float values[3]){
 };
 
 
-static inline float randomale(){
-    return (float)(rand() % 1000) / 1000;
+static inline double randomale(){
+    double ris = (double)rand() / (double)RAND_MAX;
+    return ris;
 };
 
-static inline float randomale_neg(){
-    return (1 - (float)(rand() % 1000) / 500);
+static inline double randomale_neg(){
+    return ((.5 - randomale()) * 2);
 };
 
 static inline void modulo_vettore(Vec *vettore){

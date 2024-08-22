@@ -11,6 +11,7 @@ import copy
 import os
 from time import strftime
 from tkinter import filedialog
+from PIL import Image
 
 from _modulo_MATE import Mate
 from _modulo_multiprocess_classes import AvvioMultiProcess
@@ -1452,8 +1453,18 @@ class UI:
 
                     if al_sc.bottoni["salva"].toggled:
                         al_sc.bottoni["salva"].push()
-                        self.salva_screenshot(Path.save("."), al_sc.schermo["viewport"].schermo)
-                        al_sc.label_text["salvato_con_successo"].timer = 300
+                        
+                        path = Path.save(".")
+                        
+                        if path != "":
+                            plot.disegna(logica, True)
+                            self.salva_screenshot(path, plot.schermo)
+                            al_sc.label_text["salvato_con_successo"].timer = 300
+
+                            img = Image.open(path)
+                            dpi = Mate.inp2int(al_sc.entrate["DPI"].text_invio, 300)
+                            img.save(path, dpi=(dpi, dpi))
+
 
                     # updates the active plot to the nearest to the click
                     success = plot.nearest_coords(self, logica)
@@ -2029,7 +2040,7 @@ class Scena:
         self.label_text["params"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=26, renderizza_bg=False, text="Seleziona un tipo di interpolazione.\nSuccessivamente schiaccia il bottone 'Compute Interpolation'", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
         self.label_text["FID"]  = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=66, renderizza_bg=False, text="", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
         self.label_text["metadata"] = LabelText(self.parametri_repeat_elementi, self.fonts, size="piccolo", w=37, h=1.8, x=61, y=50, renderizza_bg=True, text="Prova metadata", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
-        self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=73, y=60, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
+        self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=73, y=67.5, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
         # --------------------------------------------------------------------------------
 
         # BOTTONI
@@ -2087,7 +2098,10 @@ class Scena:
         self.entrate["x_legenda"] = Entrata("x_legenda", self.parametri_repeat_elementi, self.fonts, w=3, h=1.8, x=70, y=46, text=".2", titolo="x legenda", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["y_legenda"] = Entrata("y_legenda", self.parametri_repeat_elementi, self.fonts, w=3, h=1.8, x=70, y=48, text=".3", titolo="y legenda", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
         self.entrate["ui_spessore"] = Entrata("ui_spessore", self.parametri_repeat_elementi, self.fonts, w=1.5, h=1.8, x=70, y=30, text="1", titolo="UI spessore", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
-        
+        self.entrate["x_foto"] = Entrata("x_foto", self.parametri_repeat_elementi, self.fonts, w=3, h=1.8, x=80, y=59, text="3240", titolo="Res X foto", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+        self.entrate["y_foto"] = Entrata("y_foto", self.parametri_repeat_elementi, self.fonts, w=3, h=1.8, x=80, y=61, text="3240", titolo="Res Y foto", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+        self.entrate["DPI"] = Entrata("DPI", self.parametri_repeat_elementi, self.fonts, w=3, h=1.8, x=87, y=59, text="300", titolo="DPI", bg=eval(self.config.get(self.tema, 'entrata_bg')), bg_toggled=eval(self.config.get(self.tema, 'entrata_bg_toggled')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), text_toggled=eval(self.config.get(self.tema, 'entrata_color_text_toggled')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')), contorno_toggled=eval(self.config.get(self.tema, 'entrata_contorno_toggled')), color_puntatore=eval(self.config.get(self.tema, 'entrata_color_puntatore')))
+
         self.paths["caricamento"] = Path("caricamento", self.parametri_repeat_elementi, self.fonts, w=20, h=1.8, x=70, y=55, text="PLOT_DATA\\default", titolo="Input path", bg=eval(self.config.get(self.tema, 'entrata_bg')), color_text=eval(self.config.get(self.tema, 'entrata_color_text')), contorno=eval(self.config.get(self.tema, 'entrata_contorno')))
 
         # dinamiche
@@ -2151,7 +2165,7 @@ class Scena:
 
         self.tabs["ui_control"] = TabUI(name="ui_control", 
             bottoni=[self.bottoni["zero_y"], self.bottoni["grad_vert"], self.bottoni["grad_hori"], self.bottoni["latex_check"], self.bottoni["toggle_2_axis"], self.bottoni["toggle_plot_bb"], self.bottoni["normalizza"], self.bottoni["salva"]],
-            entrate=[self.entrate["titolo"], self.entrate["labelx"], self.entrate["labely"], self.entrate["label2y"], self.entrate["ui_spessore"], self.entrate["font_size"], self.entrate["round_label"], self.entrate["subdivisions"], self.entrate["color_bg"], self.entrate["color_text"], self.entrate["area_w"], self.entrate["area_h"], self.entrate["x_legenda"], self.entrate["y_legenda"]],
+            entrate=[self.entrate["titolo"], self.entrate["labelx"], self.entrate["labely"], self.entrate["label2y"], self.entrate["ui_spessore"], self.entrate["font_size"], self.entrate["round_label"], self.entrate["subdivisions"], self.entrate["color_bg"], self.entrate["color_text"], self.entrate["area_w"], self.entrate["area_h"], self.entrate["x_legenda"], self.entrate["y_legenda"], self.entrate["x_foto"], self.entrate["y_foto"], self.entrate["DPI"]],
             paths=[self.paths["caricamento"]],
             ui_signs=[self.ui_signs["tab_titolo"], self.ui_signs["titolo_settings"], self.ui_signs["settings_import"], self.ui_signs["columns_settings"], self.ui_signs["import_end"]],
             multi_boxes=[self.multi_box["grad_mode"]]

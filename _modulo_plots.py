@@ -131,6 +131,14 @@ class Painter:
         self.w: int
         self.h: int
 
+        self.w_foto: int
+        self.h_foto: int
+
+        self.DPI_factor: float
+
+        self.utilizzo_w: int
+        self.utilizzo_h: int
+
         self.ancoraggio_x: int
         self.ancoraggio_y: int
 
@@ -152,6 +160,8 @@ class Painter:
         self.y_legenda: float
 
         self.schermo: pygame.Surface
+        self.schermo_fast: pygame.Surface
+        self.schermo_foto: pygame.Surface
         self.bg_color: tuple[int] = [255, 255, 255]
         self.text_color: tuple[int]
     
@@ -252,7 +262,7 @@ class Painter:
         factor : float, optional
             Fattore di scala rispetto alla dimensione precedente. Con questo approccio, il cambio di dimensione dello schermo non è più un problema, by default 1
         """
-        self.dim_font = int(round(self.dim_font_base * factor, 0))
+        self.dim_font = int(round(self.dim_font_base * factor * self.DPI_factor, 0))
         path = os.path.join('TEXTURES', 'f_full_font.ttf')
         self.font_tipo = pygame.font.Font(path, self.dim_font)
         self.font_pixel_dim = self.font_tipo.size("a")
@@ -263,25 +273,25 @@ class Painter:
 
         if self.visualize_second_ax:
 
-            self.w_plot_area = self.w_proportion * self.w
-            self.h_plot_area = self.h_proportion * self.h
+            self.w_plot_area = self.w_proportion * self.utilizzo_w
+            self.h_plot_area = self.h_proportion * self.utilizzo_h
             
-            self.start_x = (self.w - self.w_plot_area) // 2
-            self.start_y = self.h - (self.h - self.h_plot_area) // 2
+            self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
+            self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
             
             self.end_x = self.start_x + self.w_plot_area
             self.end_y = self.start_y - self.h_plot_area
 
         else:
 
-            self.w_plot_area = self.w_proportion * self.w
-            self.h_plot_area = self.h_proportion * self.h
+            self.w_plot_area = self.w_proportion * self.utilizzo_w
+            self.h_plot_area = self.h_proportion * self.utilizzo_h
             
-            self.start_x = (self.w - self.w_plot_area) // 2
-            self.start_y = self.h - (self.h - self.h_plot_area) // 2
+            self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
+            self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
             
             self.w_plot_area += self.start_x // 2
-            self.h_plot_area += (self.h - self.start_y) // 2
+            self.h_plot_area += (self.utilizzo_h - self.start_y) // 2
 
             self.end_x = self.start_x + self.w_plot_area
             self.end_y = self.start_y - self.h_plot_area
@@ -487,7 +497,6 @@ class Painter:
         self.schermo.blit(rendered_label, (posx, posy))
         
 
-
     def link_ui(self, ui: UI, scene: str = "plots", schermo: str = "viewport") -> None: 
         """Collegamento UI con il painter. Raccoglie informazioni circa le dimensioni dello schermo e si calcola l'ancoraggio
 
@@ -504,11 +513,15 @@ class Painter:
         self.w = info_schermo.w
         self.h = info_schermo.h
         
-        self.w_plot_area = self.w_proportion * self.w
-        self.h_plot_area = self.h_proportion * self.h
+        self.utilizzo_w = self.w
+        self.utilizzo_h = self.h
+
         
-        self.start_x = (self.w - self.w_plot_area) // 2
-        self.start_y = self.h - (self.h - self.h_plot_area) // 2
+        self.w_plot_area = self.w_proportion * self.utilizzo_w
+        self.h_plot_area = self.h_proportion * self.utilizzo_h
+        
+        self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
+        self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
         
         self.end_x = self.start_x + self.w_plot_area
         self.end_y = self.start_y - self.h_plot_area
@@ -518,7 +531,7 @@ class Painter:
         self.ancoraggio_x = info_schermo.ancoraggio_x
         self.ancoraggio_y = info_schermo.ancoraggio_y 
         
-        self.schermo = info_schermo.schermo
+        self.schermo_fast = info_schermo.schermo
 
         self.UI_calls_plots = ui.scena["plots"]
 
@@ -547,6 +560,8 @@ class Painter:
         self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
         self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
         self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]  
+        self.UI_x_foto = self.UI_calls_plots.entrate["x_foto"]  
+        self.UI_y_foto = self.UI_calls_plots.entrate["y_foto"]  
 
         self.UI_nome_grafico = self.UI_calls_plots.entrate["nome_grafico"]        
         self.UI_caricamento = self.UI_calls_plots.paths["caricamento"]
@@ -1126,7 +1141,7 @@ class Painter:
                     try:
                         if plot.scatter:
                             for x, y in zip(plot.x_screen.astype(int), plot.y_screen.astype(int)):
-                                pygame.draw.circle(self.schermo, plot.colore, (x, y), plot.dim_pall)
+                                pygame.draw.circle(self.schermo, plot.colore, (x, y), round(plot.dim_pall * self.DPI_factor))
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in scatter")
 
@@ -1134,10 +1149,10 @@ class Painter:
                     try:
                         if plot.scatter and plot.toggle_errorbar:
                             for x, y, ey in zip(plot.x_screen.astype(int), plot.y_screen.astype(int), plot.ey_screen.astype(int)):
-                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y + ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y - ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y + ey), (x + ey / 5, y + ey), plot.dim_link)
-                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y - ey), (x + ey / 5, y - ey), plot.dim_link)
+                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y + ey), round(plot.dim_link * self.DPI_factor))
+                                pygame.draw.line(self.schermo, plot.colore, (x, y), (x, y - ey), round(plot.dim_link * self.DPI_factor))
+                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y + ey), (x + ey / 5, y + ey), round(plot.dim_link * self.DPI_factor))
+                                pygame.draw.line(self.schermo, plot.colore, (x - ey / 5, y - ey), (x + ey / 5, y - ey), round(plot.dim_link * self.DPI_factor))
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in errors")
 
@@ -1145,7 +1160,7 @@ class Painter:
                     try:
                         if plot.interpolate and not plot.y_interp_lin is None:
                             for x1, y1, x2, y2 in zip(plot.xi_screen.astype(int)[:-1], plot.yi_screen.astype(int)[:-1], plot.xi_screen.astype(int)[1:], plot.yi_screen.astype(int)[1:]):
-                                pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), plot.dim_link)
+                                pygame.draw.line(self.schermo, [255, 0, 0], (x1, y1), (x2, y2), round(plot.dim_link * self.DPI_factor))
                     except (TypeError, ValueError, AttributeError) as e:
                         if self.debugging: print(f"Warning: {e} in interpolate")
 
@@ -1153,7 +1168,7 @@ class Painter:
                     try:
                         if plot.function:
                             for x1, y1, x2, y2 in zip(plot.x_screen.astype(int)[:-1], plot.y_screen.astype(int)[:-1], plot.x_screen.astype(int)[1:], plot.y_screen.astype(int)[1:]):
-                                pygame.draw.line(self.schermo, plot.colore, (x1, y1), (x2, y2), plot.dim_link)
+                                pygame.draw.line(self.schermo, plot.colore, (x1, y1), (x2, y2), round(plot.dim_link * self.DPI_factor))
                     except (TypeError, ValueError) as e:
                         if self.debugging: print(f"Warning: {e} in function")
 
@@ -1185,7 +1200,7 @@ class Painter:
         return animation_bound, colore_animazione
 
 
-    def disegna(self, logica: Logica) -> None:
+    def disegna(self, logica: Logica, foto: bool = False) -> None:
         """Funzione principale richiamata dall'utente che inizia il processo di disegno dell'UI dei grafici e i grafici stessi
 
         Parameters
@@ -1193,6 +1208,26 @@ class Painter:
         logica : Logica
             Classe contenente varie informazioni riguardo agli input dell'utente (mos pos, CTRL, SHIFT, click, drag, ecc.)
         """
+
+        if foto:
+
+            self.w_foto = Mate.inp2int(self.UI_x_foto.text_invio, 1620)
+            self.h_foto = Mate.inp2int(self.UI_y_foto.text_invio, 1620)
+
+            self.schermo_foto = pygame.Surface((self.w_foto, self.h_foto))
+
+            self.DPI = self.w_foto / self.w
+
+            self.utilizzo_w = self.w_foto
+            self.utilizzo_h = self.h_foto
+            self.schermo = self.schermo_foto
+            self.DPI_factor = self.DPI
+        else:
+            self.utilizzo_w = self.w
+            self.utilizzo_h = self.h
+            self.schermo = self.schermo_fast
+            self.DPI_factor = 1
+
 
         self.schermo.fill(self.bg_color)
 
@@ -1203,6 +1238,10 @@ class Painter:
                 self.UI_scroll_grafici.aggiorna_externo("reload", logica)
             except FileNotFoundError as e:
                 print(e)
+
+
+        # recalculation of window
+        self.re_compute_size()
 
 
         self.disegna_gradiente()
@@ -1253,17 +1292,14 @@ class Painter:
             self.visualize_second_ax = self.UI_toggle_2_axis.toggled
             self.visualize_zero_ax = self.UI_zero_y.toggled
 
-
-        # recalculation of window
-        self.re_compute_size()
         
         "-------------------------------------------------------------"
 
         # X axis
         pygame.draw.line(self.schermo, self.text_color, 
-            [self.start_x, self.start_y + 1 * (self.h - self.start_y) // 4],
-            [self.end_x, self.start_y + 1 * (self.h - self.start_y) // 4],
-            self.ui_spessore
+            [self.start_x, self.start_y + 1 * (self.utilizzo_h - self.start_y) // 4],
+            [self.end_x, self.start_y + 1 * (self.utilizzo_h - self.start_y) // 4],
+            round(self.ui_spessore * self.DPI_factor)
         )
 
         # colore assi
@@ -1275,15 +1311,15 @@ class Painter:
         pygame.draw.line(self.schermo, colori_assi[0], 
             [3 * self.start_x // 4, self.start_y],
             [3 * self.start_x // 4, self.end_y],
-            self.ui_spessore
+            round(self.ui_spessore * self.DPI_factor)
         )
 
         if self.visualize_second_ax:
             # 2 Y axis
             pygame.draw.line(self.schermo, colori_assi[1], 
                 [self.end_x + 1 * self.start_x // 4, self.start_y],
-                [self.end_x + 1 * self.start_x // 4, (self.h - self.start_y)],
-                self.ui_spessore
+                [self.end_x + 1 * self.start_x // 4, (self.utilizzo_h - self.start_y)],
+                round(self.ui_spessore * self.DPI_factor)
             )
         
         # scalini sugli assi e valori
@@ -1302,23 +1338,23 @@ class Painter:
             pos_var_y = (self.start_y - self.h_plot_area * i/ (self.subdivisions - 1))
             
             pygame.draw.line(self.schermo, self.text_color, 
-                [pos_var_x, self.start_y + 1 * (self.h - self.start_y) // 4 - self.w // 100],
-                [pos_var_x, self.start_y + 1 * (self.h - self.start_y) // 4 + self.w // 100],
-                self.ui_spessore
+                [pos_var_x, self.start_y + 1 * (self.utilizzo_h - self.start_y) // 4 - self.utilizzo_w // 100],
+                [pos_var_x, self.start_y + 1 * (self.utilizzo_h - self.start_y) // 4 + self.utilizzo_w // 100],
+                round(self.ui_spessore * self.DPI_factor)
             )
             
             value = self.min_x + delta_x * i / (self.subdivisions - 1)
             formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
             self.schermo.blit(self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, self.text_color), (
                 pos_var_x - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2,
-                self.start_y + (self.h - self.start_y) // 3
+                self.start_y + (self.utilizzo_h - self.start_y) // 3
             ))
             
             # data y
             pygame.draw.line(self.schermo, colori_assi[0], 
-                [3 * self.start_x // 4 - self.w // 100, pos_var_y],
-                [3 * self.start_x // 4 + self.w // 100, pos_var_y],
-                self.ui_spessore
+                [3 * self.start_x // 4 - self.utilizzo_w // 100, pos_var_y],
+                [3 * self.start_x // 4 + self.utilizzo_w // 100, pos_var_y],
+                round(self.ui_spessore * self.DPI_factor)
             )
             
             value = minimo_locale_label + delta_y * i / (self.subdivisions - 1)
@@ -1335,9 +1371,9 @@ class Painter:
             if self.visualize_second_ax:
                 # data 2 y
                 pygame.draw.line(self.schermo, colori_assi[1], 
-                    [self.end_x + 1 * self.start_x // 4 - self.w // 100, pos_var_y],
-                    [self.end_x + 1 * self.start_x // 4 + self.w // 100, pos_var_y],
-                    self.ui_spessore
+                    [self.end_x + 1 * self.start_x // 4 - self.utilizzo_w // 100, pos_var_y],
+                    [self.end_x + 1 * self.start_x // 4 + self.utilizzo_w // 100, pos_var_y],
+                    round(self.ui_spessore * self.DPI_factor)
                 )
                 
                 value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1)
@@ -1370,7 +1406,7 @@ class Painter:
         # linea dello 0 sulle Y
         if self.visualize_zero_ax:
             if self.zero_y > self.end_y and self.zero_y < self.start_y:
-                pygame.draw.line(self.schermo, self.text_color, [self.start_x, self.zero_y], [self.end_x, self.zero_y])
+                pygame.draw.line(self.schermo, self.text_color, [self.start_x, self.zero_y], [self.end_x, self.zero_y], round(1 * self.DPI_factor))
 
         # plots bounding box
         # if self.UI_toggle_plot_bb.toggled:
@@ -1388,7 +1424,7 @@ class Painter:
         self.check_esponente_pedice(
                 f"{self.testo_x}",
                 self.start_x + self.w_plot_area // 2,
-                self.start_y + 3 * (self.h - self.start_y) // 5,
+                self.start_y + 3 * (self.utilizzo_h - self.start_y) // 5,
                 centered=True
             )
     
@@ -1456,7 +1492,7 @@ class Painter:
             pygame.draw.rect(self.schermo, self.text_color, [
                 pos_x - self.font_pixel_dim[0], pos_y - self.font_pixel_dim[1],
                 self.font_pixel_dim[0] * (max_len_legenda + 2), self.font_pixel_dim[1] * (len(plot_accesi) + 1 + numero_interpolazioni_attive) * 1.5
-            ], self.ui_spessore)
+            ], round(self.ui_spessore * self.DPI_factor))
 
         # mouse coordinate
         coords_values = self.value_research_plot_area(logica.mouse_pos)
@@ -1466,7 +1502,9 @@ class Painter:
         value_y = coords_values[1]
         formatting_y = "e" if ((value_y > MAX_BORDER or value_y < MIN_BORDER) or (value_y < ZERO_MAX_BORDER and value_y > ZERO_MIN_BORDER)) and value_y != 0 else "f"
         mouse_coords = self.font_tipo.render(f"{value_x:.{self.approx_label}{formatting_x}}, {value_y:.{self.approx_label}{formatting_y}}", True, self.text_color)
-        self.schermo.blit(mouse_coords, (logica.mouse_pos[0] - self.ancoraggio_x, logica.mouse_pos[1] - self.ancoraggio_y - 1.5 * self.font_pixel_dim[1]))
+        
+        if not foto:
+            self.schermo.blit(mouse_coords, (logica.mouse_pos[0] - self.ancoraggio_x, logica.mouse_pos[1] - self.ancoraggio_y - 1.5 * self.font_pixel_dim[1]))
 
         # zoom BB
         if logica.dragging and self.control:
@@ -1481,7 +1519,7 @@ class Painter:
                 min_bb_y - self.ancoraggio_y, 
                 max_bb_x - min_bb_x, 
                 max_bb_y - min_bb_y
-            ], self.ui_spessore)
+            ], round(self.ui_spessore * self.DPI_factor))
 
         if self.control:
             self.compute_integral_FWHM(logica)
