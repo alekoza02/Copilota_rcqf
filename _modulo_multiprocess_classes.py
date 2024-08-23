@@ -196,7 +196,7 @@ class RayTracer:
         self.settings = Settings(1 + samples, bounces, sample_update, cores, res)
 
         self.pixel_array = np.zeros((self.w, self.h, 3), dtype=np.int8)
-        self.C_pixel_array = np.zeros((self.w, self.h, 3), dtype=float)
+        self.C_pixel_array = np.zeros((self.w, self.h, 12), dtype=float)
         self.chuncks = []
 
         self.camera = camera
@@ -229,8 +229,10 @@ class RayTracer:
     def update_array(self):
 
         max_time = 0
+        max_test = 0
         for chunck in self.chuncks:
             max_time = np.maximum(max_time, np.max(chunck.tempi))
+            max_test = np.maximum(max_test, np.max(chunck.bounces))
 
         for chunck in self.chuncks:
             if chunck.samples_rendered > 0:
@@ -252,7 +254,7 @@ class RayTracer:
                         multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
                     case 5:
-                        multip_channel = np.repeat(chunck.bounces[:,:,None], 3, axis=2) * 255 / (self.settings.bounces * chunck.samples_rendered)
+                        multip_channel = np.repeat(chunck.bounces[:,:,None], 3, axis=2) * 255 / max_test
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
 
             if chunck.reset:
@@ -287,7 +289,7 @@ class RayTracer:
             if self.start_time_str == "Non ancora avviato":
                 self.stats = f"Fai partire prima la renderizzazione"
             else:
-                self.stats = f"Ora di inizio: {self.start_time_str}\nTerminato in: {time.time() - self.start_time:.2f} secondi"
+                self.stats = f"Ora di inizio: {self.start_time_str}\nTerminato in: {self.end_time - self.start_time:.2f} secondi"
 
 
 class Sphere:
@@ -515,27 +517,47 @@ class AvvioMultiProcess:
 
         if not self.stahp:
 
-            for sample in range(1, tredi.pathtracer.settings.samples + 1):
+            # correzione passando da python a C (python esegue un passaggio in più come preview)
+            tredi.pathtracer.settings.samples -= 1
+
+            for sample_group in range(1, (tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet) + 1):
                 
-                tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample}/{tredi.pathtracer.settings.samples} ({100 * sample / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample) * (time.time() - tredi.pathtracer.start_time) / (sample):.2f} secondi"
+                sample_update = sample_group * tredi.pathtracer.settings.sample_packet
+
+                sample_eta = (sample_group - 1) * tredi.pathtracer.settings.sample_packet
+                if sample_eta == 0: sample_eta = 1
+
+                tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample_eta}/{tredi.pathtracer.settings.samples} ({100 * sample_eta / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample_eta) * (time.time() - tredi.pathtracer.start_time) / (sample_eta):.2f} secondi"
+                
+                if sample_update == 1: sample_update = 0
                 
                 tmp = librerie.c_renderer(x, y, objects, tredi.pathtracer.camera, tredi.pathtracer.settings)
                 tredi.pathtracer.C_pixel_array = tredi.pathtracer.C_pixel_array + tmp
                 
-                tmp2 = np.sqrt(tredi.pathtracer.C_pixel_array / sample) * 255
-                tmp2[tmp2 > 255] = 255
-                tmp2 = tmp2.astype(np.int8)
+                tredi.pathtracer.chuncks[0].samples_rendered = sample_group * tredi.pathtracer.settings.sample_packet
 
-                tredi.pathtracer.pixel_array = tmp2
+                tredi.pathtracer.chuncks[0].albedo = tredi.pathtracer.C_pixel_array[:,:,0:3]
+                tredi.pathtracer.chuncks[0].indici = tredi.pathtracer.C_pixel_array[:,:,3:6]
+                tredi.pathtracer.chuncks[0].normal = tredi.pathtracer.C_pixel_array[:,:,6:9]
+                tredi.pathtracer.chuncks[0].tempi = tredi.pathtracer.C_pixel_array[:,:,9]
+                tredi.pathtracer.chuncks[0].amb_oc = tredi.pathtracer.C_pixel_array[:,:,10]
+                tredi.pathtracer.chuncks[0].bounces = tredi.pathtracer.C_pixel_array[:,:,11]
+
+                tredi.pathtracer.update_array()
 
                 if self.stahp:
                     self.c_stopped = True
                     return
 
+        # correzione passando da C a python (python esegue un passaggio in più come preview)
+        tredi.pathtracer.chuncks[0].samples_rendered += 1
         self.c_stopped = True
-        tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTerminato in: {time.time() - tredi.pathtracer.start_time:.2f} secondi"
 
         tredi.pathtracer.running = False
+
+        if not tredi.pathtracer.running:
+            tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTerminato in: {time.time() - tredi.pathtracer.start_time:.2f} secondi"
+
         tredi.pathtracer.end_time = time.time()
         tredi.pathtracer.update_array()
 

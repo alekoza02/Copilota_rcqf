@@ -78,9 +78,9 @@ class LibrerieC:
         # print(f"Preparazione dati Python ha impiegato: {fine - inizio:.6f}")
 
         # lancio funzione
-        c_array = self.lib.renderer_dispatcher(x, y, pos_ptr, len(pos), radii_ptr, len(radii), fov_camera, pos_camera_ptr, ax_camera_ptr, info.cores, 1, info.bounces, materiale_ptr, random.random())
+        c_array = self.lib.renderer_dispatcher(x, y, pos_ptr, len(pos), radii_ptr, len(radii), fov_camera, pos_camera_ptr, ax_camera_ptr, info.cores, info.sample_packet, info.bounces, materiale_ptr, random.random())
 
-        numpy_array = np.array(np.ctypeslib.as_array(c_array, shape=(x, y, 3)), copy = True, dtype=float)
+        numpy_array = np.array(np.ctypeslib.as_array(c_array, shape=(x, y, 12)), copy = True, dtype=float)
 
         self.lib.free_array(c_array)
 

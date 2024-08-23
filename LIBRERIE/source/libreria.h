@@ -12,6 +12,7 @@ typedef struct{
     Vec dir;
     Vec ups;
     Vec rig;
+    Vec ao_dir;
 } Ray;
 
 typedef struct{
@@ -25,6 +26,7 @@ typedef struct{
 } Materiale;
 
 typedef struct{
+    int test_eseguito;
     int hit;
     int index_sphere;
     float t;

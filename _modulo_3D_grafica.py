@@ -76,8 +76,14 @@ class TreDi:
         self.build_raytracer()
 
 
-    def build_raytracer(self):
+    def build_raytracer(self, c_mode: bool = False):
         self.pathtracer = RayTracer()
+    
+        if c_mode:
+            chuncks = 1
+        else:
+            chuncks = Mate.inp2int(self.UI_calls_tracer.entrate["res_chunck"].text, 3)
+
         self.pathtracer.build(
             self.w, self.h, self.scenes["debug"].camera, 
             Mate.inp2flo(self.UI_calls_tracer.entrate["resolution_x"].text, 1.0) / 100, 
@@ -86,7 +92,7 @@ class TreDi:
             Mate.inp2int(self.UI_calls_tracer.entrate["bounces"].text, 6), 
             Mate.inp2int(self.UI_calls_tracer.entrate["sample_package"].text, 4), 
             Mate.inp2int(self.UI_calls_tracer.entrate["cores"].text, 9), 
-            Mate.inp2int(self.UI_calls_tracer.entrate["res_chunck"].text, 3)
+            chuncks
         )
 
 

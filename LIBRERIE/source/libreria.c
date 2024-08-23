@@ -272,6 +272,8 @@ void calc_bounce(Ray *raggio, Record *record){
         inverti_vettore(&ris_v);
     }
 
+    raggio->ao_dir = ris_v;
+
     // BLOCCO MATERIALE DIFFUSE / SPECULAR / GLOSS
         
     if (record->materiale.glass == 0){
@@ -460,7 +462,7 @@ int hit_BB_sphere(Sphere *sfera, Ray *raggio){
         } 
 
         t_min = fmax(t_min, t1);
-        t_max = fmax(t_max, t2);
+        t_max = fmin(t_max, t2);
     
         if (t_max < t_min){
             return 0;
@@ -529,6 +531,7 @@ void* render_thread(void* arg) {
     int rows = sqrt(num_threads);
     
     Record record;
+    Record record_ao;
 
     Sphere *scena = data->scena;
     Ray *camera = data->camera;
@@ -545,13 +548,9 @@ void* render_thread(void* arg) {
     Vec termine3;
     Ray camera_ray;
     camera_ray = init_raggio(camera->dir.valore, camera->pos.valore);
-    
-    // colore
-    float color[3] = {0., 0., 0.};
-
 
     // set zero the array
-    for (int i = 0; i < (chunck_h * chunck_w * 3); i++){
+    for (int i = 0; i < (chunck_h * chunck_w * 12); i++){
         data->local_output[i] = 0;
     }
 
@@ -559,6 +558,8 @@ void* render_thread(void* arg) {
     for (int k = 0; k < data->samples; k++){
         for (int j = 0; j < chunck_w; j++) {
             for (int i = 0; i < chunck_h; i++) {
+                
+                time_t start = clock();  // Stop the clock
 
                 // come ottenere la direzione -> somma delle 3 righe
                 termine1 = scala_vettore(&camera->dir, (1 / tan(fov / 2))); 
@@ -583,6 +584,12 @@ void* render_thread(void* arg) {
                 Vec ray_color = init_vettore(arg2);
 
                 // inizio bounces
+                float color[3] = {0., 0., 0.};
+                float normal[3] = {0., 0., 0.};
+                float index[3] = {0., 0., 0.};
+                float ao = 0.;
+                int test_count = 0;
+
 
                 for (int l = 0; l < data->bounces; l++){
 
@@ -590,13 +597,57 @@ void* render_thread(void* arg) {
                     reset_record(&record);
 
                     for (int k = 0; k < size; k++){
+
+                        record.test_eseguito = 0;
                         if (hit_BB_sphere(&scena[k], &camera_ray)){
+                            record.test_eseguito = 1;
                             hit_sphere(&scena[k], &camera_ray, &record);
+                        };
+
+                        test_count += record.test_eseguito;
+                    }
+
+                    // AO save
+                    if (l == 1){
+
+                        // temp switch
+                        Vec temp_memo = camera_ray.dir;
+                        reset_record(&record_ao);
+                        camera_ray.dir = camera_ray.ao_dir;
+
+                        for (int k_ao = 0; k_ao < size; k_ao++){
+
+                            record_ao.test_eseguito = 0;
+                            if (hit_BB_sphere(&scena[k_ao], &camera_ray)){
+                                record_ao.test_eseguito = 1;
+                                hit_sphere(&scena[k_ao], &camera_ray, &record_ao);
+                            };
+
+                            test_count += record_ao.test_eseguito;
                         }
+
+                        if (record_ao.hit) {
+                            Vec sub = differenza_vettori(&record_ao.hit_pos, &camera_ray.pos); 
+                            modulo_vettore(&sub);
+                            ao = 1 / (sub.modulo + 1);
+                        }
+
+                        camera_ray.dir = temp_memo;
+
                     }
 
 
                     if (record.hit) {
+
+                        float dot = - prodotto_scalare(&record.normale, &camera_ray.dir);
+
+                        if (l == 0) {
+                            for (int l = 0; l < 3; l++){
+                                versore_vettore(&record.normale);
+                                normal[l] = (1. + record.normale.valore[l]) / 2.;
+                                index[l] = record.materiale.colore_diffusione.valore[l] * dot;
+                            }
+                        }
 
                         calc_bounce(&camera_ray, &record);
 
@@ -605,56 +656,48 @@ void* render_thread(void* arg) {
                         ray_incoming_light = somma_vettori(&ray_incoming_light, &tmp);
                         ray_color = prodotto_element_wise(&ray_color, &record.materiale.colore_diffusione);
 
-                        // for (int l = 0; l < 3; l++){
-                        //     color[l] = (scena[record.index_sphere]).mat.colore_diffusione.valore[l];    // albedo
-                        //     // color[l] = (1. + record.normale.valore[l]) / 2.;         // normale
-                        
-                        // }
 
-                    } else { 
+                    } else if (l > 1){ 
                         break;
-                        // ray_incoming_light.valore[0] = 30. / 255.; // 37 
-                        // ray_incoming_light.valore[1] = 30. / 255.; // 39 
-                        // ray_incoming_light.valore[2] = 30. / 255.; // 56 
                     }
 
                 
                 }
 
-                // fprintf(file, "%d %d %d\n", color[0], color[1], color[2]);
-                data->local_output[(i * chunck_w + j) * 3 + 0] += ray_incoming_light.valore[0];
-                data->local_output[(i * chunck_w + j) * 3 + 1] += ray_incoming_light.valore[1];
-                data->local_output[(i * chunck_w + j) * 3 + 2] += ray_incoming_light.valore[2];
+                
+
+                data->local_output[(i * chunck_w + j) * 12 + 0] += ray_incoming_light.valore[0];
+                data->local_output[(i * chunck_w + j) * 12 + 1] += ray_incoming_light.valore[1];
+                data->local_output[(i * chunck_w + j) * 12 + 2] += ray_incoming_light.valore[2];
             
+                data->local_output[(i * chunck_w + j) * 12 + 3] += index[0];
+                data->local_output[(i * chunck_w + j) * 12 + 4] += index[1];
+                data->local_output[(i * chunck_w + j) * 12 + 5] += index[2];
+
+                data->local_output[(i * chunck_w + j) * 12 + 6] += normal[0];
+                data->local_output[(i * chunck_w + j) * 12 + 7] += normal[1];
+                data->local_output[(i * chunck_w + j) * 12 + 8] += normal[2];
+
+                data->local_output[(i * chunck_w + j) * 12 + 10] += ao;
+                data->local_output[(i * chunck_w + j) * 12 + 11] += test_count;
+                
+                time_t end = clock();  // Stop the clock
+
+                // Calculate the elapsed time in seconds
+                float cpu_time_used = ((float) (end - start)) / CLOCKS_PER_SEC;
+                
+                data->local_output[(i * chunck_w + j) * 12 + 9] += cpu_time_used;
             }
         }
     }
 
-    int r, g, b;
+    // int r, g, b;
 
     for (int j = 0; j < chunck_w; j++) {
         for (int i = 0; i < chunck_h; i++) {
-
-            // r = (int)(sqrt(data->local_output[(i * chunck_w + j) * 3 + 0] / data->samples) * 255.999);
-            // g = (int)(sqrt(data->local_output[(i * chunck_w + j) * 3 + 1] / data->samples) * 255.999);
-            // b = (int)(sqrt(data->local_output[(i * chunck_w + j) * 3 + 2] / data->samples) * 255.999);
-            
-            // if (r > 255){
-            //     r = 255;
-            // }
-            // if (b > 255){
-            //     b = 255;
-            // }
-            // if (g > 255){
-            //     g = 255;
-            // }
-
-            // data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 0] = r;
-            // data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 1] = g;
-            // data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 2] = b;
-            data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 0] = data->local_output[(i * chunck_w + j) * 3 + 0];
-            data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 1] = data->local_output[(i * chunck_w + j) * 3 + 1];
-            data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 3 + 2] = data->local_output[(i * chunck_w + j) * 3 + 2];
+            for (int passage = 0; passage < 12; passage++){
+                data->array[((data->start_x + i) * data->width + (data->start_y + j)) * 12 + passage] = data->local_output[(i * chunck_w + j) * 12 + passage];
+            }
         }
     }
 
@@ -664,10 +707,8 @@ void* render_thread(void* arg) {
 
 float* renderer_dispatcher(int x, int y, float *pos, int size_pos, float *radii, int size_radii, float fov, float *camera_pos, float *camera_axes, int cores, int samples, int bounces, float *materiali, float seed) {
 
-    clock_t start = clock();
-
     // impostazioni
-    float *output = (float*)malloc(x * y * 3 * sizeof(float));
+    float *output = (float*)malloc(x * y * 12 * sizeof(float));
 
     if (output == NULL) {
         fprintf(stderr, "Memory allocation failed!\n");
@@ -762,7 +803,7 @@ float* renderer_dispatcher(int x, int y, float *pos, int size_pos, float *radii,
             outputs_local[combined_index] = (float*)malloc(
                 (thread_data[combined_index].end_x - thread_data[combined_index].start_x) * 
                 (thread_data[combined_index].end_y - thread_data[combined_index].start_y) *
-                3 *  
+                12 *  
                 sizeof(float)
             );
 
@@ -785,13 +826,6 @@ float* renderer_dispatcher(int x, int y, float *pos, int size_pos, float *radii,
             }
         }
     }
-
-    time_t end = clock();  // Stop the clock
-
-    // Calculate the elapsed time in seconds
-    double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    // printf("Time taken: %f seconds\n", cpu_time_used);
-
 
     // Joining threads and collecting results
     for (int i = 0; i < NUM_THREADS; i++) {
