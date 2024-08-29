@@ -276,12 +276,11 @@ class Geo_Scene:
         self.elemento_attivo: Object = self.objects[0]
 
         self.i = Importer()
-        self.i.modello("TRACER_DATA/m_ban.obj")
+        self.i.modello("TRACER_DATA/m_hyperion.obj")
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        input_data = float(input("angolo: "))
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-1, b=input_data, i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=0, i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
         # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, sx=2, sy=2, sz=2, materiale=Materiale(colore=np.array([1., 1., 1.])))
     
     

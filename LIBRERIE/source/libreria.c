@@ -213,28 +213,62 @@ static inline Vec lerp(Vec *vettore1, Vec *vettore2, double perc){
 
 }
 
-static inline Vec BB_min(Vec *vettore1, Vec *vettore2, Vec *vettore3){
+static inline Vec minimo_vettore(Vec *vettore1, Vec *vettore2){
     Vec ris;
-    float tmp;
 
+    for (int j = 0; j < 3; j++){
+        ris.valore[j] = fmin(vettore1->valore[j], vettore2->valore[j]);
+    }
+    return ris;
+}
+
+static inline Vec massimo_vettore(Vec *vettore1, Vec *vettore2){
+    Vec ris;
+    for (int j = 0; j < 3; j++){
+        ris.valore[j] = fmax(vettore1->valore[j], vettore2->valore[j]);
+    }
+    return ris;
+}
+
+static inline float indice_del_massimo_nel_vettore(Vec *vettore1){
+    float controllo = vettore1->valore[0];
+    int ris = 0;
     for (int i = 0; i < 3; i++){
-        for (int j = 0; j < 3; j++){
-            tmp = fmin(vettore1->valore[j], vettore2->valore[j]);
-            ris.valore[j] = fmin(tmp, vettore3->valore[j]);
+        if (vettore1->valore[i] > controllo){
+            controllo = vettore1->valore[i];
+            ris = i;
         }
     }
     return ris;
 }
 
-static inline Vec BB_max(Vec *vettore1, Vec *vettore2, Vec *vettore3){
+static inline Vec BB_min_tri(Vec *vettore1, Vec *vettore2, Vec *vettore3){
     Vec ris;
     float tmp;
 
-    for (int i = 0; i < 3; i++){
-        for (int j = 0; j < 3; j++){
-            tmp = fmax(vettore1->valore[j], vettore2->valore[j]);
-            ris.valore[j] = fmax(tmp, vettore3->valore[j]);
-        }
+    for (int j = 0; j < 3; j++){
+        tmp = fmin(vettore1->valore[j], vettore2->valore[j]);
+        ris.valore[j] = fmin(tmp, vettore3->valore[j]);
+    }
+    return ris;
+}
+
+static inline Vec Mediana(Vec *vettore1, Vec *vettore2, Vec *vettore3){
+    Vec ris;
+
+    for (int j = 0; j < 3; j++){
+        ris.valore[j] = (vettore1->valore[j] + vettore2->valore[j] + vettore3->valore[j]) / 3;
+    }
+    return ris;
+}
+
+static inline Vec BB_max_tri(Vec *vettore1, Vec *vettore2, Vec *vettore3){
+    Vec ris;
+    float tmp;
+
+    for (int j = 0; j < 3; j++){
+        tmp = fmax(vettore1->valore[j], vettore2->valore[j]);
+        ris.valore[j] = fmax(tmp, vettore3->valore[j]);
     }
     return ris;
 }
@@ -451,6 +485,257 @@ Materiale init_materiale(double data[11]){
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
+// BVH DEFINITION
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
+
+
+void GrowToInclude_tri(BB *bb, Triangle *triangle){
+    
+    bb->min = minimo_vettore(&bb->min, &triangle->min_box);
+    bb->max = massimo_vettore(&bb->max, &triangle->max_box);
+}
+
+
+BB init_BB(Triangle *tris, int tri_size){
+
+    BB ris;
+
+    double arg1[3] = {1e12, 1e12, 1e12};
+    double arg2[3] = {-1e12, -1e12, -1e12};
+    
+    ris.min = init_vettore(arg1);
+    ris.max = init_vettore(arg2);
+
+    for (int i = 0; i < tri_size; i++){
+        GrowToInclude_tri(&ris, &tris[i]);
+    }
+
+    ris.center = somma_vettori(&ris.min, &ris.max);
+    ris.center = scala_vettore(&ris.center, 0.5);
+ 
+    ris.size = differenza_vettori(&ris.max, &ris.min);
+
+    return ris;
+}
+
+
+void split(Node *parent, int depth) {
+    
+    if (depth == 10) return;
+    
+    Node *A = (Node *)malloc(sizeof(Node));
+    Node *B = (Node *)malloc(sizeof(Node));
+
+    parent->childA = A;
+    parent->childB = B;
+
+    int *Triangles_A = (int *)malloc(parent->n_triangles * sizeof(int));
+    int *Triangles_B = (int *)malloc(parent->n_triangles * sizeof(int));
+
+    if (Triangles_A == NULL || Triangles_B == NULL) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+
+
+    int indexA = 0;
+    int indexB = 0;
+
+    int inA = 0;
+
+    int split_axis = indice_del_massimo_nel_vettore(&parent->bounding_box.size);
+    
+    for (int i = 0; i < parent->n_triangles; i++){
+        
+        inA = parent->bounding_box.center.valore[split_axis] > parent->triangoli_originali[parent->indici_triangoli[i]].mediana.valore[split_axis] ? 1 : 0;
+        
+        if (inA == 1){
+            Triangles_A[indexA++] = parent->indici_triangoli[i];
+        } else {
+            Triangles_B[indexB++] = parent->indici_triangoli[i];
+        }
+    }
+
+    
+    A->triangoli_originali = parent->triangoli_originali;
+    A->n_triangles = indexA;
+
+    Triangles_A = (int *)realloc(Triangles_A, indexA * sizeof(int));
+    A->indici_triangoli = Triangles_A;
+
+
+    Triangle *Aarg = (Triangle *)malloc(indexA * sizeof(Triangle));
+
+    for (int i = 0; i < indexA; i++){
+        Aarg[i] = parent->triangoli_originali[A->indici_triangoli[i]];
+    }
+
+    A->bounding_box = init_BB(Aarg, indexA);
+    A->depth = depth;
+    
+    B->triangoli_originali = parent->triangoli_originali;
+    B->n_triangles = indexB;
+    
+    Triangles_B = (int *)realloc(Triangles_B, indexB * sizeof(int));
+    B->indici_triangoli = Triangles_B;
+
+    Triangle *Barg = (Triangle *)malloc(indexB * sizeof(Triangle));
+
+    for (int i = 0; i < indexB; i++){
+        Barg[i] = parent->triangoli_originali[B->indici_triangoli[i]];
+    }
+
+    B->bounding_box = init_BB(Barg, indexB);
+    B->depth = depth;
+    
+    free(Aarg);
+    Aarg = NULL;
+    free(Barg);
+    Barg = NULL;
+
+    split(A, depth + 1);
+    split(B, depth + 1);
+}
+
+
+BVH build_BVH(Triangle *tris, int tri_size, Materiale *mat){
+    
+
+    BVH bvh;
+
+    int *indici = (int *)malloc(tri_size * sizeof(int));
+
+    for (int i = 0; i < tri_size; i++){
+        indici[i] = tris[i].index;
+    }
+
+    bvh.triangoli_originali = tris;
+    bvh.mat = (* mat);
+    
+    Node *root_alloc = (Node *)malloc(sizeof(Node));
+    
+    bvh.root = root_alloc;
+    bvh.root->indici_triangoli = indici;
+    bvh.root->n_triangles = tri_size;
+    bvh.root->bounding_box = init_BB(bvh.triangoli_originali, tri_size);
+    bvh.root->triangoli_originali = bvh.triangoli_originali;
+    bvh.root->depth = 0;
+
+    split(bvh.root, 0);
+
+    return bvh;
+
+}
+
+
+void free_node(Node *node){
+    free(node->indici_triangoli);
+    free_node(node->childA);
+    free_node(node->childB);
+    free(node);
+}
+
+
+void free_BVH(BVH *bvh){
+    free_node(bvh->root);
+    free(bvh);
+}
+
+
+static inline int hit_BB(BB *bounding_box, Ray *raggio){
+    // Extract the minimum and maximum corners of the bounding box
+    
+    double t_min = 0.0;
+    double t_max = 1e6;
+
+    double inv_dir;
+
+    double t1, t2;
+    
+    for (int i = 0; i < 3; i++){
+        
+        inv_dir = 1 / raggio->dir.valore[i];
+        t1 = (bounding_box->min.valore[i] - raggio->pos.valore[i]) * inv_dir; 
+        t2 = (bounding_box->max.valore[i] - raggio->pos.valore[i]) * inv_dir; 
+
+        if (inv_dir < 0.0) {
+            double tmp = t1;
+            t1 = t2;
+            t2 = tmp;
+        } 
+
+        t_min = fmax(t_min, t1);
+        t_max = fmin(t_max, t2);
+    
+        if (t_max < t_min){
+            return 0;
+        }
+    }  
+    return 1;
+}
+
+
+static inline int hit_triangle(Triangle *triangolo, Ray *raggio, Record *record){
+    
+    int successfull = 0;
+
+    float determinante = - prodotto_scalare(&raggio->dir, &triangolo->normal);
+
+    Vec ao = differenza_vettori(&raggio->pos, &triangolo->VertA);
+    Vec dao = prodotto_vettoriale(&ao, &raggio->dir);
+
+    float invDet = 1 / determinante;
+
+    float t = prodotto_scalare(&ao, &triangolo->normal) * invDet;
+    float u = prodotto_scalare(&triangolo->edgeAC, &dao) * invDet;
+    float v = - prodotto_scalare(&triangolo->edgeAB, &dao) * invDet;
+    float w = 1. - u - v;
+
+    if (determinante > 1e-6 & t >= 0 & u >= 0 & v >= 0 & w >= 0 & t < record->t){
+
+        successfull = 1;
+
+        record->hit = 1;
+        record->t = t;
+
+        record->normale = no_void_versore_vettore(&triangolo->normal);;            
+        record->hit_pos = ray_hit_where(raggio, record->t);
+    }
+
+    return successfull;
+
+}
+
+
+void attraversa_nodi(Node *node, Ray *raggio, Record *record, Materiale *mat){
+
+    int BB_hit = hit_BB(&node->bounding_box, raggio);
+
+    if (BB_hit) {
+
+        // printf("DEPTH (%d), Puntatore -> %p\n", node->depth, node->childA);
+
+        // if (node->childA == 0 & node->childB == 0){
+        if (node->depth == 9){
+
+            record->test_eseguito += node->n_triangles;
+            for (int k = 0; k < node->n_triangles; k++){
+                int did_tho = hit_triangle(&node->triangoli_originali[node->indici_triangoli[k]], raggio, record);
+                if (did_tho){
+                    record->materiale = (* mat);
+                }
+            }
+        } else {
+            attraversa_nodi(node->childA, raggio, record, mat);
+            attraversa_nodi(node->childB, raggio, record, mat);
+        }
+    }
+}
+
+
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 // MODEL DEFINITION
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -549,8 +834,12 @@ Model init_modello(double *vertici, int n_tri, Materiale materiale){
         
         build_triangle.normal = prodotto_vettoriale(&build_triangle.edgeAB, &build_triangle.edgeAC);
 
-        build_triangle.max_box = BB_max(&build_triangle.VertA, &build_triangle.VertB, &build_triangle.VertC);
-        build_triangle.min_box = BB_min(&build_triangle.VertA, &build_triangle.VertB, &build_triangle.VertC);
+        build_triangle.max_box = BB_max_tri(&build_triangle.VertA, &build_triangle.VertB, &build_triangle.VertC);
+        build_triangle.min_box = BB_min_tri(&build_triangle.VertA, &build_triangle.VertB, &build_triangle.VertC);
+
+        build_triangle.mediana = Mediana(&build_triangle.VertA, &build_triangle.VertB, &build_triangle.VertC);
+
+        build_triangle.index = i;
 
         ris.triangoli[i] = build_triangle;
 
@@ -706,6 +995,14 @@ void* render_thread(void* arg) {
     Ray camera_ray;
     camera_ray = init_raggio(camera->dir.valore, camera->pos.valore);
 
+    // creazione BHV
+    // time_t start_bvh = clock();  // Start the clock
+
+    BVH bvh = build_BVH(scena_modello->triangoli, size_triangoli, &scena_modello->materiale);
+    
+    // time_t end_bvh = clock();  double cpu_time_used = ((double) (end_bvh - start_bvh)) / CLOCKS_PER_SEC; printf("BVH generato in: %fs\n", cpu_time_used);
+
+
     // set zero the array
     for (int i = 0; i < (chunck_h * chunck_w * 12); i++){
         data->local_output[i] = 0;
@@ -717,7 +1014,7 @@ void* render_thread(void* arg) {
         for (int i = 0; i < chunck_h; i++) {
             for (int j = 0; j < chunck_w; j++) {
                 
-                time_t start = clock();  // Stop the clock
+                time_t start = clock();  // Start the clock
 
                 // come ottenere la direzione -> somma delle 3 righe
                 termine1 = scala_vettore(&camera->dir, (1 / tan(fov / 2))); 
@@ -756,18 +1053,22 @@ void* render_thread(void* arg) {
 
                     for (int k = 0; k < size_sfera; k++){
 
-                        record.test_eseguito = 0;
+                        // record.test_eseguito = 0;
                         if (hit_BB_sphere(&scena_sfera[k], &camera_ray)){
-                            record.test_eseguito = 1;
+                            // record.test_eseguito = 1;
                             hit_sphere(&scena_sfera[k], &camera_ray, &record);
                         };
 
-                        test_count += record.test_eseguito;
+                        // test_count += record.test_eseguito;
                     }
 
-                    for (int k = 0; k < size_modelli; k++){
-                        hit_model(&scena_modello[k], size_triangoli, &camera_ray, &record);
-                    }
+                    // for (int k = 0; k < size_modelli; k++){
+                    //     hit_model(&scena_modello[k], size_triangoli, &camera_ray, &record);
+                    // }
+
+                    record.test_eseguito = 0;
+                    attraversa_nodi(bvh.root, &camera_ray, &record, &bvh.mat);
+                    test_count += record.test_eseguito;
 
                     // AO save
                     if (l == 1){
@@ -781,18 +1082,21 @@ void* render_thread(void* arg) {
 
                         for (int k_ao = 0; k_ao < size_sfera; k_ao++){
 
-                            record_ao.test_eseguito = 0;
+                            // record_ao.test_eseguito = 0;
                             if (hit_BB_sphere(&scena_sfera[k_ao], &camera_ray)){
-                                record_ao.test_eseguito = 1;
+                                // record_ao.test_eseguito = 1;
                                 hit_sphere(&scena_sfera[k_ao], &camera_ray, &record_ao);
                             };
 
-                            test_count += record_ao.test_eseguito;
+                            // test_count += record_ao.test_eseguito;
                         }
                     
-                        for (int k = 0; k < size_modelli; k++){
-                            hit_model(&scena_modello[k], size_triangoli, &camera_ray, &record_ao);
-                        }
+                        record.test_eseguito = 0;
+                        attraversa_nodi(bvh.root, &camera_ray, &record_ao, &bvh.mat);
+                        test_count += record.test_eseguito;
+                        // for (int k = 0; k < size_modelli; k++){
+                        //     hit_model(&scena_modello[k], size_triangoli, &camera_ray, &record_ao);
+                        // }
 
                         if (record_ao.hit) {
                             Vec sub = differenza_vettori(&record_ao.hit_pos, &camera_ray.pos); 

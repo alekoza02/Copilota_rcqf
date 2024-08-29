@@ -2,12 +2,12 @@
 #define EXAMPLE_H
 
 // Structure declaration
-typedef struct{
+typedef struct Vec{
     double valore[3];
     double modulo;
 } Vec;
 
-typedef struct{
+typedef struct Ray{
     Vec pos;
     Vec dir;
     Vec ups;
@@ -15,7 +15,7 @@ typedef struct{
     Vec ao_dir;
 } Ray;
 
-typedef struct{
+typedef struct Materiale{
     Vec colore_diffusione;
     double forza_emissione;
     Vec colore_emissione;
@@ -25,7 +25,7 @@ typedef struct{
     double IOR;
 } Materiale;
 
-typedef struct{
+typedef struct Record{
     int test_eseguito;
     int hit;
     int index_sphere;
@@ -37,7 +37,7 @@ typedef struct{
     Materiale materiale;
 } Record;
 
-typedef struct{
+typedef struct Sphere{
     Vec pos;
     Materiale mat;
     double radius;
@@ -46,7 +46,7 @@ typedef struct{
     Vec max_box;
 } Sphere;
 
-typedef struct {
+typedef struct Triangle {
     Vec VertA;
     Vec VertB;
     Vec VertC;
@@ -54,17 +54,42 @@ typedef struct {
     Vec edgeAB;
     Vec edgeAC;
 
+    Vec mediana;
+
     Vec normal;
     
     Vec min_box;
     Vec max_box;
+
+    int index;
+
 } Triangle;
 
-typedef struct {
 
-} BVH_node;
+typedef struct BB {
+    Vec min;
+    Vec max;
+    Vec center;
+    Vec size;
+} BB;
 
-typedef struct {
+typedef struct Node{
+    BB bounding_box;
+    Triangle *triangoli_originali;
+    int *indici_triangoli;
+    int n_triangles;
+    struct Node *childA;
+    struct Node *childB;
+    int depth;
+} Node;
+
+typedef struct BVH {
+    Triangle *triangoli_originali;
+    Node *root;
+    Materiale mat;
+} BVH;
+
+typedef struct Model {
 
     Triangle *triangoli;
 
@@ -73,7 +98,7 @@ typedef struct {
 
 } Model;
 
-typedef struct {
+typedef struct ThreadData {
 
     double seed;
 
