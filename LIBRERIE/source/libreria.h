@@ -3,8 +3,8 @@
 
 // Structure declaration
 typedef struct{
-    float valore[3];
-    float modulo;
+    double valore[3];
+    double modulo;
 } Vec;
 
 typedef struct{
@@ -17,19 +17,19 @@ typedef struct{
 
 typedef struct{
     Vec colore_diffusione;
-    float forza_emissione;
+    double forza_emissione;
     Vec colore_emissione;
-    float roughness;
-    float glossiness;
+    double roughness;
+    double glossiness;
     int glass;
-    float IOR;
+    double IOR;
 } Materiale;
 
 typedef struct{
     int test_eseguito;
     int hit;
     int index_sphere;
-    float t;
+    double t;
     int front_face;
     Vec normale;
     Vec normale_rifrazione;
@@ -40,15 +40,42 @@ typedef struct{
 typedef struct{
     Vec pos;
     Materiale mat;
-    float radius;
+    double radius;
     int index;
     Vec min_box;
     Vec max_box;
 } Sphere;
 
 typedef struct {
+    Vec VertA;
+    Vec VertB;
+    Vec VertC;
+    
+    Vec edgeAB;
+    Vec edgeAC;
 
-    float seed;
+    Vec normal;
+    
+    Vec min_box;
+    Vec max_box;
+} Triangle;
+
+typedef struct {
+
+} BVH_node;
+
+typedef struct {
+
+    Triangle *triangoli;
+
+    Materiale materiale;
+    int index_model;
+
+} Model;
+
+typedef struct {
+
+    double seed;
 
     int max_threads;
     int samples;
@@ -63,14 +90,19 @@ typedef struct {
     int start_y;
     int end_y;
     
-    float *array;
-    float *local_output;
+    double *array;
+    double *local_output;
     
-    Sphere *scena;
-    int size_scena;
+    Sphere *scena_sfera;
+    int size_scena_sfera;
+
+    Model *scena_modello;
+    int size_modelli;
+    int size_triangoli;
 
     Ray *camera;
-    float fov;
+    double fov;
 } ThreadData;
+
 
 #endif

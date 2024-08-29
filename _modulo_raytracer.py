@@ -1,6 +1,6 @@
 import numpy as np
 import multiprocessing
-from _modulo_MATE import AcceleratedFoo
+from _modulo_MATE import AcceleratedFoo, Mate
 from random import uniform
 from time import perf_counter_ns, perf_counter
 from memory_profiler import profile
@@ -26,6 +26,10 @@ class Record:
         self.norma_colpito: np.array[float]
         self.norma_rifrazione: np.array[float]
         self.front_face: bool
+
+        self.u = 0
+        self.v = 0
+        self.w = 0
 
 
 class Raggio:
@@ -229,10 +233,17 @@ class RayTracer:
     def update_array(self):
 
         max_time = 0
-        max_test = 0
+        max_test = 0 
+
         for chunck in self.chuncks:
             max_time = np.maximum(max_time, np.max(chunck.tempi))
-            max_test = np.maximum(max_test, np.max(chunck.bounces))
+            try:
+                min_test = np.min(chunck.bounces[chunck.bounces > 1])
+                chunck.bounces[chunck.bounces <= 1] = min_test
+            except ValueError:
+                min_test = np.min(chunck.bounces)
+
+            max_test = np.maximum(max_test, np.max(chunck.bounces - min_test))
 
         for chunck in self.chuncks:
             if chunck.samples_rendered > 0:
@@ -254,7 +265,8 @@ class RayTracer:
                         multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
                     case 5:
-                        multip_channel = np.repeat(chunck.bounces[:,:,None], 3, axis=2) * 255 / max_test
+                        tmp = chunck.bounces - min_test
+                        multip_channel = np.repeat(tmp[:,:,None], 3, axis=2) * 255 / max_test
                         self.pixel_array[chunck.x:chunck.x+chunck.w, chunck.y:chunck.y+chunck.h, :] = multip_channel
 
             if chunck.reset:
@@ -275,21 +287,25 @@ class RayTracer:
 
 
     def analisi_tempi(self):
-        if self.running:
+        try:
             average_samples = 0
-            for index, chunck in enumerate(self.chuncks):
-                average_samples += chunck.samples_rendered
+            if self.running:
+                for index, chunck in enumerate(self.chuncks):
+                    average_samples += chunck.samples_rendered
 
-            average_samples /= len(self.chuncks)
-            if average_samples == 0:
-                self.stats = f"Ora di inizio: {self.start_time_str}"
+                average_samples /= len(self.chuncks)
+                if average_samples == 0:
+                    self.stats = f"Ora di inizio: {self.start_time_str}"
+                else:
+                    self.stats = f"Ora di inizio: {self.start_time_str}\nTrascorso: {time.time() - self.start_time:.2f} secondi\nSamples renderizzati in media: {average_samples:.2f}/{self.settings.samples} ({100 * average_samples / self.settings.samples:.1f}%)\nTempo stimato alla fine: {(self.settings.samples - average_samples) * (time.time() - self.start_time) / (average_samples):.2f} secondi\nFPS medio: {average_samples / (time.time() - self.start_time):.2f}"
             else:
-                self.stats = f"Ora di inizio: {self.start_time_str}\nTrascorso: {time.time() - self.start_time:.2f} secondi\nSamples renderizzati in media: {average_samples:.2f}/{self.settings.samples} ({100 * average_samples / self.settings.samples:.1f}%)\nTempo stimato alla fine: {(self.settings.samples - average_samples) * (time.time() - self.start_time) / (average_samples):.2f} secondi"
-        else:
-            if self.start_time_str == "Non ancora avviato":
-                self.stats = f"Fai partire prima la renderizzazione"
-            else:
-                self.stats = f"Ora di inizio: {self.start_time_str}\nTerminato in: {self.end_time - self.start_time:.2f} secondi"
+                if self.start_time_str == "Non ancora avviato":
+                    self.stats = f"Fai partire prima la renderizzazione"
+                else:
+                    average_samples = self.chuncks[0].samples_rendered
+                    self.stats = f"Ora di inizio: {self.start_time_str}\nTerminato in: {self.end_time - self.start_time:.2f} secondi\nFPS medio durante la renderizzazione: {average_samples / (self.end_time - self.start_time):.2f}"
+        except ZeroDivisionError:
+            self.stats = f"Troppo veloce per fare statistica, consideralo istant :D"
 
 
 class Sphere:
@@ -305,10 +321,39 @@ class Sphere:
 
 
     def collision_BB_sphere(self, ray: Raggio):
-        return AcceleratedFoo.test(self.BB, ray.pos, ray.dir)
+        # return AcceleratedFoo.test(self.BB, ray.pos, ray.dir)
+
+        box, ray_pos, ray_dir = self.BB, ray.pos, ray.dir
+
+        # Extract the minimum and maximum corners of the bounding box
+        box_min = box[0]
+        box_max = box[1]
+        
+        t_min = 0.0
+        t_max = 1e6
+        
+        for i in range(3):  # Iterate over the x, y, and z axes
+            if ray_dir[i] != 0.0:
+                inv_dir = 1 / ray_dir[i]
+                t1 = (box_min[i] - ray_pos[i]) * inv_dir 
+                t2 = (box_max[i] - ray_pos[i]) * inv_dir 
+                
+                t_min_i = min(t1, t2)
+                t_max_i = max(t1, t2)
+                
+                t_min = max(t_min, t_min_i)
+                t_max = min(t_max, t_max_i)
+                
+                if t_min > t_max:
+                    return False  # No intersection
+            else:
+                if ray_pos[i] < box_min[i] or ray_pos[i] > box_max[i]:
+                    return False  # Ray is parallel and outside the slab
+
+        return True
 
 
-    def collisione_sphere(self, ray, record: Record):
+    def collisione_sphere(self, ray: Raggio, record: Record) -> Record:
             
         record.test_eseguito = False
 
@@ -360,6 +405,110 @@ class Sphere:
         return [Sphere(oggetto.pos, oggetto.sx / 2, oggetto.materiale, indice) for indice, oggetto in enumerate(oggetti)]
 
 
+class Modello_Raytracer:
+    
+    def __init__(self, verteces, links, materiale, indice) -> None:
+        self.verteces = verteces
+        self.links = links
+        self.materiale = materiale
+        self.indice = indice
+
+        self.triangoli = self.verteces[self.links]
+
+        # self.BB = None
+
+    # def collision_BB_triangle():
+    #     ...
+
+    def collisione_modello(self, ray: Raggio, record: Record) -> Record:
+        
+        for triangolo in self.triangoli:
+
+            edgeAB = triangolo[1] - triangolo[0]
+            edgeAC = triangolo[2] - triangolo[0]
+
+            normal = np.cross(edgeAB, edgeAC)
+
+            determinant = - np.dot(ray.dir, normal)
+
+            ao = ray.pos - triangolo[0]
+            dao = np.cross(ao, ray.dir)
+
+            invDet = 1 / determinant
+
+            t = np.dot(ao, normal) * invDet
+            u = np.dot(edgeAC, dao) * invDet
+            v = - np.dot(edgeAB, dao) * invDet
+            w = 1 - u - v
+
+            if determinant > 1e-6 and t >= 0 and u >= 0 and v >= 0 and w >= 0 and t < record.distanza:
+
+                record.colpito = True;
+                record.distanza = t;
+                record.indice_oggetti_prox = self.indice;
+                record.punto_colpito = ray.pos + ray.dir * t;
+                record.norma_colpito = Mate.versore(normal);
+                record.materiale = self.materiale;
+    
+        return record
+
+    
+
+        # v0 = self.triangoli[:,0,:]
+        # v1 = self.triangoli[:,1,:]
+        # v2 = self.triangoli[:,2,:]
+
+        # ao = ray.pos - v0
+        # dao = np.cross(ao, ray.dir)
+
+        # determinante = np.dot(normale, -ray.dir)
+
+        # indici_det = np.where(determinante >= 0)
+        # determinante = determinante[indici_det]
+
+        # v0 = v0[indici_det]
+        # v1 = v1[indici_det]
+        # v2 = v2[indici_det]
+        # normale = normale[indici_det]
+        # ao = ao[indici_det]
+        # dao = dao[indici_det]
+
+        # inv_determin = 1 / determinante
+
+        # edgeAB = v1 - v0
+        # edgeAC = v2 - v0
+
+        # dst = np.einsum('ij,ij->i', ao, normale) * inv_determin
+        # u = np.einsum('ij,ij->i', dao, edgeAC) * inv_determin
+        # v = -np.einsum('ij,ij->i', dao, edgeAB) * inv_determin
+        # w = 1 - u - v 
+        
+        # candidati = np.where((dst >= 0) & (u >= 0) & (v >= 0) & (w >= 0) & (dst < record.distanza))
+
+        # if candidati[0].size == 0:
+        #     return record
+        
+        # dst = dst[candidati]
+
+        # minimo = np.min(dst)
+        # risultato = np.where(dst == minimo)
+
+        # normale = normale[candidati]
+
+        # record.colpito = True   
+        # record.punto_colpito = ray.pos + ray.dir * minimo
+        # record.dst = minimo
+        # record.normale_colpito = normale[risultato][0]
+                
+        # return record
+
+
+
+    @staticmethod
+    def convert_wireframe2tracer(oggetti):
+        return [Modello_Raytracer(oggetto.transformed_vertices[:, :3], oggetto.links, oggetto.materiale, indice) for indice, oggetto in enumerate(oggetti)]
+
+
 class RenderingModes:
     @staticmethod
     def direction_bulk(wo, ho, x, y, w, h, camera):
@@ -381,25 +530,28 @@ class RenderingModes:
     
 
     @staticmethod
-    def test_AO(ray, list_object, chunck, x, y):
+    def test_AO(ray, list_sphere, list_models, chunck, x, y):
         # temporary switch
         temp_memo = ray.dir
         ray.dir = ray.AO_ray    
         ao_record = Record()
 
-        for oggetto in list_object:
+        for oggetto in list_sphere:
             ao_record = oggetto.collisione_sphere(ray, ao_record)
+        for oggetto in list_models:
+            ao_record = oggetto.collisione_modello(ray, ao_record)
         chunck.amb_oc[x, y] += 1 / (np.linalg.norm(ao_record.punto_colpito - ray.pos) + 1)
         
         # re-switch
         ray.dir = temp_memo
 
     @staticmethod
-    def test_spheres(args: tuple[RenderChunck, any]) -> RenderChunck:
-        try:
+    def render_cycle(args: tuple[RenderChunck, any]) -> RenderChunck:
+        # try:
             chunck: RenderChunck = args[0]
             camera = args[1]
-            list_object = args[2]
+            list_sphere = args[2]
+            list_models = args[4]
             settings: Settings = args[3]
 
             direzioni = RenderingModes.direction_bulk(chunck.ori_w, chunck.ori_h, chunck.x, chunck.y, chunck.w, chunck.h, camera)
@@ -422,13 +574,16 @@ class RenderingModes:
                             pixel_analize = Record()
                     
                             # collisione con sfera
-                            for oggetto in list_object:
+                            for oggetto in list_sphere:
                                 pixel_analize = oggetto.collisione_sphere(ray, pixel_analize)
                                 test_count += pixel_analize.test_eseguito
+                            
+                            for oggetto in list_models:
+                                pixel_analize = oggetto.collisione_modello(ray, pixel_analize)
 
                             # AO save
                             if bounce == 1:
-                                RenderingModes.test_AO(ray, list_object, chunck, x, y)
+                                RenderingModes.test_AO(ray, list_sphere, list_models, chunck, x, y)
 
 
                             if pixel_analize.colpito:
@@ -446,7 +601,7 @@ class RenderingModes:
                                 ray_incoming_light = ray_incoming_light + luce_emessa * ray_color
                                 ray_color = ray_color * materiale.colore
 
-                            elif bounce > 1:
+                            else:
                                 break
                             
 
@@ -463,9 +618,9 @@ class RenderingModes:
 
             return chunck
         
-        except Exception as e:
-            print(f"Attenzione, AleDebug in azione:\n{e}") 
-            return chunck
+        # except Exception as e:
+        #     print(f"Attenzione, AleDebug in azione:\n{e}") 
+        #     return chunck
 
     
     @staticmethod
@@ -502,10 +657,12 @@ class AvvioMultiProcess:
         
         self.stahp = False
         x, y, _ = tredi.pathtracer.pixel_array.shape
-        objects = []
+        spheres = []
         for oggetto, stato in zip(tredi.scenes["debug"].objects, tredi.UI_calls_tracer.scrolls["oggetti"].elementi_attivi):
-            if stato: objects.append(oggetto)
-        objects = Sphere.convert_wireframe2tracer(objects)
+            if stato: spheres.append(oggetto)
+        spheres = Sphere.convert_wireframe2tracer(spheres)
+
+        modello = Modello_Raytracer.convert_wireframe2tracer([tredi.scenes["debug"].dev_modello])
 
         tredi.pathtracer.running = True
         tredi.pathtracer.start_time_str = time.strftime('%H:%M:%S', time.localtime())
@@ -527,11 +684,11 @@ class AvvioMultiProcess:
                 sample_eta = (sample_group - 1) * tredi.pathtracer.settings.sample_packet
                 if sample_eta == 0: sample_eta = 1
 
-                tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample_eta}/{tredi.pathtracer.settings.samples} ({100 * sample_eta / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample_eta) * (time.time() - tredi.pathtracer.start_time) / (sample_eta):.2f} secondi"
+                tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTrascorso: {time.time() - tredi.pathtracer.start_time:.2f} secondi\nSamples renderizzati in media: {sample_eta}/{tredi.pathtracer.settings.samples} ({100 * sample_eta / tredi.pathtracer.settings.samples:.1f}%)\nTempo stimato alla fine: {(tredi.pathtracer.settings.samples - sample_eta) * (time.time() - tredi.pathtracer.start_time) / (sample_eta):.2f} secondi\nFPS medio: {sample_eta / (time.time() - tredi.pathtracer.start_time + 1e-6):.2f}"
                 
                 if sample_update == 1: sample_update = 0
                 
-                tmp = librerie.c_renderer(x, y, objects, tredi.pathtracer.camera, tredi.pathtracer.settings)
+                tmp = librerie.c_renderer(x, y, spheres, modello, tredi.pathtracer.camera, tredi.pathtracer.settings)
                 tredi.pathtracer.C_pixel_array = tredi.pathtracer.C_pixel_array + tmp
                 
                 tredi.pathtracer.chuncks[0].samples_rendered = sample_group * tredi.pathtracer.settings.sample_packet
@@ -555,10 +712,11 @@ class AvvioMultiProcess:
 
         tredi.pathtracer.running = False
 
-        if not tredi.pathtracer.running:
-            tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTerminato in: {time.time() - tredi.pathtracer.start_time:.2f} secondi"
-
         tredi.pathtracer.end_time = time.time()
+
+        if not tredi.pathtracer.running:
+            tredi.pathtracer.stats = f"Ora di inizio: {tredi.pathtracer.start_time_str}\nTerminato in: {tredi.pathtracer.end_time - tredi.pathtracer.start_time:.2f} secondi\nFPS medio durante la renderizzazione: {tredi.pathtracer.settings.samples / (tredi.pathtracer.end_time - tredi.pathtracer.start_time):.2f}"
+
         tredi.pathtracer.update_array()
 
 
@@ -587,10 +745,12 @@ class AvvioMultiProcess:
         self.c_stopped = True
         self.stahp = False
 
-        objects = []
+        spheres = []
         for oggetto, stato in zip(tredi.scenes["debug"].objects, tredi.UI_calls_tracer.scrolls["oggetti"].elementi_attivi):
-            if stato: objects.append(oggetto)
-        objects = Sphere.convert_wireframe2tracer(objects)
+            if stato: spheres.append(oggetto)
+        spheres = Sphere.convert_wireframe2tracer(spheres)
+    
+        modello = Modello_Raytracer.convert_wireframe2tracer([tredi.scenes["debug"].dev_modello])
 
         tredi.pathtracer.running = True
         tredi.pathtracer.start_time_str = time.strftime('%H:%M:%S', time.localtime())
@@ -599,12 +759,12 @@ class AvvioMultiProcess:
         # @profile
         def execute():
             start_execution = perf_counter()
-            argomenti = [(chunck, tredi.pathtracer.camera, objects, tredi.pathtracer.settings) for chunck in tredi.pathtracer.chuncks]
+            argomenti = [(chunck, tredi.pathtracer.camera, spheres, tredi.pathtracer.settings, modello) for chunck in tredi.pathtracer.chuncks]
             
             self.pool = multiprocessing.Pool(processes=tredi.pathtracer.settings.cores)
 
             for argomento in argomenti:
-                self.pool.apply_async(RenderingModes.test_spheres, args=(argomento,), callback=tredi.pathtracer.update_chunck)
+                self.pool.apply_async(RenderingModes.render_cycle, args=(argomento,), callback=tredi.pathtracer.update_chunck)
             
             stop_execution = perf_counter()
 
@@ -614,10 +774,10 @@ class AvvioMultiProcess:
             return abs(stop_execution - start_execution)
             
         # DEBUGGER
-        # argomenti = [(chunck, tredi.pathtracer.camera, objects, tredi.pathtracer.settings) for chunck in tredi.pathtracer.chuncks]
+        # argomenti = [(chunck, tredi.pathtracer.camera, spheres, tredi.pathtracer.settings, modello) for chunck in tredi.pathtracer.chuncks]
         # for sample_group in range(tredi.pathtracer.settings.samples // tredi.pathtracer.settings.sample_packet):
         #     for argomento in argomenti:
-        #         ris = RenderingModes.test_spheres(argomento)
+        #         ris = RenderingModes.render_cycle(argomento)
         #         tredi.pathtracer.update_chunck(ris)
         #         tredi.pathtracer.update_array()
         #     print(ris.samples_rendered)

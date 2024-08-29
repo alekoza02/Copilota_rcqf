@@ -4,7 +4,7 @@ import pygame
 import configparser
 from _modulo_UI import Schermo, WidgetDataTracer, Logica, UI
 from _modulo_MATE import Mate, AcceleratedFoo, RandomAle
-from _modulo_multiprocess_classes import RayTracer
+from _modulo_raytracer import RayTracer
 
 class TreDi:
     def __init__(self) -> None:
@@ -263,9 +263,9 @@ class Geo_Scene:
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.objects.append(Object("Sfera_piccola", vertici=self.i.verteces, links=self.i.links, z=-3.75, x=-3, y=-2, sx=2.5, sy=2.5, sz=2.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1., roughness=0.0)))
-        self.objects.append(Object("Sfera_media", vertici=self.i.verteces, links=self.i.links, z=-3.25, y=-4, x=2.5, sx=3.5, sy=3.5, sz=3.5, materiale=Materiale(colore=np.array([1., 1., 1.]))))
-        self.objects.append(Object("Sfera_grande", vertici=self.i.verteces, links=self.i.links, z=-2, x=1, y=2, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0, roughness=0.0)))
+        # self.objects.append(Object("Sfera_piccola", vertici=self.i.verteces, links=self.i.links, z=-3.75, x=-3, y=-2, sx=2.5, sy=2.5, sz=2.5, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1., roughness=0.0)))
+        # self.objects.append(Object("Sfera_media", vertici=self.i.verteces, links=self.i.links, z=-3.25, y=-4, x=2.5, sx=3.5, sy=3.5, sz=3.5, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        # self.objects.append(Object("Sfera_grande", vertici=self.i.verteces, links=self.i.links, z=-2, x=1, y=2, sx=6, sy=6, sz=6, materiale=Materiale(colore=np.array([1., 1., 1.]), glossiness=1.0, roughness=0.0)))
         self.objects.append(Object("Sfera_pavimento", vertici=self.i.verteces, links=self.i.links, z=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
         self.objects.append(Object("Sfera_cielo", vertici=self.i.verteces, links=self.i.links, z=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
         self.objects.append(Object("Sfera_parete_sx", vertici=self.i.verteces, links=self.i.links, x=-1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., .5, 0.]))))
@@ -274,6 +274,15 @@ class Geo_Scene:
         self.objects.append(Object("Sfera_parete_dietro", vertici=self.i.verteces, links=self.i.links, y=-1060, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([.1, 1., .1]))))
         self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
         self.elemento_attivo: Object = self.objects[0]
+
+        self.i = Importer()
+        self.i.modello("TRACER_DATA/m_ban.obj")
+
+        self.i.verteces = Mate.add_homogenous(self.i.verteces)
+
+        input_data = float(input("angolo: "))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-1, b=input_data, i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, sx=2, sy=2, sz=2, materiale=Materiale(colore=np.array([1., 1., 1.])))
     
     
     def kornell_box_glossiness(self):
@@ -342,6 +351,9 @@ class Object:
 
         self.materiale = materiale
 
+        self.applica_rotazioni()
+        self.applica_traslazioni()
+
     @property
     def pos(self):
         return np.array([self.x, self.y, self.z])
@@ -364,7 +376,7 @@ class Object:
         return f"{self.name}"
 
 
-class Triangle:
+class Triangle_Viewport:
     def __init__(self) -> None:
         pass
 

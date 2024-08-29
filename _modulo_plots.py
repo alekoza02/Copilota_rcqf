@@ -1100,6 +1100,13 @@ class Painter:
                                 for i in range(0, x2 - x1):
                                     y_interpolated = int(y1 + m * i)
                                     pygame.draw.line(self.schermo, self.bg_color, (x1 + i, from_y), (x1 + i, y_interpolated), 1)
+
+                            # elimino le tracce di gradiente fuori dal range
+                            for x in range(int(self.start_x), plot.x_screen.astype(int)[0]):
+                                    pygame.draw.line(self.schermo, self.bg_color, (x, self.start_y), (x, self.end_y), 1)
+                            
+                            for x in range(plot.x_screen.astype(int)[-1], int(self.end_x)):
+                                    pygame.draw.line(self.schermo, self.bg_color, (x, self.start_y), (x, self.end_y), 1)
                             
 
     def disegna_plots(self) -> None:
