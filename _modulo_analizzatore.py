@@ -1,6 +1,6 @@
 import numpy as np
 import pygame
-import os\
+import os
 
 from _modulo_UI import UI, Logica, Schermo
 from _modulo_MATE import Mate

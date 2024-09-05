@@ -28,14 +28,13 @@ raytracer:
 - Statistic info (start time, elapsed, ETA, samples rendered, ecc.)
 - Ray - Sphere intersection
 - Spehere CollisionBox
+- Triangles handle 
+- Triangles BVH (Sebastian Lague video)
+- Rewrite main routines in C
 
 TODO:
 ---
-
 - Changable FOV
-- Triangles handle 
-- Triangles BVH (Sebastian Lague video)
-
-FUTURE PROJECTS:
----
-- Rewrite main routines in C
+- Handle add / remove models in viewport
+- BVH handles different models
+- BVH optimization (child test & heuristics)

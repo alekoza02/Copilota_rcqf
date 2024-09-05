@@ -520,16 +520,18 @@ BB init_BB(Triangle *tris, int tri_size){
 }
 
 
-void split(Node *parent, int depth) {
+void split(Node *parent, int depth, int *stat1, int *stat2, int *stat3) {
     
-    if (depth == 10) return;
+    parent->childA = NULL;
+    parent->childB = NULL;
+
+    // if (depth == 32) {
+    //     (* stat1) += parent->n_triangles;
+    //     (* stat2) += depth;
+    //     (* stat3) += 1;
+    //     return;
+    // };
     
-    Node *A = (Node *)malloc(sizeof(Node));
-    Node *B = (Node *)malloc(sizeof(Node));
-
-    parent->childA = A;
-    parent->childB = B;
-
     int *Triangles_A = (int *)malloc(parent->n_triangles * sizeof(int));
     int *Triangles_B = (int *)malloc(parent->n_triangles * sizeof(int));
 
@@ -537,7 +539,6 @@ void split(Node *parent, int depth) {
         printf("Memory allocation failed\n");
         exit(1);
     }
-
 
     int indexA = 0;
     int indexB = 0;
@@ -556,14 +557,16 @@ void split(Node *parent, int depth) {
             Triangles_B[indexB++] = parent->indici_triangoli[i];
         }
     }
-
     
+    Node *A = (Node *)malloc(sizeof(Node));
+
+    parent->childA = A;
+
     A->triangoli_originali = parent->triangoli_originali;
     A->n_triangles = indexA;
 
     Triangles_A = (int *)realloc(Triangles_A, indexA * sizeof(int));
     A->indici_triangoli = Triangles_A;
-
 
     Triangle *Aarg = (Triangle *)malloc(indexA * sizeof(Triangle));
 
@@ -573,7 +576,26 @@ void split(Node *parent, int depth) {
 
     A->bounding_box = init_BB(Aarg, indexA);
     A->depth = depth;
+
+    free(Aarg);
+    Aarg = NULL;
+
+    if (indexA > 1 & A->n_triangles != parent->n_triangles){
+        split(A, depth + 1, stat1, stat2, stat3);
+    } else {
+        (* stat1) += A->n_triangles;
+        (* stat2) += depth;
+        (* stat3) += 1;
+        A->childA = NULL;
+        A->childB = NULL;
+    }
+
+    // ---------------------------------------------------------
+
+    Node *B = (Node *)malloc(sizeof(Node));
     
+    parent->childB = B;
+
     B->triangoli_originali = parent->triangoli_originali;
     B->n_triangles = indexB;
     
@@ -588,14 +610,21 @@ void split(Node *parent, int depth) {
 
     B->bounding_box = init_BB(Barg, indexB);
     B->depth = depth;
-    
-    free(Aarg);
-    Aarg = NULL;
+
     free(Barg);
     Barg = NULL;
 
-    split(A, depth + 1);
-    split(B, depth + 1);
+    if (indexB > 1 & B->n_triangles != parent->n_triangles){
+        split(B, depth + 1, stat1, stat2, stat3);
+    } else {
+        (* stat1) += B->n_triangles;
+        (* stat2) += depth;
+        (* stat3) += 1;
+        B->childA = NULL;
+        B->childB = NULL;
+    }
+
+    free(parent->indici_triangoli);
 }
 
 
@@ -616,13 +645,20 @@ BVH build_BVH(Triangle *tris, int tri_size, Materiale *mat){
     Node *root_alloc = (Node *)malloc(sizeof(Node));
     
     bvh.root = root_alloc;
+    
+    bvh.root->bounding_box = init_BB(bvh.triangoli_originali, tri_size);
+    
+    bvh.root->triangoli_originali = bvh.triangoli_originali;
     bvh.root->indici_triangoli = indici;
     bvh.root->n_triangles = tri_size;
-    bvh.root->bounding_box = init_BB(bvh.triangoli_originali, tri_size);
-    bvh.root->triangoli_originali = bvh.triangoli_originali;
+    
     bvh.root->depth = 0;
 
-    split(bvh.root, 0);
+    bvh.stat1 = 0;
+    bvh.stat2 = 0;
+    bvh.stat3 = 0;
+
+    split(bvh.root, 1, &bvh.stat1, &bvh.stat2, &bvh.stat3);
 
     return bvh;
 
@@ -630,16 +666,20 @@ BVH build_BVH(Triangle *tris, int tri_size, Materiale *mat){
 
 
 void free_node(Node *node){
-    free(node->indici_triangoli);
-    free_node(node->childA);
-    free_node(node->childB);
-    free(node);
+    
+    if (node->childA != NULL){
+        free_node(node->childA);
+    } 
+    if (node->childB != NULL){
+        free_node(node->childB);
+    }
+
+    free(node);    
 }
 
 
 void free_BVH(BVH *bvh){
     free_node(bvh->root);
-    free(bvh);
 }
 
 
@@ -667,12 +707,11 @@ static inline int hit_BB(BB *bounding_box, Ray *raggio){
 
         t_min = fmax(t_min, t1);
         t_max = fmin(t_max, t2);
-    
-        if (t_max < t_min){
-            return 0;
-        }
     }  
-    return 1;
+
+    int did_hit = t_max >= t_min & t_max > 0;
+
+    return did_hit ? t_min : 1e12;
 }
 
 
@@ -682,11 +721,13 @@ static inline int hit_triangle(Triangle *triangolo, Ray *raggio, Record *record)
 
     float determinante = - prodotto_scalare(&raggio->dir, &triangolo->normal);
 
+
     Vec ao = differenza_vettori(&raggio->pos, &triangolo->VertA);
     Vec dao = prodotto_vettoriale(&ao, &raggio->dir);
 
     float invDet = 1 / determinante;
 
+    
     float t = prodotto_scalare(&ao, &triangolo->normal) * invDet;
     float u = prodotto_scalare(&triangolo->edgeAC, &dao) * invDet;
     float v = - prodotto_scalare(&triangolo->edgeAB, &dao) * invDet;
@@ -710,25 +751,30 @@ static inline int hit_triangle(Triangle *triangolo, Ray *raggio, Record *record)
 
 void attraversa_nodi(Node *node, Ray *raggio, Record *record, Materiale *mat){
 
-    int BB_hit = hit_BB(&node->bounding_box, raggio);
+    if (node->childA == NULL & node->childB == NULL){
 
-    if (BB_hit) {
+        record->test_eseguito += node->n_triangles;
 
-        // printf("DEPTH (%d), Puntatore -> %p\n", node->depth, node->childA);
-
-        // if (node->childA == 0 & node->childB == 0){
-        if (node->depth == 9){
-
-            record->test_eseguito += node->n_triangles;
-            for (int k = 0; k < node->n_triangles; k++){
-                int did_tho = hit_triangle(&node->triangoli_originali[node->indici_triangoli[k]], raggio, record);
-                if (did_tho){
-                    record->materiale = (* mat);
-                }
+        for (int k = 0; k < node->n_triangles; k++){
+            int did_tho = hit_triangle(&node->triangoli_originali[node->indici_triangoli[k]], raggio, record);
+            if (did_tho){
+                record->materiale = (* mat);
             }
+        }
+    
+    } else if (node->childA != NULL & node->childB != NULL){
+
+        float dstA = hit_BB(&node->childA->bounding_box, raggio);
+        float dstB = hit_BB(&node->childB->bounding_box, raggio);
+
+        // record->test_eseguito += 2;
+
+        if (dstA > dstB){
+            if (dstB < record->t) attraversa_nodi(node->childB, raggio, record, mat);
+            if (dstA < record->t) attraversa_nodi(node->childA, raggio, record, mat);
         } else {
-            attraversa_nodi(node->childA, raggio, record, mat);
-            attraversa_nodi(node->childB, raggio, record, mat);
+            if (dstA < record->t) attraversa_nodi(node->childA, raggio, record, mat);
+            if (dstB < record->t) attraversa_nodi(node->childB, raggio, record, mat);
         }
     }
 }
@@ -1000,6 +1046,8 @@ void* render_thread(void* arg) {
 
     BVH bvh = build_BVH(scena_modello->triangoli, size_triangoli, &scena_modello->materiale);
     
+    // printf("Statistica: Triangoli medi = %f, Profondità media = %f\n", (float)(bvh.stat1) / (float)(bvh.stat3), (float)(bvh.stat2) / (float)(bvh.stat3));
+
     // time_t end_bvh = clock();  double cpu_time_used = ((double) (end_bvh - start_bvh)) / CLOCKS_PER_SEC; printf("BVH generato in: %fs\n", cpu_time_used);
 
 
@@ -1164,6 +1212,7 @@ void* render_thread(void* arg) {
         }
     }
 
+
     // int r, g, b;
 
     for (int i = 0; i < chunck_h; i++) {
@@ -1174,6 +1223,7 @@ void* render_thread(void* arg) {
         }
     }
 
+    free_BVH(&bvh);
     pthread_exit(NULL);
 }
 

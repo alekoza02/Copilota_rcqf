@@ -6,8 +6,21 @@ import pygame
 def main(config: configparser):
     
     # Zona inizializzazione UI
-    from _modulo_UI import UI, Logica
+    from _modulo_UI import UI, Logica, Scena
+    
+    # Aggiunge i comportamenti specifici di questo progetto (gestione degli eventi)
+    import _modulo_events
+    # Aggiunge le scene specifiche di questo progetto (Creazione delle scene)
+    import _modulo_database_scene
+
     ui = UI(config)
+    
+    ui.scena["main"] = Scena(ui.parametri_scena_repeat); ui.scena["main"].build_main()
+    ui.scena["plots"] = Scena(ui.parametri_scena_repeat); ui.scena["plots"].build_plots()
+    ui.scena["plot_import"] = Scena(ui.parametri_scena_repeat); ui.scena["plot_import"].build_plot_import()
+    ui.scena["tracer"] = Scena(ui.parametri_scena_repeat); ui.scena["tracer"].build_tracer()
+    ui.scena["orbitals"] = Scena(ui.parametri_scena_repeat); ui.scena["orbitals"].build_orbitals()
+
     logica = Logica()
     logica.scena = int(config.get('Default', 'scena_iniziale'))
     
@@ -59,7 +72,7 @@ def main(config: configparser):
             case 2: 
                 ui.event_manage_tracer(eventi_in_corso, logica, tredi)
                 
-                tredi.disegna(logica, ui.scena["tracer"].data_widgets_tracer)
+                tredi.disegna(logica)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["tracer"].schermo.items()]
                 [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
                 

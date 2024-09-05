@@ -4,7 +4,7 @@ from scipy.integrate import trapezoid
 import pygame
 from _modulo_UI import Schermo, Logica, UI, Scena
 from _modulo_MATE import Mate
-from _modulo_database import Dizionario
+from _modulo_database_tooltips import Dizionario
 import configparser
 import os
 from copy import deepcopy

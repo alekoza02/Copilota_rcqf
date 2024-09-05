@@ -73,21 +73,31 @@ typedef struct BB {
     Vec size;
 } BB;
 
+
 typedef struct Node{
     BB bounding_box;
+
     Triangle *triangoli_originali;
     int *indici_triangoli;
     int n_triangles;
+
     struct Node *childA;
     struct Node *childB;
     int depth;
 } Node;
 
+
 typedef struct BVH {
     Triangle *triangoli_originali;
     Node *root;
     Materiale mat;
+
+    int stat1;
+    int stat2;
+    int stat3;
+
 } BVH;
+
 
 typedef struct Model {
 
@@ -97,6 +107,7 @@ typedef struct Model {
     int index_model;
 
 } Model;
+
 
 typedef struct ThreadData {
 

@@ -2,7 +2,7 @@ from numba import njit
 import numpy as np
 import pygame
 import configparser
-from _modulo_UI import Schermo, WidgetDataTracer, Logica, UI
+from _modulo_UI import Schermo, Logica, UI
 from _modulo_MATE import Mate, AcceleratedFoo, RandomAle
 from _modulo_raytracer import RayTracer
 
@@ -73,6 +73,19 @@ class TreDi:
         self.UI_calls_tracer.scrolls["oggetti"].indici = [i for i in range(len(elementi) + 1)] # il +1 è riferito ad un elemento in più: la camera
         self.UI_calls_tracer.scrolls["oggetti"].update_elements()
 
+        self.UI_px_modello = self.UI_calls_tracer.entrate["px_modello"]
+        self.UI_py_modello = self.UI_calls_tracer.entrate["py_modello"]
+        self.UI_pz_modello = self.UI_calls_tracer.entrate["pz_modello"]
+        self.UI_rx_modello = self.UI_calls_tracer.entrate["rx_modello"]
+        self.UI_ry_modello = self.UI_calls_tracer.entrate["ry_modello"]
+        self.UI_rz_modello = self.UI_calls_tracer.entrate["rz_modello"]
+        self.UI_sx_modello = self.UI_calls_tracer.entrate["sx_modello"]
+        self.UI_sy_modello = self.UI_calls_tracer.entrate["sy_modello"]
+        self.UI_sz_modello = self.UI_calls_tracer.entrate["sz_modello"]
+
+        self.UI_points = self.UI_calls_tracer.bottoni["points"] 
+        self.UI_links = self.UI_calls_tracer.bottoni["links"] 
+
         self.build_raytracer()
 
 
@@ -96,63 +109,92 @@ class TreDi:
         )
 
 
-    def change_UI_stuff(self, ui: UI) -> None:
+    def change_UI_stuff(self, ui: UI, logica: Logica) -> None:
+
+        update_attributes = False
 
         if len(self.scenes["debug"].elenco_raw) != 0:
-            self.scenes["debug"].elemento_attivo = self.scenes["debug"].elenco_raw[ui.scena["tracer"].data_widgets_tracer.oggetto_attivo]
-        
+            self.scenes["debug"].elemento_attivo = self.scenes["debug"].elenco_raw[self.UI_calls_tracer.scrolls["oggetti"].first_item + self.UI_calls_tracer.scrolls["oggetti"].scroll_item_selected]
+            
+        update_attributes = self.scenes["debug"].elemento_attivo_prec != self.scenes["debug"].elemento_attivo
+
+        self.scenes["debug"].elemento_attivo_prec = self.scenes["debug"].elemento_attivo
+
         ui.scena["tracer"].label_text["active_object"].text = f"Oggetto attivo: {self.scenes['debug'].elemento_attivo.name}"
 
         if type(self.scenes["debug"].elemento_attivo) == Object:
-            if not ui.scena["tracer"].entrate["px_modello"].toggle: ui.scena["tracer"].entrate["px_modello"].text = f"{self.scenes['debug'].elemento_attivo.x:.3f}"
-            if not ui.scena["tracer"].entrate["py_modello"].toggle: ui.scena["tracer"].entrate["py_modello"].text = f"{self.scenes['debug'].elemento_attivo.y:.3f}"
-            if not ui.scena["tracer"].entrate["pz_modello"].toggle: ui.scena["tracer"].entrate["pz_modello"].text = f"{self.scenes['debug'].elemento_attivo.z:.3f}"
-            if not ui.scena["tracer"].entrate["rx_modello"].toggle: ui.scena["tracer"].entrate["rx_modello"].text = f"{self.scenes['debug'].elemento_attivo.r:.3f}"
-            if not ui.scena["tracer"].entrate["ry_modello"].toggle: ui.scena["tracer"].entrate["ry_modello"].text = f"{self.scenes['debug'].elemento_attivo.b:.3f}"
-            if not ui.scena["tracer"].entrate["rz_modello"].toggle: ui.scena["tracer"].entrate["rz_modello"].text = f"{self.scenes['debug'].elemento_attivo.i:.3f}"
-            if not ui.scena["tracer"].entrate["sx_modello"].toggle: ui.scena["tracer"].entrate["sx_modello"].text = f"{self.scenes['debug'].elemento_attivo.sx:.3f}"
-            if not ui.scena["tracer"].entrate["sy_modello"].toggle: ui.scena["tracer"].entrate["sy_modello"].text = f"{self.scenes['debug'].elemento_attivo.sy:.3f}"
-            if not ui.scena["tracer"].entrate["sz_modello"].toggle: ui.scena["tracer"].entrate["sz_modello"].text = f"{self.scenes['debug'].elemento_attivo.sz:.3f}"
-            ui.scena["tracer"].entrate["sx_modello"].visibile = True
-            ui.scena["tracer"].entrate["sy_modello"].visibile = True
-            ui.scena["tracer"].entrate["sz_modello"].visibile = True
+            if logica.dragging or update_attributes:
+                self.UI_px_modello.toggle = False
+                self.UI_py_modello.toggle = False
+                self.UI_pz_modello.toggle = False
+                self.UI_rx_modello.toggle = False
+                self.UI_ry_modello.toggle = False
+                self.UI_rz_modello.toggle = False
+                self.UI_sx_modello.toggle = False
+                self.UI_sy_modello.toggle = False
+                self.UI_sz_modello.toggle = False
 
-            if not ui.scena["tracer"].entrate["colore_diff"].toggle: ui.scena["tracer"].entrate["colore_diff"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.colore, scala=255)}"
-            if not ui.scena["tracer"].entrate["colore_emis"].toggle: ui.scena["tracer"].entrate["colore_emis"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.emissione_colore, scala=255)}"
-            if not ui.scena["tracer"].entrate["forza_emis"].toggle: ui.scena["tracer"].entrate["forza_emis"].text = f"{self.scenes['debug'].elemento_attivo.materiale.emissione_forza:.3f}"
-            if not ui.scena["tracer"].entrate["roughness"].toggle: ui.scena["tracer"].entrate["roughness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.roughness:.3f}"
-            if not ui.scena["tracer"].entrate["glossiness"].toggle: ui.scena["tracer"].entrate["glossiness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glossiness:.3f}"
-            if not ui.scena["tracer"].entrate["glass"].toggle: ui.scena["tracer"].entrate["glass"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glass:.0f}"
-            if not ui.scena["tracer"].entrate["IOR"].toggle: ui.scena["tracer"].entrate["IOR"].text = f"{self.scenes['debug'].elemento_attivo.materiale.IOR:.3f}"
-            ui.scena["tracer"].entrate["colore_diff"].visibile = True
-            ui.scena["tracer"].entrate["colore_emis"].visibile = True
-            ui.scena["tracer"].entrate["forza_emis"].visibile = True
-            ui.scena["tracer"].entrate["roughness"].visibile = True
-            ui.scena["tracer"].entrate["glossiness"].visibile = True
-            ui.scena["tracer"].entrate["glass"].visibile = True
-            ui.scena["tracer"].entrate["IOR"].visibile = True
+                self.UI_px_modello.text = f"{self.scenes['debug'].elemento_attivo.x:.3f}"
+                self.UI_py_modello.text = f"{self.scenes['debug'].elemento_attivo.y:.3f}"
+                self.UI_pz_modello.text = f"{self.scenes['debug'].elemento_attivo.z:.3f}"
+                self.UI_rx_modello.text = f"{self.scenes['debug'].elemento_attivo.r:.3f}"
+                self.UI_ry_modello.text = f"{self.scenes['debug'].elemento_attivo.b:.3f}"
+                self.UI_rz_modello.text = f"{self.scenes['debug'].elemento_attivo.i:.3f}"
+                self.UI_sx_modello.text = f"{self.scenes['debug'].elemento_attivo.sx:.3f}"
+                self.UI_sy_modello.text = f"{self.scenes['debug'].elemento_attivo.sy:.3f}"
+                self.UI_sz_modello.text = f"{self.scenes['debug'].elemento_attivo.sz:.3f}"
+                self.UI_calls_tracer.entrate["sx_modello"].visibile = True
+                self.UI_calls_tracer.entrate["sy_modello"].visibile = True
+                self.UI_calls_tracer.entrate["sz_modello"].visibile = True
+
+            if not self.UI_calls_tracer.entrate["colore_diff"].toggle: self.UI_calls_tracer.entrate["colore_diff"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.colore, scala=255)}"
+            if not self.UI_calls_tracer.entrate["colore_emis"].toggle: self.UI_calls_tracer.entrate["colore_emis"].text = f"{Mate.rgb2hex(self.scenes['debug'].elemento_attivo.materiale.emissione_colore, scala=255)}"
+            if not self.UI_calls_tracer.entrate["forza_emis"].toggle: self.UI_calls_tracer.entrate["forza_emis"].text = f"{self.scenes['debug'].elemento_attivo.materiale.emissione_forza:.3f}"
+            if not self.UI_calls_tracer.entrate["roughness"].toggle: self.UI_calls_tracer.entrate["roughness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.roughness:.3f}"
+            if not self.UI_calls_tracer.entrate["glossiness"].toggle: self.UI_calls_tracer.entrate["glossiness"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glossiness:.3f}"
+            if not self.UI_calls_tracer.entrate["glass"].toggle: self.UI_calls_tracer.entrate["glass"].text = f"{self.scenes['debug'].elemento_attivo.materiale.glass:.0f}"
+            if not self.UI_calls_tracer.entrate["IOR"].toggle: self.UI_calls_tracer.entrate["IOR"].text = f"{self.scenes['debug'].elemento_attivo.materiale.IOR:.3f}"
+            self.UI_calls_tracer.entrate["colore_diff"].visibile = True
+            self.UI_calls_tracer.entrate["colore_emis"].visibile = True
+            self.UI_calls_tracer.entrate["forza_emis"].visibile = True
+            self.UI_calls_tracer.entrate["roughness"].visibile = True
+            self.UI_calls_tracer.entrate["glossiness"].visibile = True
+            self.UI_calls_tracer.entrate["glass"].visibile = True
+            self.UI_calls_tracer.entrate["IOR"].visibile = True
 
 
         elif type(self.scenes["debug"].elemento_attivo) == Camera:
-            if not ui.scena["tracer"].entrate["px_modello"].toggle: ui.scena["tracer"].entrate["px_modello"].text = f"{self.scenes['debug'].elemento_attivo.pos[0]:.3f}"
-            if not ui.scena["tracer"].entrate["py_modello"].toggle: ui.scena["tracer"].entrate["py_modello"].text = f"{self.scenes['debug'].elemento_attivo.pos[1]:.3f}"
-            if not ui.scena["tracer"].entrate["pz_modello"].toggle: ui.scena["tracer"].entrate["pz_modello"].text = f"{self.scenes['debug'].elemento_attivo.pos[2]:.3f}"
-            if not ui.scena["tracer"].entrate["rx_modello"].toggle: ui.scena["tracer"].entrate["rx_modello"].text = f"{self.scenes['debug'].elemento_attivo.becche:.3f}"
-            if not ui.scena["tracer"].entrate["ry_modello"].toggle: ui.scena["tracer"].entrate["ry_modello"].text = f"{self.scenes['debug'].elemento_attivo.rollio:.3f}"
-            if not ui.scena["tracer"].entrate["rz_modello"].toggle: ui.scena["tracer"].entrate["rz_modello"].text = f"{self.scenes['debug'].elemento_attivo.imbard:.3f}"
-            ui.scena["tracer"].entrate["sx_modello"].visibile = False
-            ui.scena["tracer"].entrate["sy_modello"].visibile = False
-            ui.scena["tracer"].entrate["sz_modello"].visibile = False
+            
+            if logica.dragging or update_attributes:
+                self.UI_px_modello.toggle = False
+                self.UI_py_modello.toggle = False
+                self.UI_pz_modello.toggle = False
+                self.UI_rx_modello.toggle = False
+                self.UI_ry_modello.toggle = False
+                self.UI_rz_modello.toggle = False
+                self.UI_sx_modello.toggle = False
+                self.UI_sy_modello.toggle = False
+                self.UI_sz_modello.toggle = False
 
-            ui.scena["tracer"].entrate["colore_diff"].visibile = False
-            ui.scena["tracer"].entrate["colore_emis"].visibile = False
-            ui.scena["tracer"].entrate["forza_emis"].visibile = False
-            ui.scena["tracer"].entrate["roughness"].visibile = False
-            ui.scena["tracer"].entrate["glossiness"].visibile = False
-            ui.scena["tracer"].entrate["glass"].visibile = False
-            ui.scena["tracer"].entrate["IOR"].visibile = False
+                self.UI_px_modello.text = f"{self.scenes['debug'].elemento_attivo.pos[0]:.3f}"
+                self.UI_py_modello.text = f"{self.scenes['debug'].elemento_attivo.pos[1]:.3f}"
+                self.UI_pz_modello.text = f"{self.scenes['debug'].elemento_attivo.pos[2]:.3f}"
+                self.UI_rx_modello.text = f"{self.scenes['debug'].elemento_attivo.becche:.3f}"
+                self.UI_ry_modello.text = f"{self.scenes['debug'].elemento_attivo.rollio:.3f}"
+                self.UI_rz_modello.text = f"{self.scenes['debug'].elemento_attivo.imbard:.3f}"
+                self.UI_sx_modello.visibile = False
+                self.UI_sy_modello.visibile = False
+                self.UI_sz_modello.visibile = False
 
-        ui.scena["tracer"].scrolls["oggetti"].elementi = []
+            self.UI_calls_tracer.entrate["colore_diff"].visibile = False
+            self.UI_calls_tracer.entrate["colore_emis"].visibile = False
+            self.UI_calls_tracer.entrate["forza_emis"].visibile = False
+            self.UI_calls_tracer.entrate["roughness"].visibile = False
+            self.UI_calls_tracer.entrate["glossiness"].visibile = False
+            self.UI_calls_tracer.entrate["glass"].visibile = False
+            self.UI_calls_tracer.entrate["IOR"].visibile = False
+
+        self.UI_calls_tracer.scrolls["oggetti"].elementi = []
         self.scenes["debug"].elenco_raw = {}
         
         for index, oggetto in enumerate(self.scenes["debug"].objects):
@@ -164,22 +206,27 @@ class TreDi:
         ui.scena["tracer"].scrolls["oggetti"].update_elements()
             
             
-    def disegna(self, logica: Logica, widget_data: WidgetDataTracer):
+    def disegna(self, logica: Logica):
         self.schermo.fill(self.bg_color)
 
         scena = self.scenes["debug"]
 
-        if widget_data.tab == "scena_settings":
+        tipologia_schermata = ""
+
+        if self.UI_calls_tracer.tabs["scena_settings"].abilita: tipologia_schermata = self.UI_calls_tracer.tabs["scena_settings"].name 
+        if self.UI_calls_tracer.tabs["tracer_settings"].abilita: tipologia_schermata = self.UI_calls_tracer.tabs["tracer_settings"].name 
+
+        if tipologia_schermata == "scena_settings":
             if type(self.scenes["debug"].elemento_attivo) == Object:
-                scena.elemento_attivo.b = Mate.inp2flo(widget_data.rx)
-                scena.elemento_attivo.r = Mate.inp2flo(widget_data.ry)
-                scena.elemento_attivo.i = Mate.inp2flo(widget_data.rz)
-                scena.elemento_attivo.x = Mate.inp2flo(widget_data.px)
-                scena.elemento_attivo.y = Mate.inp2flo(widget_data.py)
-                scena.elemento_attivo.z = Mate.inp2flo(widget_data.pz)
-                scena.elemento_attivo.sx = Mate.inp2flo(widget_data.sx, 1)
-                scena.elemento_attivo.sy = Mate.inp2flo(widget_data.sy, 1)
-                scena.elemento_attivo.sz = Mate.inp2flo(widget_data.sz, 1)
+                scena.elemento_attivo.b = Mate.inp2flo(self.UI_rx_modello.text_invio)
+                scena.elemento_attivo.r = Mate.inp2flo(self.UI_ry_modello.text_invio)
+                scena.elemento_attivo.i = Mate.inp2flo(self.UI_rz_modello.text_invio)
+                scena.elemento_attivo.x = Mate.inp2flo(self.UI_px_modello.text_invio)
+                scena.elemento_attivo.y = Mate.inp2flo(self.UI_py_modello.text_invio)
+                scena.elemento_attivo.z = Mate.inp2flo(self.UI_pz_modello.text_invio)
+                scena.elemento_attivo.sx = Mate.inp2flo(self.UI_sx_modello.text_invio, 1)
+                scena.elemento_attivo.sy = Mate.inp2flo(self.UI_sy_modello.text_invio, 1)
+                scena.elemento_attivo.sz = Mate.inp2flo(self.UI_sz_modello.text_invio, 1)
             
                 scena.elemento_attivo.materiale.colore = np.array(Mate.hex2rgb(self.UI_calls_tracer.entrate["colore_diff"].text))  / 255
                 scena.elemento_attivo.materiale.emissione_colore = np.array(Mate.hex2rgb(self.UI_calls_tracer.entrate["colore_emis"].text)) / 255
@@ -190,12 +237,12 @@ class TreDi:
                 scena.elemento_attivo.materiale.IOR = Mate.inp2flo(self.UI_calls_tracer.entrate["IOR"].text)
             
             elif type(self.scenes["debug"].elemento_attivo) == Camera:
-                scena.elemento_attivo.becche = Mate.inp2flo(widget_data.rx)
-                scena.elemento_attivo.rollio = Mate.inp2flo(widget_data.ry)
-                scena.elemento_attivo.imbard = Mate.inp2flo(widget_data.rz)
-                scena.elemento_attivo.pos[0] = Mate.inp2flo(widget_data.px)
-                scena.elemento_attivo.pos[1] = Mate.inp2flo(widget_data.py)
-                scena.elemento_attivo.pos[2] = Mate.inp2flo(widget_data.pz)
+                scena.elemento_attivo.becche = Mate.inp2flo(self.UI_rx_modello.text_invio)
+                scena.elemento_attivo.rollio = Mate.inp2flo(self.UI_ry_modello.text_invio)
+                scena.elemento_attivo.imbard = Mate.inp2flo(self.UI_rz_modello.text_invio)
+                scena.elemento_attivo.pos[0] = Mate.inp2flo(self.UI_px_modello.text_invio)
+                scena.elemento_attivo.pos[1] = Mate.inp2flo(self.UI_py_modello.text_invio)
+                scena.elemento_attivo.pos[2] = Mate.inp2flo(self.UI_pz_modello.text_invio)
 
             scena.camera.aggiorna_attributi(logica)
             scena.camera.rotazione_camera()
@@ -216,18 +263,18 @@ class TreDi:
 
                     triangles = obj.transformed_vertices[obj.links]
                     
-                    if widget_data.pallini:
+                    if self.UI_points.toggled:
                         for p in obj.transformed_vertices[:, :2]:
                             pygame.draw.circle(self.schermo, obj.materiale.colore * 255, [p[0], p[1]], 4)    
                     
 
-                    if widget_data.links:
+                    if self.UI_links.toggled:
                         for triangle in triangles:
                             if not AcceleratedFoo.any_fast(triangle, self.w * 1.5, self.h * 1.5):
                                 pygame.draw.polygon(self.schermo, obj.materiale.colore * 255, [triangle[0, :2], triangle[1, :2], triangle[2, :2]], 1)
 
 
-        if widget_data.tab == "tracer_settings":
+        if tipologia_schermata == "tracer_settings":
             self.UI_calls_tracer.label_text["eta"].text = self.pathtracer.stats
             surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array)
             self.schermo.blit(pygame.transform.scale(surface, (self.w, self.h)), (0,0))
@@ -254,6 +301,7 @@ class Geo_Scene:
 
         self.elenco_raw: dict[str, Camera | Object] = {}
         self.elemento_attivo: Camera | Object = None
+        self.elemento_attivo_prec: Camera | Object = None
 
     
     def kornell_box(self):
@@ -276,12 +324,16 @@ class Geo_Scene:
         self.elemento_attivo: Object = self.objects[0]
 
         self.i = Importer()
-        self.i.modello("TRACER_DATA/m_hyperion.obj")
+        # self.i.modello("TRACER_DATA/m_hyperion.obj")
+        self.i.modello("TRACER_DATA/m_bon.obj")
+        # self.i.modello("TRACER_DATA/m_ban.obj")
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=0, i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
-        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, sx=2, sy=2, sz=2, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        lista_rot = [-1.57, -1.046, -0.785, -0.523, 0, 0.523, 0.785, 1.046, 1.57]
+
+        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=lista_rot[4], i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, z=-5, sx=1.3, sy=1.3, sz=1.3, materiale=Materiale(colore=np.array([1., 1., 1.])))
     
     
     def kornell_box_glossiness(self):

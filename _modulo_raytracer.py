@@ -243,6 +243,7 @@ class RayTracer:
             except ValueError:
                 min_test = np.min(chunck.bounces)
 
+            # print(f"Test massimi eseguiti per pixel: {np.max(chunck.bounces)}")
             max_test = np.maximum(max_test, np.max(chunck.bounces - min_test))
 
         for chunck in self.chuncks:
