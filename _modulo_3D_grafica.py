@@ -4,7 +4,7 @@ import pygame
 import configparser
 from _modulo_UI import Schermo, Logica, UI
 from _modulo_MATE import Mate, AcceleratedFoo, RandomAle
-from _modulo_raytracer import RayTracer
+from _modulo_raytracer import RayTracer, RayTracer_utils
 
 class TreDi:
     def __init__(self) -> None:
@@ -89,23 +89,16 @@ class TreDi:
         self.build_raytracer()
 
 
-    def build_raytracer(self, c_mode: bool = False):
+    def build_raytracer(self):
         self.pathtracer = RayTracer()
     
-        if c_mode:
-            chuncks = 1
-        else:
-            chuncks = Mate.inp2int(self.UI_calls_tracer.entrate["res_chunck"].text, 3)
-
-        self.pathtracer.build(
+        self.pathtracer.utils.build(
             self.w, self.h, self.scenes["debug"].camera, 
             Mate.inp2flo(self.UI_calls_tracer.entrate["resolution_x"].text, 1.0) / 100, 
             Mate.inp2flo(self.UI_calls_tracer.entrate["resolution_y"].text, 1.0) / 100, 
             Mate.inp2int(self.UI_calls_tracer.entrate["samples"].text, 32), 
             Mate.inp2int(self.UI_calls_tracer.entrate["bounces"].text, 6), 
-            Mate.inp2int(self.UI_calls_tracer.entrate["sample_package"].text, 4), 
-            Mate.inp2int(self.UI_calls_tracer.entrate["cores"].text, 9), 
-            chuncks
+            Mate.inp2int(self.UI_calls_tracer.entrate["cores"].text, 9)
         )
 
 
@@ -275,8 +268,14 @@ class TreDi:
 
 
         if tipologia_schermata == "tracer_settings":
-            self.UI_calls_tracer.label_text["eta"].text = self.pathtracer.stats
-            surface = pygame.surfarray.make_surface(self.pathtracer.pixel_array)
+
+            if self.pathtracer.librerie.running:
+                self.UI_calls_tracer.bottoni["Crender"].visibile = False
+            else:
+                self.UI_calls_tracer.bottoni["Crender"].visibile = True
+
+            self.UI_calls_tracer.label_text["eta"].text = self.pathtracer.utils.stats
+            surface = pygame.surfarray.make_surface(self.pathtracer.utils.pixel_array)
             self.schermo.blit(pygame.transform.scale(surface, (self.w, self.h)), (0,0))
         
 
@@ -332,7 +331,7 @@ class Geo_Scene:
 
         lista_rot = [-1.57, -1.046, -0.785, -0.523, 0, 0.523, 0.785, 1.046, 1.57]
 
-        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=lista_rot[4], i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=lista_rot[1], i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
         self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, z=-5, sx=1.3, sy=1.3, sz=1.3, materiale=Materiale(colore=np.array([1., 1., 1.])))
     
     

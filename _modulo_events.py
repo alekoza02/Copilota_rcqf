@@ -4,10 +4,6 @@ from PIL import Image
 import pygame
 import threading
 
-from _modulo_wrapper_librerie import LibrerieC
-librerie = LibrerieC()
-
-
 def event_manage_ui(self, eventi: pygame.event, logica: Logica):
 
     # Stato di tutti i tasti
@@ -453,30 +449,23 @@ def event_manage_tracer(self, eventi: pygame.event, logica: Logica, tredi):
                 [tab.aggiorna_tab(event, logica) for index, tab in al_sc.tabs.items()]
                 '-----------------------------------------------------------------------------------------------------'
                 # Inizio sezione push events
-                if al_sc.bottoni["mode1"].toggled:
-                    al_sc.bottoni["mode1"].push()
+                if al_sc.bottoni["reset"].toggled:
+                    al_sc.bottoni["reset"].push()
                     
-                    tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
-
-                    tredi.build_raytracer()
-                    thread = threading.Thread(target=self.gestore_multiprocess.avvio_multi_tracer, args=(tredi, ))
+                    thread = threading.Thread(target=tredi.pathtracer.exit_c_renderer)
                     thread.start()
                 
-                if al_sc.bottoni["mode2"].toggled:
-                    al_sc.bottoni["mode2"].push()
-                    
-                    tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
-
-                    thread = threading.Thread(target=self.gestore_multiprocess.reset_canvas, args=(tredi, ))
-                    thread.start()
                 
                 if al_sc.bottoni["Crender"].toggled:
                     al_sc.bottoni["Crender"].push()
                     
-                    tredi.pathtracer.update_camera(tredi.scenes["debug"].camera)
+                    tredi.pathtracer.utils.update_camera(tredi.scenes["debug"].camera)
 
-                    tredi.build_raytracer(c_mode = True)
-                    thread = threading.Thread(target=self.gestore_multiprocess.launch_c_renderer, args=(tredi, librerie))
+                    tredi.build_raytracer()
+                    thread = threading.Thread(target=tredi.pathtracer.launch_c_renderer, args=(tredi, ))
+                    thread.start()
+                    
+                    thread = threading.Thread(target=tredi.pathtracer.launch_live_update, args=(logica, ))
                     thread.start()
 
 
@@ -503,41 +492,23 @@ def event_manage_tracer(self, eventi: pygame.event, logica: Logica, tredi):
                 '-----------------------------------------------------------------------------------------------------'
 
                 # Inizio sezione events toggled:
-                if al_sc.bottoni["indice"].toggled: 
-                    tredi.pathtracer.mode = 0
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array() 
-                
                 if al_sc.bottoni["albedo"].toggled: 
-                    tredi.pathtracer.mode = 1
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array()
-                
-                if al_sc.bottoni["normali"].toggled: 
-                    tredi.pathtracer.mode = 2
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array()
+                    tredi.pathtracer.utils.mode = 0
+                    if tredi.pathtracer.utils.old_mode != tredi.pathtracer.utils.mode:
+                        tredi.pathtracer.utils.old_mode = tredi.pathtracer.utils.mode
+                        tredi.pathtracer.utils.update_array(tredi.pathtracer.librerie.running) 
                 
                 if al_sc.bottoni["ao"].toggled: 
-                    tredi.pathtracer.mode = 3
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array()
-                
-                if al_sc.bottoni["tempo"].toggled: 
-                    tredi.pathtracer.mode = 4
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array()
+                    tredi.pathtracer.utils.mode = 1
+                    if tredi.pathtracer.utils.old_mode != tredi.pathtracer.utils.mode:
+                        tredi.pathtracer.utils.old_mode = tredi.pathtracer.utils.mode
+                        tredi.pathtracer.utils.update_array(tredi.pathtracer.librerie.running)
                 
                 if al_sc.bottoni["bounces_tab"].toggled: 
-                    tredi.pathtracer.mode = 5
-                    if tredi.pathtracer.old_mode != tredi.pathtracer.mode:
-                        tredi.pathtracer.old_mode = tredi.pathtracer.mode
-                        tredi.pathtracer.update_array()
+                    tredi.pathtracer.utils.mode = 2
+                    if tredi.pathtracer.utils.old_mode != tredi.pathtracer.utils.mode:
+                        tredi.pathtracer.utils.old_mode = tredi.pathtracer.utils.mode
+                        tredi.pathtracer.utils.update_array(tredi.pathtracer.librerie.running)
 
 
                 # raccolta di tutti i testi già presenti nelle entrate
@@ -705,6 +676,3 @@ UI.event_manage_plots = event_manage_plots
 UI.event_manage_plot_import = event_manage_plot_import
 UI.event_manage_tracer = event_manage_tracer
 UI.event_manage_orbitals = event_manage_orbitals
-
-from _modulo_raytracer import AvvioMultiProcess
-UI.gestore_multiprocess = AvvioMultiProcess()

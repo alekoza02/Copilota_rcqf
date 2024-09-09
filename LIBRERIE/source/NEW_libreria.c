@@ -3,38 +3,62 @@
 #include <math.h>
 #include <time.h>
 #include <pthread.h>
-#include "libreria.h"
+#include "utils.h"
+
+#ifdef _WIN32 // Only use __declspec(dllexport) on Windows
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT 
+#endif
+
+// Global flag variable
+int FLAG_exit = 0; // Initialize flag to 0
+
+DLLEXPORT void exit_procedure(){
+    FLAG_exit = 1;
+}
+
+DLLEXPORT void start_procedure(){
+    FLAG_exit = 0;
+}
 
 
-int* tester(int x, int y, int z) {
-    int *array = (int*)malloc(x * y * z * sizeof(int));
-    
-    for (int i = 0; i < x; i++){
-        for (int j = 0; j < y; j++){
-            array[(i * x + j) * 3 + 0] = (int)(255 * i / x);
-            array[(i * x + j) * 3 + 1] = (int)(255 * j / y);
-            array[(i * x + j) * 3 + 2] = 255;
+DLLEXPORT void reset_canvas(float *array, int w, int h) {
+    for (int i = 0; i < w; i++){
+        for (int j = 0; j < h; j++){
+            array[(i * w + j) * 5 + 0] = 0.;
+            array[(i * w + j) * 5 + 1] = 0.;
+            array[(i * w + j) * 5 + 2] = 0.;
+            array[(i * w + j) * 5 + 3] = 0.;
+            array[(i * w + j) * 5 + 4] = 0.;
         }
     }
+}
 
+
+DLLEXPORT float *create_array(int w, int h) {
+    float *array = (float*)malloc(w * h * 5 * sizeof(float));
     return array;
 }
 
 
-void introduce(){
-    printf("Librerie C caricate.\n");
+DLLEXPORT void free_array(float *ptr) {
+    free(ptr);
+    ptr = NULL;
 }
 
-// --------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------
-// FREE ARRAY ALLOCATED MEMORY 
-// --------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------
 
-void free_array(double *array) {
-    free(array);
-    array = NULL;
-}
+// DLLEXPORT void main_loop(float *output, int w, int h){
+//     for (int y = 0; y < h; y++){
+//         for (int x = 0; x < w; x++){
+//             output[(x * w + y) * 5 + 0] = (float)y / (float)w;
+//             output[(x * w + y) * 5 + 1] = (float)x / (float)h;
+//             output[(x * w + y) * 5 + 2] = 1.;
+//         }
+//     }
+// }
+
+
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -1050,17 +1074,12 @@ void* render_thread(void* arg) {
 
     // time_t end_bvh = clock();  double cpu_time_used = ((double) (end_bvh - start_bvh)) / CLOCKS_PER_SEC; printf("BVH generato in: %fs\n", cpu_time_used);
 
-
-    // set zero the array
-    for (int i = 0; i < (chunck_h * chunck_w * 12); i++){
-        data->local_output[i] = 0;
-    }
-
-
     // renderizzazione
     for (int k = 0; k < data->samples; k++){
         for (int i = 0; i < chunck_h; i++) {
             for (int j = 0; j < chunck_w; j++) {
+
+                if (FLAG_exit == 1){free_BVH(&bvh); pthread_exit(NULL);}
                 
                 time_t start = clock();  // Start the clock
 
@@ -1186,58 +1205,24 @@ void* render_thread(void* arg) {
                 
                 }
 
-
-                data->local_output[(i * chunck_w + j) * 12 + 0] += ray_incoming_light.valore[0];
-                data->local_output[(i * chunck_w + j) * 12 + 1] += ray_incoming_light.valore[1];
-                data->local_output[(i * chunck_w + j) * 12 + 2] += ray_incoming_light.valore[2];
-            
-                data->local_output[(i * chunck_w + j) * 12 + 3] += index[0];
-                data->local_output[(i * chunck_w + j) * 12 + 4] += index[1];
-                data->local_output[(i * chunck_w + j) * 12 + 5] += index[2];
-
-                data->local_output[(i * chunck_w + j) * 12 + 6] += normal[0];
-                data->local_output[(i * chunck_w + j) * 12 + 7] += normal[1];
-                data->local_output[(i * chunck_w + j) * 12 + 8] += normal[2];
-
-                data->local_output[(i * chunck_w + j) * 12 + 10] += ao; ao = 0.;
-                data->local_output[(i * chunck_w + j) * 12 + 11] += test_count;
-                
-                time_t end = clock();  // Stop the clock
-
-                // Calculate the elapsed time in seconds
-                double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-                
-                data->local_output[(i * chunck_w + j) * 12 + 9] += cpu_time_used;
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 0] += ray_incoming_light.valore[0];
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 1] += ray_incoming_light.valore[1];
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 2] += ray_incoming_light.valore[2];
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 3] += ao; ao = 0.;
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 4] += test_count;
             }
         }
+
     }
-
-
-    // int r, g, b;
-
-    for (int i = 0; i < chunck_h; i++) {
-        for (int j = 0; j < chunck_w; j++) {
-            for (int passage = 0; passage < 12; passage++){
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 12 + passage] = data->local_output[(i * chunck_w + j) * 12 + passage];
-            }
-        }
-    }
-
+    
     free_BVH(&bvh);
     pthread_exit(NULL);
 }
 
 
-double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *radii, int size_radii, double fov, double *camera_pos, double *camera_axes, int cores, int samples, int bounces, double *materiali, double seed, double *vertici_modelli, double *materiali_modelli, int *indici_modelli, int n_modelli, int n_triangoli) {
+DLLEXPORT int main_loop(float *output, int x, int y, double *pos, int size_pos, double *radii, int size_radii, double fov, double *camera_pos, double *camera_axes, int cores, int samples, int bounces, double *materiali, double seed, double *vertici_modelli, double *materiali_modelli, int *indici_modelli, int n_modelli, int n_triangoli) {
 
     // impostazioni
-    double *output = (double*)malloc(x * y * 12 * sizeof(double));
-
-    if (output == NULL) {
-        fprintf(stderr, "Memory allocation failed!\n");
-        exit(EXIT_FAILURE);  // Terminate the program with a failure status
-    }
-
     int NUM_THREADS = cores;
     int row = sqrt(NUM_THREADS);
 
@@ -1315,9 +1300,7 @@ double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *rad
 
     Ray camera = init_camera(cam_dir, cam_pos, cam_ups, cam_rig);
     inverti_vettore(&camera.ups);
-        
-    double *outputs_local[NUM_THREADS];
-
+    
 
     // Creating threads
     int combined_index;
@@ -1341,7 +1324,7 @@ double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *rad
             thread_data[combined_index].scena_modello = scene_modello[combined_index];
             thread_data[combined_index].size_modelli = n_modelli;
             thread_data[combined_index].size_triangoli = n_triangoli;
-
+            
             thread_data[combined_index].camera = &camera;
             thread_data[combined_index].fov = fov;
 
@@ -1363,21 +1346,6 @@ double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *rad
                 thread_data[combined_index].start_y = i * (x / row);
                 thread_data[combined_index].end_y = (i + 1) * (x / row);
             };
-
-            outputs_local[combined_index] = (double*)malloc(
-                (thread_data[combined_index].end_x - thread_data[combined_index].start_x) * 
-                (thread_data[combined_index].end_y - thread_data[combined_index].start_y) *
-                12 *  
-                sizeof(double)
-            );
-
-            if (outputs_local[combined_index] == NULL) {
-                fprintf(stderr, "Memory allocation failed!\n");
-                exit(EXIT_FAILURE);  // Terminate the program with a failure status
-            }
-
-            thread_data[combined_index].local_output = outputs_local[combined_index];
-        
         }
     }
 
@@ -1386,7 +1354,6 @@ double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *rad
 
             if (pthread_create(&threads[i * row + j], NULL, render_thread, &thread_data[i * row + j])) {
                 fprintf(stderr, "Error creating thread\n");
-                return NULL;
             }
         }
     }
@@ -1401,11 +1368,7 @@ double* renderer_dispatcher(int x, int y, double *pos, int size_pos, double *rad
         free(scene_sfere[k]);
         free(scene_modello[k]->triangoli);
         free(scene_modello[k]);
-        free(outputs_local[k]);
     }
 
-    return output;
+    return 1;
 }
-
-
-void main() {}

@@ -5,13 +5,18 @@ import random
 
 class LibrerieC:
     def __init__(self) -> None:
+
+        self.c_array = None
+
+        self.running = 0
+        self.uscito_con_successo = 0
+        self.fine_live_update = 0
+        
         self.lib = ctypes.CDLL(".\\LIBRERIE\\bin\\libreria.dll")
 
-        self.lib.tester.restype = ctypes.POINTER(ctypes.c_int)
-        self.lib.tester.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        
-        self.lib.renderer_dispatcher.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.renderer_dispatcher.argtypes = [
+        self.lib.main_loop.restype = ctypes.c_int
+        self.lib.main_loop.argtypes = [
+            ctypes.POINTER(ctypes.c_float),       # puntatore all'array
             ctypes.c_int,                       # x 
             ctypes.c_int,                       # y
             ctypes.POINTER(ctypes.c_double),     # array posizioni
@@ -33,19 +38,31 @@ class LibrerieC:
             ctypes.c_int                         # numero triangoli
         ]
 
-        self.lib.free_array.argtypes = [ctypes.POINTER(ctypes.c_double)]
+        self.lib.exit_procedure.restype = None
+        self.lib.exit_procedure.argtypes = None
 
+        self.lib.start_procedure.restype = None
+        self.lib.start_procedure.argtypes = None
+        
+        self.lib.free_array.restype = None
+        self.lib.free_array.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        
 
-    def tester(self, d):
-        return np.array(
-        np.ctypeslib.as_array(
-            self.lib.tester(d[0], d[1], d[2]), shape=d
-        ), copy = True, dtype=int
-    )
+        self.lib.reset_canvas.restype = None
+        self.lib.reset_canvas.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        
+        
+        self.lib.create_array.restype = ctypes.POINTER(ctypes.c_float)
+        self.lib.create_array.argtypes = [
+            ctypes.c_int,       # larghezza
+            ctypes.c_int,       # altezza
+        ]
     
     
     def c_renderer(self, x, y, sfere, triangoli_imported, camera, info):
         
+        self.uscito_con_successo = 0
+
         inizio = perf_counter()
         
         # preparazione dati
@@ -108,14 +125,31 @@ class LibrerieC:
         
         fine = perf_counter()
 
-        # print(f"Preparazione dati Python ha impiegato: {fine - inizio:.6f}")
+        self.lib.start_procedure()
 
-        # lancio funzione
-        c_array = self.lib.renderer_dispatcher(x, y, pos_ptr, len(pos), radii_ptr, len(radii), fov_camera, pos_camera_ptr, ax_camera_ptr, info.cores, info.sample_packet, info.bounces, materiale_ptr, random.random(), triangoli_c_ptr, materiale_triangoli_ptr, indici_modelli_ptr, len(indici_modelli), len(triangoli_imported[0].triangoli))
+        self.uscito_con_successo = self.lib.main_loop(self.c_array, x, y, pos_ptr, len(pos), radii_ptr, len(radii), fov_camera, pos_camera_ptr, ax_camera_ptr, info[2], info[0], info[1], materiale_ptr, random.random(), triangoli_c_ptr, materiale_triangoli_ptr, indici_modelli_ptr, len(indici_modelli), len(triangoli_imported[0].triangoli))
+    
+        return self.extract_C_array(x, y)
+    
 
-        numpy_array = np.array(np.ctypeslib.as_array(c_array, shape=(x, y, 12)), copy = True, dtype=float)
+    def extract_C_array(self, x, y):
+        numpy_array = np.array(np.ctypeslib.as_array(self.c_array, shape=(x, y, 5)), copy=True, dtype=float)
         numpy_array = np.transpose(numpy_array, (1, 0, 2))
-
-        self.lib.free_array(c_array)
-
         return numpy_array
+    
+
+    def C_init_canvas(self, x, y):
+        self.running = 1
+        self.c_array = self.lib.create_array(x, y)
+
+    def C_reset_canvas(self, x, y):
+        self.lib.reset_canvas(self.c_array, x, y)
+
+    def C_free_canvas(self):
+        self.lib.free_array(self.c_array)
+    
+    def C_exit(self):
+        self.lib.exit_procedure()
+        while self.uscito_con_successo == 0:
+            ...
+        self.running = 0

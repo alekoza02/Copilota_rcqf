@@ -51,6 +51,7 @@ class Logica:
         
         self.skip_salto = False
         self.dt = 0
+        self.trascorso = 0
         self.scena = 0
         
         self.ctrl = False
@@ -1128,10 +1129,7 @@ class UI:
         key_combo = [pygame.K_ESCAPE, pygame.K_SPACE]
         if all(keys[key] for key in key_combo):
             self.running = 0
-            # ferma multi-processi
-            self.gestore_multiprocess.stahp = True
-            self.gestore_multiprocess.try_fast_kill()
-
+            
         pygame.display.flip()
         
 
@@ -1169,6 +1167,7 @@ class UI:
     def start_cycle(self, logica: Logica):
         # impostazione inizio giro
         logica.dt = self.clock.tick(self.max_fps)
+        logica.trascorso += 1
         self.colora_bg()
         self.mouse_icon(logica)
 

@@ -4,7 +4,7 @@ from pygame.locals import *
 import pygame
 
 def main(config: configparser):
-    
+
     # Zona inizializzazione UI
     from _modulo_UI import UI, Logica, Scena
     
@@ -88,6 +88,8 @@ def main(config: configparser):
         # controllo di uscita dal programma ed eventuale aggiornamento dello schermo
         ui.mouse_icon(logica)   # lanciato due volte per evitare flickering a bassi FPS
         ui.aggiornamento_e_uscita_check()
+
+    tredi.pathtracer.exit_c_renderer()
                         
 
 if __name__ == "__main__":
@@ -98,10 +100,7 @@ if __name__ == "__main__":
     _compilatore = eval(config.get('Default', 'compila_c'))
 
     if _compilatore:
-        import subprocess, ctypes
-        # subprocess.run("gcc -fPIC -shared -o .\\LIBRERIE\\bin\\libreria.dll .\\LIBRERIE\\source\\libreria.c")
-        tmp = ctypes.CDLL(".\\LIBRERIE\\bin\\libreria.dll")
-        tmp.introduce()
+        print("Caricamento librerie C in corso...")
 
     _profiler = eval(config.get('Default', 'profiler'))
     

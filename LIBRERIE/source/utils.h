@@ -1,5 +1,5 @@
-#ifndef EXAMPLE_H
-#define EXAMPLE_H
+#ifndef UTILS_H
+#define UTILS_H
 
 // Structure declaration
 typedef struct Vec{
@@ -126,8 +126,7 @@ typedef struct ThreadData {
     int start_y;
     int end_y;
     
-    double *array;
-    double *local_output;
+    float *array;
     
     Sphere *scena_sfera;
     int size_scena_sfera;
