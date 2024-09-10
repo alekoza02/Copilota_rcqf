@@ -150,6 +150,4 @@ class LibrerieC:
     
     def C_exit(self):
         self.lib.exit_procedure()
-        while self.uscito_con_successo == 0:
-            ...
         self.running = 0

@@ -75,12 +75,12 @@ class RayTracer_utils:
             match self.mode:
                 
                 case 0:
-                    ris = self.chunck.albedo * 255 / self.samples
+                    ris = self.chunck.albedo * 255
                     ris[ris > 255] = 255
-                    self.pixel_array = ris
+                    self.pixel_array = ris 
                 
                 case 1:
-                    single_channel = np.clip(self.chunck.amb_oc / self.samples, 0, 1)
+                    single_channel = np.clip(self.chunck.amb_oc, 0, 1)
                     single_channel[single_channel == 0.0] = 1
                     single_channel = 1 - single_channel
                     multip_channel = np.repeat(single_channel[:,:,None], 3, axis=2) * 255

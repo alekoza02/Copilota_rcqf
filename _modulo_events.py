@@ -24,6 +24,12 @@ def event_manage_ui(self, eventi: pygame.event, logica: Logica):
 
     # scena main UI
     for event in eventi:
+
+        # if event.type == pygame.DROPFILE:
+        #     # Handle the file that was dropped
+        #     dropped_file_path = event.file
+        #     print(f"File dropped: {dropped_file_path}")
+
         # MOUSE
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:

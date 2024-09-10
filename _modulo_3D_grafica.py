@@ -332,7 +332,7 @@ class Geo_Scene:
         lista_rot = [-1.57, -1.046, -0.785, -0.523, 0, 0.523, 0.785, 1.046, 1.57]
 
         # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=lista_rot[1], i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, z=-5, sx=1.3, sy=1.3, sz=1.3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, z=-5, sx=1.3, sy=1.3, sz=1.3, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1, roughness=0.0))
     
     
     def kornell_box_glossiness(self):

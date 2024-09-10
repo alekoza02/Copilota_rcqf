@@ -1065,6 +1065,11 @@ void* render_thread(void* arg) {
     Ray camera_ray;
     camera_ray = init_raggio(camera->dir.valore, camera->pos.valore);
 
+    // set zero the array
+    for (int i = 0; i < (chunck_h * chunck_w * 5); i++){
+        data->local_output[i] = 0;
+    }
+
     // creazione BHV
     // time_t start_bvh = clock();  // Start the clock
 
@@ -1205,11 +1210,18 @@ void* render_thread(void* arg) {
                 
                 }
 
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 0] += ray_incoming_light.valore[0];
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 1] += ray_incoming_light.valore[1];
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 2] += ray_incoming_light.valore[2];
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 3] += ao; ao = 0.;
-                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 4] += test_count;
+                data->local_output[(i * chunck_w + j) * 5 + 0] += ray_incoming_light.valore[0];
+                data->local_output[(i * chunck_w + j) * 5 + 1] += ray_incoming_light.valore[1];
+                data->local_output[(i * chunck_w + j) * 5 + 2] += ray_incoming_light.valore[2];
+            
+                data->local_output[(i * chunck_w + j) * 5 + 3] += ao; ao = 0.;
+                data->local_output[(i * chunck_w + j) * 5 + 4] += test_count;
+
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 0] = sqrt(data->local_output[(i * chunck_w + j) * 5 + 0] / k);
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 1] = sqrt(data->local_output[(i * chunck_w + j) * 5 + 1] / k);
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 2] = sqrt(data->local_output[(i * chunck_w + j) * 5 + 2] / k);
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 3] = data->local_output[(i * chunck_w + j) * 5 + 3] / k;
+                data->array[((data->start_y + i) * data->width + (data->start_x + j)) * 5 + 4] = data->local_output[(i * chunck_w + j) * 5 + 4];
             }
         }
 
@@ -1301,6 +1313,7 @@ DLLEXPORT int main_loop(float *output, int x, int y, double *pos, int size_pos, 
     Ray camera = init_camera(cam_dir, cam_pos, cam_ups, cam_rig);
     inverti_vettore(&camera.ups);
     
+    float *outputs_local[NUM_THREADS];
 
     // Creating threads
     int combined_index;
@@ -1346,6 +1359,19 @@ DLLEXPORT int main_loop(float *output, int x, int y, double *pos, int size_pos, 
                 thread_data[combined_index].start_y = i * (x / row);
                 thread_data[combined_index].end_y = (i + 1) * (x / row);
             };
+
+            outputs_local[combined_index] = (float*)malloc(
+                (thread_data[combined_index].end_x - thread_data[combined_index].start_x) * 
+                (thread_data[combined_index].end_y - thread_data[combined_index].start_y) *
+                12 *  
+                sizeof(float)
+            );
+            if (outputs_local[combined_index] == NULL) {
+                fprintf(stderr, "Memory allocation failed!\n");
+                exit(EXIT_FAILURE);  // Terminate the program with a failure status
+            }
+            thread_data[combined_index].local_output = outputs_local[combined_index];
+
         }
     }
 
@@ -1368,6 +1394,7 @@ DLLEXPORT int main_loop(float *output, int x, int y, double *pos, int size_pos, 
         free(scene_sfere[k]);
         free(scene_modello[k]->triangoli);
         free(scene_modello[k]);
+        free(outputs_local[k]);
     }
 
     return 1;

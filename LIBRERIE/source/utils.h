@@ -127,6 +127,7 @@ typedef struct ThreadData {
     int end_y;
     
     float *array;
+    float *local_output;
     
     Sphere *scena_sfera;
     int size_scena_sfera;
