@@ -293,6 +293,7 @@ class Button:
             pygame.draw.rect(self.screen, colore_scelto, [self.x, self.y, self.w, self.h], border_top_left_radius=10, border_bottom_right_radius=10)
             
             if self.texture is None:
+                # char = "󰔡" if self.toggled else "󰨙" if self.tipologia == "toggle" else ""
                 self.screen.blit(self.font_locale.font_tipo.render(f"{self.text}", True, self.color_text), (self.x + self.w // 2 - len(self.text) * self.font_locale.font_pixel_dim[0] // 2, self.y + self.h // 2 - self.font_locale.font_pixel_dim[1] // 2))
             else:
                 self.screen.blit(self.texture, (self.x, self.y))
@@ -536,6 +537,22 @@ class Path:
 
         self.font_locale: Font = font_locale["piccolo"]
         self.font_tooltip: Font = font_locale["piccolo"]
+
+
+    def search_given_path(self, path):
+        
+        self.text = path
+
+        lunghezza = len(self.text)
+
+        numero_caratteri = int(self.w / self.font_locale.font_pixel_dim[0])
+
+        if lunghezza > numero_caratteri:
+            self.visualizza_text = "..." + self.text[- (numero_caratteri - 4):]
+        else: 
+            self.visualizza_text = self.text
+
+        self.execute_action = True
 
 
     def search(self, event):

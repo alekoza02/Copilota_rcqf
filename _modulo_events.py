@@ -3,6 +3,7 @@ from _modulo_MATE import Mate
 from PIL import Image
 import pygame
 import threading
+import os
 
 def event_manage_ui(self, eventi: pygame.event, logica: Logica):
 
@@ -25,19 +26,15 @@ def event_manage_ui(self, eventi: pygame.event, logica: Logica):
     # scena main UI
     for event in eventi:
 
-        # if event.type == pygame.DROPFILE:
-        #     # Handle the file that was dropped
-        #     dropped_file_path = event.file
-        #     print(f"File dropped: {dropped_file_path}")
-
         # MOUSE
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 [tab.aggiorna_tab(event, logica) for index, tab in self.scena["main"].tabs.items()]
                 if self.scena["main"].bottoni["plots"].toggled: logica.scena = 0
-                if self.scena["main"].bottoni["plot_import"].toggled: logica.scena = 1
-                if self.scena["main"].bottoni["tracer"].toggled: logica.scena = 2
-                if self.scena["main"].bottoni["orbitals"].toggled: logica.scena = 3
+                if self.scena["main"].bottoni["plots2D"].toggled: logica.scena = 1
+                if self.scena["main"].bottoni["plot_import"].toggled: logica.scena = 2
+                if self.scena["main"].bottoni["tracer"].toggled: logica.scena = 3
+                if self.scena["main"].bottoni["orbitals"].toggled: logica.scena = 4
 
                 logica.click_sinistro = True
 
@@ -187,6 +184,14 @@ def event_manage_plots(self, eventi: pygame.event, logica: Logica, plot = "Paint
 
     # scena main UI
     for event in eventi:
+
+        if event.type == pygame.DROPFILE:
+            if "." in event.file:
+                al_sc.paths["caricamento"].search_given_path(os.path.dirname(event.file))
+            else:
+                al_sc.paths["caricamento"].search_given_path(event.file)
+
+            
         # MOUSE
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -329,6 +334,30 @@ def event_manage_plots(self, eventi: pygame.event, logica: Logica, plot = "Paint
     al_sc.entrate["color_plot"].contorno_toggled = Mate.hex2rgb(al_sc.entrate["color_plot"].text)
 
 
+def event_manage_plots2D(self, eventi: pygame.event, logica: Logica, plot = "Painter"):
+    al_sc = self.scena["plot2D"]
+    
+    # Stato di tutti i tasti
+    keys = pygame.key.get_pressed()
+
+    # scena main UI
+    for event in eventi:
+
+        # MOUSE
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 2:
+                
+                path = Path.save(".")
+                
+                if path != "":
+                    plot.disegna(logica, True)
+                    self.salva_screenshot(path, plot.schermo)
+
+                    img = Image.open(path)
+                    dpi = 300
+                    img.save(path, dpi=(dpi, dpi))
+
+
 def event_manage_plot_import(self, eventi: pygame.event, logica: Logica, analizzatore):
     
     al_sc = self.scena["plot_import"]
@@ -339,6 +368,10 @@ def event_manage_plot_import(self, eventi: pygame.event, logica: Logica, analizz
 
     # scena main UI
     for event in eventi:
+        if event.type == pygame.DROPFILE:
+            al_sc.paths["path_import"].search_given_path(event.file)
+            analizzatore.load_image()
+
         # MOUSE
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -679,6 +712,7 @@ def event_manage_orbitals(self, eventi: pygame.event, logica: Logica, orbs):
 
 UI.event_manage_ui = event_manage_ui
 UI.event_manage_plots = event_manage_plots
+UI.event_manage_plots2D = event_manage_plots2D
 UI.event_manage_plot_import = event_manage_plot_import
 UI.event_manage_tracer = event_manage_tracer
 UI.event_manage_orbitals = event_manage_orbitals

@@ -26,13 +26,15 @@ def build_main(self):
     toggled = True if indice_scena == 0 else False
     self.bottoni["plots"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=2, y=2, text="PLOTS", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
     toggled = True if indice_scena == 1 else False
-    self.bottoni["plot_import"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=8.1, y=2, text="PLOT IMPORT", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+    self.bottoni["plots2D"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=8.1, y=2, text="PLOT 2D", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
     toggled = True if indice_scena == 2 else False
-    self.bottoni["tracer"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=14.2, y=2, text="RAY-TRACER", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+    self.bottoni["plot_import"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=14.2, y=2, text="PLOT IMPORT", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
     toggled = True if indice_scena == 3 else False
-    self.bottoni["orbitals"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=20.3, y=2, text="ORBITALI", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+    self.bottoni["tracer"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=20.3, y=2, text="RAY-TRACER", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
+    toggled = True if indice_scena == 4 else False
+    self.bottoni["orbitals"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=26.4, y=2, text="ORBITALI", multi_box=True, toggled=toggled, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
     
-    self.multi_box["active_scene"] = MultiBox([self.bottoni["plots"],self.bottoni["tracer"],self.bottoni["orbitals"], self.bottoni["plot_import"]])
+    self.multi_box["active_scene"] = MultiBox([self.bottoni["plots"],self.bottoni["plots2D"],self.bottoni["tracer"],self.bottoni["orbitals"], self.bottoni["plot_import"]])
     
     # TABS LINK
     self.tabs["sys_info"] = TabUI(name="sys_info", 
@@ -40,7 +42,7 @@ def build_main(self):
     )
 
     self.tabs["scene_manager"] = TabUI(name="scene_manager", 
-        bottoni=[self.bottoni["plots"], self.bottoni["tracer"], self.bottoni["orbitals"], self.bottoni["plot_import"]],
+        bottoni=[self.bottoni["plots"], self.bottoni["plots2D"], self.bottoni["tracer"], self.bottoni["orbitals"], self.bottoni["plot_import"]],
         multi_boxes=[self.multi_box["active_scene"]]
     )
 
@@ -247,6 +249,15 @@ def build_plot_import(self):
     [add_tooltip(elemento, index) for index, elemento in self.paths.items()]
 
 
+def build_plot_2D(self):
+    self.label_text["welcome"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=10, x=75, y=45, renderizza_bg=True, text="Hellou", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
+    self.tabs["viewport"] = TabUI(name="viewport", 
+        labels=[self.label_text["welcome"]],
+    )
+
+    self.schermo["viewport"] = Schermo(self.parametri_repeat_elementi)
+
+
 def build_tracer(self):
     # BOTTONI
     # --------------------------------------------------------------------------------
@@ -401,6 +412,7 @@ def build_orbitals(self):
 
 Scena.build_main = build_main
 Scena.build_plots = build_plots
+Scena.build_plot_2D = build_plot_2D
 Scena.build_plot_import = build_plot_import
 Scena.build_tracer = build_tracer
 Scena.build_orbitals = build_orbitals

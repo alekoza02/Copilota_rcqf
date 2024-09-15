@@ -17,6 +17,7 @@ def main(config: configparser):
     
     ui.scena["main"] = Scena(ui.parametri_scena_repeat); ui.scena["main"].build_main()
     ui.scena["plots"] = Scena(ui.parametri_scena_repeat); ui.scena["plots"].build_plots()
+    ui.scena["plot2D"] = Scena(ui.parametri_scena_repeat); ui.scena["plot2D"].build_plot_2D()
     ui.scena["plot_import"] = Scena(ui.parametri_scena_repeat); ui.scena["plot_import"].build_plot_import()
     ui.scena["tracer"] = Scena(ui.parametri_scena_repeat); ui.scena["tracer"].build_tracer()
     ui.scena["orbitals"] = Scena(ui.parametri_scena_repeat); ui.scena["orbitals"].build_orbitals()
@@ -29,6 +30,12 @@ def main(config: configparser):
     main_plot = Painter()
     main_plot.link_ui(ui)
     main_plot.full_import_plot_data()
+
+    # Zona inizializzazione plot2D
+    from _modulo_plot2D import Painter2D
+    main_plot2D = Painter2D()
+    main_plot2D.link_ui(ui)
+    main_plot2D.import_plot_data(".\\PLOT_DATA2D\\test2.txt")
 
     # Zona inizializzazione plot import
     from _modulo_analizzatore import Analizzatore
@@ -62,21 +69,28 @@ def main(config: configparser):
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["plots"].schermo.items()]
                 [tab.disegna_tab(logica) for index, tab in ui.scena["plots"].tabs.items()]
         
-            case 1: 
+            case 1:
+                ui.event_manage_plots2D(eventi_in_corso, logica, main_plot2D)
+
+                main_plot2D.disegna(logica)
+                [schermo.aggiorna_schermo() for key, schermo in ui.scena["plot2D"].schermo.items()]
+                [tab.disegna_tab(logica) for index, tab in ui.scena["plot2D"].tabs.items()]
+
+            case 2: 
                 ui.event_manage_plot_import(eventi_in_corso, logica, analizzatore)
         
                 analizzatore.disegna(logica)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["plot_import"].schermo.items()]
                 [tab.disegna_tab(logica) for index, tab in ui.scena["plot_import"].tabs.items()]
 
-            case 2: 
+            case 3: 
                 ui.event_manage_tracer(eventi_in_corso, logica, tredi)
                 
                 tredi.disegna(logica)
                 [schermo.aggiorna_schermo() for key, schermo in ui.scena["tracer"].schermo.items()]
                 [tab.disegna_tab(logica) for index, tab in ui.scena["tracer"].tabs.items()]
                 
-            case 3: 
+            case 4: 
                 ui.event_manage_orbitals(eventi_in_corso, logica, orbs)
                 
                 orbs.disegna(logica)

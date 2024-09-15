@@ -44,6 +44,7 @@ class Dizionario:
             "tab_graphics":         "Pagina con la grafica\nrelativa all'orbitale.",
             "tab_settings":         "Pagina con le impostazioni\nrelative all'orbitale.",
             "plots":                "Sezione PLOTS",
+            "plots2D":             "Sezione PLOTS 2D",
             "tracer":               "Sezione RAYTRACER",
             "orbitals":             "Sezione ORBITALI",
             "plot_import":          "Sezione IMPORT PLOT",
@@ -165,6 +166,44 @@ class Dizionario:
             r"\Chi": "Χ",
             r"\Psi": "Ψ",
             r"\Omega": "Ω",
+
+            r"\angs": "Å",
+
+            r"\inf": "",
             r"\pm": "±",
-            r"\sqrt": "√"
+            r"\sqrt": "√",
+            
+            r"\larrow": "",
+            r"\rarrow": "",
+            r"\barrow": "",
+            r"\sarrow": "",
+
+            r"\heart": "",
+            r"\c_language": "",
+            r"\py_language": "",
+            
+            r"\benzene": "",            
+            r"\flask": "",
+            r"\vial": "",
+
+            r"\warning": "",
+            r"\radioactive": "",
+            r"\biohazard": "",
+            r"\atom": "",
+            r"\magnet": "",
+            r"\termometer": "",
+            
+            r"\sun": "",
+            r"\cold": "",
+            r"\hot": "",
+            r"\speed": "󰓅",
+
+            r"\waveform": "󱑽",
+
+            r"\check": "",
+
+            r"\comunism": "󱢇",
+
+            r"\toggle_on": "󰔡",
+            r"\toggle_off": "󰨙",
         }

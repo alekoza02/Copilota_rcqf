@@ -319,20 +319,19 @@ class Geo_Scene:
         self.objects.append(Object("Sfera_parete_dx", vertici=self.i.verteces, links=self.i.links, x=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([0., .7, 1.]))))
         self.objects.append(Object("Sfera_parete_fondo", vertici=self.i.verteces, links=self.i.links, y=1005, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([1., 1., 1.]))))
         self.objects.append(Object("Sfera_parete_dietro", vertici=self.i.verteces, links=self.i.links, y=-1060, sx=2000, sy=2000, sz=2000, materiale=Materiale(colore=np.array([.1, 1., .1]))))
-        self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_forza=5)))
+        self.objects.append(Object("Luce", vertici=self.i.verteces, links=self.i.links, z=12, sx=16, sy=16, sz=16, materiale=Materiale(emissione_colore=np.array([1., .8, .3]), emissione_forza=1.5)))
         self.elemento_attivo: Object = self.objects[0]
 
         self.i = Importer()
         # self.i.modello("TRACER_DATA/m_hyperion.obj")
-        self.i.modello("TRACER_DATA/m_bon.obj")
-        # self.i.modello("TRACER_DATA/m_ban.obj")
+        # self.i.modello("TRACER_DATA/m_bon.obj")
+        self.i.modello("TRACER_DATA/m_ban.obj")
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
-        lista_rot = [-1.57, -1.046, -0.785, -0.523, 0, 0.523, 0.785, 1.046, 1.57]
+        # self.objects.append(Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]))))
 
-        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-.5, b=lista_rot[1], i=-1.57, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, z=-5, sx=1.3, sy=1.3, sz=1.3, materiale=Materiale(colore=np.array([1., 1., 1.]), glass=1, roughness=0.0))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
     
     
     def kornell_box_glossiness(self):
