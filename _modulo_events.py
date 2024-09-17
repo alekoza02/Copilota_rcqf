@@ -340,22 +340,122 @@ def event_manage_plots2D(self, eventi: pygame.event, logica: Logica, plot = "Pai
     # Stato di tutti i tasti
     keys = pygame.key.get_pressed()
 
+
     # scena main UI
     for event in eventi:
 
+        if event.type == pygame.DROPFILE:
+            if "." in event.file:
+                al_sc.paths["caricamento"].search_given_path(os.path.dirname(event.file))
+            else:
+                al_sc.paths["caricamento"].search_given_path(event.file)
+
+            
         # MOUSE
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 2:
-                
-                path = Path.save(".")
-                
-                if path != "":
-                    plot.disegna(logica, True)
-                    self.salva_screenshot(path, plot.schermo)
+            if event.button == 1:
+                [tab.aggiorna_tab(event, logica) for index, tab in al_sc.tabs.items()]
+                '-----------------------------------------------------------------------------------------------------'
+                if al_sc.bottoni["salva"].toggled:
+                    al_sc.bottoni["salva"].push()
+                    
+                    path = Path.save(".")
+                    
+                    if path != "":
+                        plot.disegna(logica, True)
+                        self.salva_screenshot(path, plot.schermo)
+                        al_sc.label_text["salvato_con_successo"].timer = 300
 
-                    img = Image.open(path)
-                    dpi = 300
-                    img.save(path, dpi=(dpi, dpi))
+                        img = Image.open(path)
+                        dpi = Mate.inp2int(al_sc.entrate["DPI"].text_invio, 300)
+                        img.save(path, dpi=(dpi, dpi))
+
+
+                # updates the active plot to the nearest to the click
+                # success = plot.nearest_coords(self, logica)
+
+                # if success:
+                #     al_sc.bottoni["tab_plt"].toggled = True
+                #     al_sc.bottoni["tab_settings"].toggled = False
+                    
+
+                al_sc.tabs["ui_control"].abilita = False
+                al_sc.tabs["ui_control"].renderizza = False
+                al_sc.tabs["plot_control"].abilita = False
+                al_sc.tabs["plot_control"].renderizza = False
+                
+                if al_sc.bottoni["tab_settings"].toggled:
+                    al_sc.tabs["ui_control"].abilita = True
+                    al_sc.tabs["ui_control"].renderizza = True
+                elif al_sc.bottoni["tab_plt"].toggled:
+                    al_sc.tabs["plot_control"].abilita = True
+                    al_sc.tabs["plot_control"].renderizza = True
+                
+                
+                # Fine sezione push events
+                '-----------------------------------------------------------------------------------------------------'
+
+                # raccolta di tutti i testi già presenti nelle entrate
+                test_entr_attiva: list[str] = [indice for indice, elemento in al_sc.entrate.items() if elemento.toggle]
+
+                # logica per cui se ci sono entrate nella scena -> aggiorna il testo, indice e il testo generico modificabile
+                if len(test_entr_attiva) > 0:
+                    self.entrata_attiva = al_sc.entrate[test_entr_attiva[0]]
+                else: self.entrata_attiva = None
+
+            
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 3: 
+                # plot.values_zoom(logica)
+                ...
+
+        # TASTIERA
+        # controlli generici -> No inserimento
+        
+        if event.type == pygame.KEYDOWN:
+            
+            # if event.key == pygame.K_r:
+            #     plot.reset_zoom(logica)
+            
+            if logica.tab:
+                if not self.entrata_attiva is None:
+                    possibili_entrate_attive = []
+                    
+                    for index, element in self.scena["plot2D"].tabs.items():
+                        if element.renderizza and not element.entrate is None:
+                            for entrata in element.entrate:
+                                if entrata.visibile:
+                                    possibili_entrate_attive.append(entrata)
+                    
+                    indice_attivo = possibili_entrate_attive.index(self.entrata_attiva)
+
+                    if logica.shift:
+                        if indice_attivo == 0: indice_attivo = len(possibili_entrate_attive)
+                        nuova_chiave = possibili_entrate_attive[indice_attivo - 1].key    
+                    else:
+                        if indice_attivo == len(possibili_entrate_attive) - 1: indice_attivo = -1
+                        nuova_chiave = possibili_entrate_attive[indice_attivo + 1].key
+                        
+                    self.entrata_attiva = al_sc.entrate[nuova_chiave]                    
+                    
+                    for index, i in al_sc.tabs.items(): 
+                        if not i.entrate is None: [elemento.selezionato_ent(event, nuova_chiave) for elemento in i.entrate]
+
+
+            if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                al_sc.scrolls["grafici"].selezionato_scr(event, logica)
+
+            # if event.key == pygame.K_RETURN:
+            #     try:
+            #         if al_sc.entrate["caricamento"].toggle:
+            #             plot.full_import_plot_data()
+            #             al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
+            #     except FileNotFoundError as e:
+            #         print(e)
+
+    # gestione collegamento ui - grafico        
+    # if logica.aggiorna_plot: plot.change_active_plot_UIBASED(self); logica.aggiorna_plot = False
+
 
 
 def event_manage_plot_import(self, eventi: pygame.event, logica: Logica, analizzatore):

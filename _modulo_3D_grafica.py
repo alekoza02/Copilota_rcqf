@@ -331,7 +331,7 @@ class Geo_Scene:
 
         # self.objects.append(Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]))))
 
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]), roughness=0, glass=1))
     
     
     def kornell_box_glossiness(self):

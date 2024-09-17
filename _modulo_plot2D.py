@@ -40,9 +40,9 @@ class Plot2D:
 
         lim_min = 22
         lim_max = 30
-        self.data = self.data[lim_min:-lim_max, :, :]
+        # self.data = self.data[lim_min:-lim_max, :, :]
         # self.data = self.data[:, lim_min:-lim_max, :]
-        # self.data = self.data[:, :, :]
+        self.data = self.data[:, :, :]
 
 
         self.dim_x = self.data.shape[1]
@@ -57,17 +57,16 @@ class Painter2D:
     def __init__(self) -> None:
         self.text_color = [180, 180, 180]
         
-        self.w_proportion = 0.7
-        self.h_proportion = 0.7
+        self.w_proportion = 0.75
+        self.h_proportion = 0.75
 
         self.debug_info = [0, 0]
 
         self.ui_spessore = 1
         self.approx_label = 2
         self.subdivisions = 5
-        self.plot_bb = False
+        self.plot_bb = True
         self.latex_check = True
-        self.visualize_height_bar = 1
         
         self.control = True
 
@@ -101,30 +100,14 @@ class Painter2D:
     def re_compute_size(self) -> None:
         """Ricalcola la dimensione dell'UI dei grafici in base alla presenza del secondo asse Y"""
 
-        if self.visualize_height_bar:
-
-            self.w_plot_area = self.w_proportion * self.utilizzo_w
-            self.h_plot_area = self.h_proportion * self.utilizzo_h
-            
-            self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
-            self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
-            
-            self.end_x = self.start_x + self.w_plot_area
-            self.end_y = self.start_y - self.h_plot_area
-
-        else:
-
-            self.w_plot_area = self.w_proportion * self.utilizzo_w
-            self.h_plot_area = self.h_proportion * self.utilizzo_h
-            
-            self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
-            self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
-            
-            self.w_plot_area += self.start_x // 2
-            self.h_plot_area += (self.utilizzo_h - self.start_y) // 2
-
-            self.end_x = self.start_x + self.w_plot_area
-            self.end_y = self.start_y - self.h_plot_area
+        self.w_plot_area = self.w_proportion * self.utilizzo_w
+        self.h_plot_area = self.h_proportion * self.utilizzo_h
+        
+        self.start_x = (self.utilizzo_w - self.w_plot_area) // 2
+        self.start_y = self.utilizzo_h - (self.utilizzo_h - self.h_plot_area) // 2
+        
+        self.end_x = self.start_x + self.w_plot_area
+        self.end_y = self.start_y - self.h_plot_area
 
         self.bounding_box = pygame.rect.Rect([self.start_x - 20, self.end_y - 20, self.w_plot_area + 40, self.h_plot_area + 40])
         self.bounding_box[0] += self.ancoraggio_x
@@ -371,6 +354,36 @@ class Painter2D:
 
         self.plot2D: Plot2D = None
 
+        self.UI_calls_plots = ui.scena["plot2D"]
+
+        self.UI_titolo = self.UI_calls_plots.entrate["titolo"]
+        self.UI_labelx = self.UI_calls_plots.entrate["labelx"]
+        self.UI_labely = self.UI_calls_plots.entrate["labely"]
+        self.UI_label2y = self.UI_calls_plots.entrate["label2y"]
+        self.UI_round_label = self.UI_calls_plots.entrate["round_label"]
+        self.UI_font_size = self.UI_calls_plots.entrate["font_size"]
+        self.UI_color_bg = self.UI_calls_plots.entrate["color_bg"]
+        self.UI_color_text = self.UI_calls_plots.entrate["color_text"]
+        self.UI_x_min = self.UI_calls_plots.entrate["x_min"]
+        self.UI_x_max = self.UI_calls_plots.entrate["x_max"]
+        self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
+        self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
+        self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
+        self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]  
+        self.UI_x_foto = self.UI_calls_plots.entrate["x_foto"]  
+        self.UI_y_foto = self.UI_calls_plots.entrate["y_foto"]  
+
+        self.UI_nome_grafico = self.UI_calls_plots.entrate["nome_grafico"]        
+        self.UI_caricamento = self.UI_calls_plots.paths["caricamento"]
+
+        self.UI_scroll_grafici = self.UI_calls_plots.scrolls["grafici"]
+        self.UI_use_custom_borders = self.UI_calls_plots.bottoni["use_custom_borders"]
+        self.UI_latex_check = self.UI_calls_plots.bottoni["latex_check"]
+        self.UI_toggle_2_axis = self.UI_calls_plots.bottoni["toggle_2_axis"]
+        self.UI_toggle_plot_bb = self.UI_calls_plots.bottoni["toggle_plot_bb"]
+
+        self.UI_path_import = self.UI_calls_plots.paths["caricamento"]
+
 
     def import_plot_data(self, path: str, divisore: str = None) -> None:
         """Importa un tipo di file e genera un plot con le X, Y e gli errori sulle Y (raccoglie rispettivamente le prime 3 colonne)
@@ -463,6 +476,40 @@ class Painter2D:
         self.min_y = np.min(self.plot2D.data[:, :, 1])
         self.max_y = np.max(self.plot2D.data[:, :, 1])
 
+        # import settings
+        if self.control:
+            if self.UI_latex_check.toggled:
+                self.titolo = Painter2D.check_latex(self.UI_titolo.text_invio) 
+                self.testo_x = Painter2D.check_latex(self.UI_labelx.text_invio)
+                self.testo_y = Painter2D.check_latex(self.UI_labely.text_invio)
+                self.testo_height_bar = Painter2D.check_latex(self.UI_label2y.text_invio)
+            else:
+                self.titolo = self.UI_titolo.text_invio
+                self.testo_x = self.UI_labelx.text_invio
+                self.testo_y = self.UI_labely.text_invio
+                self.testo_height_bar = self.UI_label2y.text_invio
+            
+            # prova di conversione
+            self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
+            self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)
+            
+            self.bg_color = Mate.hex2rgb(self.UI_color_bg.text_invio)
+            self.text_color = Mate.hex2rgb(self.UI_color_text.text_invio)
+
+            self.use_custom_borders = self.UI_use_custom_borders.toggled
+            
+            self.x_min = Mate.inp2flo(self.UI_x_min.text_invio)
+            self.x_max = Mate.inp2flo(self.UI_x_max.text_invio)
+            self.y_min = Mate.inp2flo(self.UI_y_min.text_invio)
+            self.y_max = Mate.inp2flo(self.UI_y_max.text_invio)
+
+            self.subdivisions = Mate.inp2int(self.UI_subdivisions.text_invio)
+            if self.subdivisions < 2: self.subdivisions = 2
+
+            self.ui_spessore = Mate.inp2int(self.UI_ui_spessore.text_invio)
+            if self.ui_spessore < 1: self.ui_spessore = 1
+
+
         if foto:
 
             self.w_foto = 3240
@@ -486,7 +533,6 @@ class Painter2D:
 
         # recalculation of window
         self.re_compute_size()
-
 
         
         if self.plot2D.w_div_h < 1:
@@ -528,9 +574,7 @@ class Painter2D:
         surface = pygame.surfarray.make_surface(array_finale)
         self.schermo.blit(pygame.transform.scale(surface, (nuova_larghezza_grafico, nuova_altezza_grafico)), (self.start_x + nuovo_offset_grafico_x, self.end_y + nuovo_offset_grafico_y))
 
-        print(self.plot2D.w_div_h)
-
-
+        
         # fill la barra di altezza map colore
         map_color_array = np.zeros((int(self.w_plot_area * 0.05), int(nuova_altezza_grafico), 3))
 
@@ -568,14 +612,13 @@ class Painter2D:
             round(self.ui_spessore * self.DPI_factor)
         )
 
-        if self.visualize_height_bar:
-            # 2 Y axis
-            pygame.draw.line(self.schermo, colori_assi[1], 
-                [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4, self.end_y + nuovo_offset_grafico_y],
-                [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4, (self.end_y + nuovo_offset_grafico_y + nuova_altezza_grafico)],
-                round(self.ui_spessore * self.DPI_factor)
-            )
-        
+        # 2 Y axis
+        pygame.draw.line(self.schermo, colori_assi[1], 
+            [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4, self.end_y + nuovo_offset_grafico_y],
+            [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4, (self.end_y + nuovo_offset_grafico_y + nuova_altezza_grafico)],
+            round(self.ui_spessore * self.DPI_factor)
+        )
+    
         # scalini sugli assi e valori
         self.re_compute_font(0.625)
         
@@ -622,38 +665,36 @@ class Painter2D:
                 pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
             ))
             
-            if self.visualize_height_bar:
-                # data 2 y
-                pygame.draw.line(self.schermo, colori_assi[1], 
-                    [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 - self.utilizzo_w // 100, pos_var_y],
-                    [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 + self.utilizzo_w // 100, pos_var_y],
-                    round(self.ui_spessore * self.DPI_factor)
-                )
-                
-                value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1)
-                formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
-                label_y_scr = self.font_tipo.render(f"{value * 1000:.{self.approx_label}{formatting}}", True, colori_assi[1])
-                label_y_scr = pygame.transform.rotate(label_y_scr, 90)
+            # data 2 y
+            pygame.draw.line(self.schermo, colori_assi[1], 
+                [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 - self.utilizzo_w // 100, pos_var_y],
+                [(self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 + self.utilizzo_w // 100, pos_var_y],
+                round(self.ui_spessore * self.DPI_factor)
+            )
             
-                self.schermo.blit(label_y_scr, (
-                    (self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 + self.utilizzo_w // 100,
-                    pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
-                ))
-            
+            value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1)
+            formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
+            label_y_scr = self.font_tipo.render(f"{value * 1000:.{self.approx_label}{formatting}}", True, colori_assi[1])
+            label_y_scr = pygame.transform.rotate(label_y_scr, 90)
+        
+            self.schermo.blit(label_y_scr, (
+                (self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + 2.25 * (self.start_x + nuovo_offset_grafico_x) // 4 + self.utilizzo_w // 100,
+                pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
+            ))
+        
             # griglia
-            if self.plot_bb:
-                if True:
-                    pygame.draw.line(self.schermo, [50, 50, 50], 
-                        [pos_var_x, self.start_y],
-                        [pos_var_x, self.end_y],
-                        1
-                    )
+            if self.UI_toggle_plot_bb.toggled:
+                pygame.draw.line(self.schermo, [50, 50, 50], 
+                    [pos_var_x, self.end_y + nuovo_offset_grafico_y],
+                    [pos_var_x, self.end_y + nuovo_offset_grafico_y + nuova_altezza_grafico],
+                    1
+                )
 
-                    pygame.draw.line(self.schermo, [50, 50, 50], 
-                        [self.start_x, pos_var_y],
-                        [self.end_x, pos_var_y],
-                        1
-                    )
+                pygame.draw.line(self.schermo, [50, 50, 50], 
+                    [self.start_x + nuovo_offset_grafico_x, pos_var_y],
+                    [self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico, pos_var_y],
+                    1
+                )
 
         # plots bounding box
         pygame.draw.rect(self.schermo, self.text_color, [
@@ -686,15 +727,14 @@ class Painter2D:
             )
 
         
-        if self.visualize_height_bar:
-            # testo asse 2 y
-            self.check_esponente_pedice(
-                f"{self.testo_height_bar}",
-                (self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + (self.start_x + nuovo_offset_grafico_x) - 1 * (self.start_x + nuovo_offset_grafico_x) // 5,
-                self.end_y + nuovo_offset_grafico_y + nuova_altezza_grafico // 2,
-                vertical=True,
-                centered=True
-            )
+        # testo asse 2 y
+        self.check_esponente_pedice(
+            f"{self.testo_height_bar}",
+            (self.start_x + nuovo_offset_grafico_x + nuova_larghezza_grafico) + (self.start_x + nuovo_offset_grafico_x) - 1 * (self.start_x + nuovo_offset_grafico_x) // 5,
+            self.end_y + nuovo_offset_grafico_y + nuova_altezza_grafico // 2,
+            vertical=True,
+            centered=True
+        )
 
         
         self.re_compute_font(1.125)
@@ -738,6 +778,13 @@ class Painter2D:
                 max_bb_x - min_bb_x, 
                 max_bb_y - min_bb_y
             ], round(self.ui_spessore * self.DPI_factor))
+
+        
+        # debugger
+        pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.start_y], 10)
+        pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.start_y], 10)
+        pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.end_y], 10)
+        pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.end_y], 10)
 
 
     def pixel_research_plot_area(self, general_coordinate: tuple[float]) -> tuple[float]:
