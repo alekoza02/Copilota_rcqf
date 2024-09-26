@@ -325,13 +325,16 @@ class Geo_Scene:
         self.i = Importer()
         # self.i.modello("TRACER_DATA/m_hyperion.obj")
         # self.i.modello("TRACER_DATA/m_bon.obj")
-        self.i.modello("TRACER_DATA/m_ban.obj")
+        # self.i.modello("TRACER_DATA/m_ban.obj")
+        self.i.modello("TRACER_DATA/m_graf.obj")
 
         self.i.verteces = Mate.add_homogenous(self.i.verteces)
 
         # self.objects.append(Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]))))
+        
+        # self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]), roughness=0, glass=1))
+        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.5, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.])))
 
-        self.dev_modello = Object("Developement", vertici=self.i.verteces, links=self.i.links, r=-0.3, i=-1, sx=3, sy=3, sz=3, materiale=Materiale(colore=np.array([1., 1., 1.]), roughness=0, glass=1))
     
     
     def kornell_box_glossiness(self):

@@ -151,8 +151,8 @@ class Painter:
         self.w_plot_area: float
         self.h_plot_area: float
         
-        self.w_proportion: float = eval(config.get('Grafici', 'w_plot_area'))
-        self.h_proportion: float = eval(config.get('Grafici', 'h_plot_area'))
+        self.w_proportion: float = 0.75
+        self.h_proportion: float = 0.75
         
         self.bounding_box = pygame.rect.Rect([0, 0, 1, 1])
 
@@ -219,7 +219,7 @@ class Painter:
         # 3: ...
 
     
-    def settings(self, titolo = "Titolo", testo_x = "Asse X", testo_y = "Asse Y", testo_2y = "2° Asse Y", visualize_second_ax = False, visualize_zero_ax = True, approx_label = 2, dim_font_base = 24, w_proportion = 0.7, h_proportion = 0.7, x_legenda = 0.3, y_legenda = 0.3, bg_color = Mate.hex2rgb("#1e1e1e"), text_color = Mate.hex2rgb("#b4b4b4"), use_custom_borders = False, x_min = 0.0, x_max = 1.0, y_min = 0.0, y_max = 1.0, subdivisions = 5, grad_mode = "hori", ui_spessore = 1, ridimensionamento = 1):
+    def settings(self, titolo = "Titolo", testo_x = "Asse X", testo_y = "Asse Y", testo_2y = "2° Asse Y", visualize_second_ax = False, visualize_zero_ax = True, approx_label = 2, dim_font_base = 24, x_legenda = 0.3, y_legenda = 0.3, bg_color = Mate.hex2rgb("#1e1e1e"), text_color = Mate.hex2rgb("#b4b4b4"), use_custom_borders = False, x_min = 0.0, x_max = 1.0, y_min = 0.0, y_max = 1.0, subdivisions = 5, grad_mode = "hori", ui_spessore = 1, ridimensionamento = 1):
         self.titolo = self.check_latex(titolo)
         self.testo_x = self.check_latex(testo_x)
         self.testo_y = self.check_latex(testo_y)
@@ -231,8 +231,8 @@ class Painter:
         self.approx_label = approx_label
         self.dim_font_base = dim_font_base * ridimensionamento
         
-        self.w_proportion = w_proportion
-        self.h_proportion = h_proportion
+        self.w_proportion = 0.75
+        self.h_proportion = 0.75
 
         self.x_legenda = x_legenda
         self.y_legenda = y_legenda
@@ -543,8 +543,6 @@ class Painter:
         self.UI_font_size = self.UI_calls_plots.entrate["font_size"]
         self.UI_color_bg = self.UI_calls_plots.entrate["color_bg"]
         self.UI_color_text = self.UI_calls_plots.entrate["color_text"]
-        self.UI_area_w = self.UI_calls_plots.entrate["area_w"]
-        self.UI_area_h = self.UI_calls_plots.entrate["area_h"]
         self.UI_x_legenda = self.UI_calls_plots.entrate["x_legenda"]
         self.UI_y_legenda = self.UI_calls_plots.entrate["y_legenda"]        
         self.UI_color_plot = self.UI_calls_plots.entrate["color_plot"]        
@@ -600,6 +598,7 @@ class Painter:
         # aggiorno grafico selezionato
         self.riordina_plots(ui.scena["plots"].scrolls["grafici"].indici)
         self.attiva_plots(ui.scena["plots"].scrolls["grafici"].elementi_attivi)
+        print(ui.scena["plots"].scrolls["grafici"].scroll_item_selected, ui.scena["plots"].scrolls["grafici"].first_item)
         self.active_plot = ui.scena["plots"].scrolls["grafici"].scroll_item_selected + ui.scena["plots"].scrolls["grafici"].first_item
 
         # TODO: FIX WHEN < 5 PLOTS IN FOLDER 
@@ -1272,9 +1271,6 @@ class Painter:
             # prova di conversione
             self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
             self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)
-            
-            self.w_proportion = Mate.conversione_limite(self.UI_area_w.text_invio, 0.8, 0.9)
-            self.h_proportion = Mate.conversione_limite(self.UI_area_h.text_invio, 0.8, 0.9)
 
             self.x_legenda = Mate.conversione_limite(self.UI_x_legenda.text_invio, 0.2, 0.9)
             self.y_legenda = Mate.conversione_limite(self.UI_y_legenda.text_invio, 0.3, 0.9)

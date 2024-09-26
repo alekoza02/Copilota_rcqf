@@ -781,10 +781,10 @@ class Painter2D:
 
         
         # debugger
-        pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.start_y], 10)
-        pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.start_y], 10)
-        pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.end_y], 10)
-        pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.end_y], 10)
+        # pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.start_y], 10)
+        # pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.start_y], 10)
+        # pygame.draw.circle(self.schermo, [255, 0, 0], [self.start_x, self.end_y], 10)
+        # pygame.draw.circle(self.schermo, [255, 0, 0], [self.end_x, self.end_y], 10)
 
 
     def pixel_research_plot_area(self, general_coordinate: tuple[float]) -> tuple[float]:

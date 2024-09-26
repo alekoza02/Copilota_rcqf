@@ -831,8 +831,9 @@ class ScrollConsole:
                     self.first_item -= 1
 
             case "down":
-                if self.scroll_item_selected < 4: 
-                    self.scroll_item_selected += 1 
+                if self.scroll_item_selected < 4:
+                    if self.scroll_item_selected < (len(self.elementi) - 1):   
+                        self.scroll_item_selected += 1 
                 elif self.first_item < len(self.elementi) - 5:
                     self.first_item += 1
 

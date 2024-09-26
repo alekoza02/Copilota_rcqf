@@ -1,0 +1,69 @@
+# PROGETTI
+- plot 1D
+    - funzionalità base
+    - interpolazioni
+    - statistiche
+---
+- plot 2D
+    - funzionalità base
+    - filtri
+    - logical search
+---
+- plot 3D
+    - funzionalità base
+    - point cloud
+    - shading color ramp
+    - raytracer (shadows and AO)
+    - video
+---
+- strumenti, immagini e figure
+    - generazione plot
+        - estrazione da immagini
+        - data entry
+        - math functions
+    - LaTeX
+    - chimica
+    - cristallografia
+    - tavola periodica
+    - timer
+    - appunti
+    - TODO
+    - Circuits
+    - QR code
+    - Mini photoshop
+    - Editor (frecce e testo)
+---
+- Have Fun
+    - particle simulator
+    - AI drone
+    - Terrain simulator
+    - Sudoku WFC
+    - Bonsai
+    - Music
+---
+- impostazioni
+
+# Miglioramenti da apportare
+
+- Più strumenti UI 
+    - Bottoni
+    - Label
+    - Textures
+    - Entrate
+    - Toggle
+    - Switch case
+    - Color picker
+    - Scroll
+    - Pop-up
+    - Context - Menù
+    - File - explorer
+    - UI sprite
+    - Section manager
+    - Animations
+
+- Più modularità
+    - modulo solo di elementi grafici
+    - modulo solo di gestione eventi
+    - modulo solo di generazione UI
+    - modulo di lancio
+    - ogni modulo avrà il proprio link di generazione (che potrà essere sostituito con valori (stringhe) per l'export)
