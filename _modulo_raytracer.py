@@ -253,14 +253,19 @@ class RayTracer:
         self.utils.chunck.amb_oc[:, :] = 0
         self.utils.chunck.bounces[:, :] = 0
 
-        while not self.fine_live_update:
-            ... 
+        try:
+            while not self.fine_live_update:
+                ... 
+                
+            self.utils.update_array(self.librerie.running, self.fine_live_update)
 
-        self.utils.update_array(self.librerie.running, self.fine_live_update)
+            # resetta le statistiche
+            self.utils.chunck.samples_rendered = 0
 
-        # resetta le statistiche
-        self.utils.chunck.samples_rendered = 0
+            # resetta la frase di aiuto
+            self.utils.stats = f"Fai partire una renderizzazione!"
+        
+        except AttributeError:
+            pass
 
-        # resetta la frase di aiuto
-        self.utils.stats = f"Fai partire una renderizzazione!"
 

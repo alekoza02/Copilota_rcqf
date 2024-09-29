@@ -57,7 +57,7 @@ def build_plots(self):
     self.label_text["params"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=26, renderizza_bg=False, text="Seleziona un tipo di interpolazione.\nSuccessivamente schiaccia il bottone 'Compute Interpolation'", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
     self.label_text["FID"]  = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=66, renderizza_bg=False, text="", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
     self.label_text["metadata"] = LabelText(self.parametri_repeat_elementi, self.fonts, size="piccolo", w=37, h=1.8, x=61, y=50, renderizza_bg=True, text="Prova metadata", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
-    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=73, y=67.5, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
+    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=67.5, y=67.5, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
     # --------------------------------------------------------------------------------
 
     # BOTTONI
@@ -224,7 +224,7 @@ def build_plot_2D(self):
     self.label_text["params"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=26, renderizza_bg=False, text="Seleziona un tipo di interpolazione.\nSuccessivamente schiaccia il bottone 'Compute Interpolation'", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
     self.label_text["FID"]  = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=60, y=66, renderizza_bg=False, text="", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
     self.label_text["metadata"] = LabelText(self.parametri_repeat_elementi, self.fonts, size="piccolo", w=37, h=1.8, x=61, y=50, renderizza_bg=True, text="Prova metadata", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
-    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=73, y=67.5, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
+    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=67.5, y=67.5, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
     # --------------------------------------------------------------------------------
 
     # BOTTONI
@@ -337,7 +337,7 @@ def build_plot_2D(self):
 def build_plot_import(self):
 
     self.label_text["progresso"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=65, y=50, renderizza_bg=False, text="Step 0", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=eval(self.config.get(self.tema, 'label_text')))
-    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=73, y=41, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
+    self.label_text["salvato_con_successo"] = LabelText(self.parametri_repeat_elementi, self.fonts, w=10, h=1.8, x=67.5, y=41, renderizza_bg=False, text="Salvato con successo!", bg=eval(self.config.get(self.tema, 'label_bg')), color_text=[100,255,100], autodistruggi=True)
     
     self.bottoni["calibrazione"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=70, y=20, text="Calibrazione", multi_box=True, toggled=False, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))
     self.bottoni["inserimento"] = Button(self.parametri_repeat_elementi, self.fonts, w=6, h=1.8, x=80, y=20, text="Inserimento", toggled=False, multi_box=True, bg=eval(self.config.get(self.tema, 'bottone_bg')), color_text=eval(self.config.get(self.tema, 'bottone_color_text')), colore_bg_schiacciato=eval(self.config.get(self.tema, 'bottone_colore_bg_schiacciato')), contorno_toggled=eval(self.config.get(self.tema, 'bottone_contorno_toggled')), contorno=eval(self.config.get(self.tema, 'bottone_contorno')), bg2=eval(self.config.get(self.tema, 'bottone_bg2')))

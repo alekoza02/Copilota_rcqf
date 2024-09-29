@@ -227,6 +227,8 @@ def event_manage_plots(self, eventi: pygame.event, logica: Logica, plot = "Paint
                         plot.disegna(logica, True)
                         self.salva_screenshot(path, plot.schermo)
                         al_sc.label_text["salvato_con_successo"].timer = 300
+                        al_sc.label_text["salvato_con_successo"].color_text = [100, 255, 100]
+                        al_sc.label_text["salvato_con_successo"].text = "Salvato con successo!"
 
                         img = Image.open(path)
                         dpi = Mate.inp2int(al_sc.entrate["DPI"].text_invio, 300)
@@ -316,14 +318,6 @@ def event_manage_plots(self, eventi: pygame.event, logica: Logica, plot = "Paint
 
             if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
                 al_sc.scrolls["grafici"].selezionato_scr(event, logica)
-
-            if event.key == pygame.K_RETURN:
-                try:
-                    if al_sc.entrate["caricamento"].toggle:
-                        plot.full_import_plot_data()
-                        al_sc.scrolls["grafici"].aggiorna_externo("reload", logica)
-                except FileNotFoundError as e:
-                    print(e)
 
     # gestione collegamento ui - grafico        
     if logica.aggiorna_plot: plot.change_active_plot_UIBASED(self); logica.aggiorna_plot = False

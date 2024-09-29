@@ -538,6 +538,8 @@ class Path:
         self.font_locale: Font = font_locale["piccolo"]
         self.font_tooltip: Font = font_locale["piccolo"]
 
+        self.cooldown = 10
+
 
     def search_given_path(self, path):
         
@@ -556,16 +558,22 @@ class Path:
 
 
     def search(self, event):
-        match self.tipologia:
-            case "folder":
-                self.search_folder(event)
-            case "file":
-                self.search_file(event)
+        if self.cooldown == 0:
+
+            self.cooldown = 20
+
+            match self.tipologia:
+                case "folder":
+                    self.search_folder(event)
+                case "file":
+                    self.search_file(event)
 
 
     def search_folder(self, event):
         if self.bounding_box.collidepoint(event.pos) and self.visibile:
-            self.text = filedialog.askdirectory(initialdir=".", title="Selezione cartella di lavoro")
+            input_path = filedialog.askdirectory(initialdir=".", title="Selezione cartella di lavoro")
+            if input_path != "":
+                self.text = input_path
             lunghezza = len(self.text)
 
             numero_caratteri = int(self.w / self.font_locale.font_pixel_dim[0])
@@ -580,7 +588,9 @@ class Path:
     
     def search_file(self, event):
         if self.bounding_box.collidepoint(event.pos) and self.visibile:
-            self.text = filedialog.askopenfilename(initialdir=".", title="Selezione file")
+            input_path = filedialog.askopenfilename(initialdir=".", title="Selezione file")
+            if input_path != "":
+                self.text = input_path
             lunghezza = len(self.text)
 
             numero_caratteri = int(self.w / self.font_locale.font_pixel_dim[0])
@@ -621,6 +631,10 @@ class Path:
 
 
     def hover_update(self, logica: Logica) -> None:
+        
+        if self.cooldown > 0:
+            self.cooldown -= 1
+
         if self.bounding_box.collidepoint(logica.mouse_pos) and self.visibile:
             self.hover = True
             self.dt_hover += logica.dt

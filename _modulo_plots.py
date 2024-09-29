@@ -582,6 +582,8 @@ class Painter:
         self.UI_zero_y = self.UI_calls_plots.bottoni["zero_y"]
         self.UI_save_deriv = self.UI_calls_plots.bottoni["save_deriv"]
 
+        self.UI_errore = self.UI_calls_plots.label_text["salvato_con_successo"]
+
         self.UI_FID = self.UI_calls_plots.label_text["FID"]
         self.UI_metadata = self.UI_calls_plots.label_text["metadata"]
 
@@ -600,7 +602,6 @@ class Painter:
         # aggiorno grafico selezionato
         self.riordina_plots(ui.scena["plots"].scrolls["grafici"].indici)
         self.attiva_plots(ui.scena["plots"].scrolls["grafici"].elementi_attivi)
-        print(ui.scena["plots"].scrolls["grafici"].scroll_item_selected, ui.scena["plots"].scrolls["grafici"].first_item)
         self.active_plot = ui.scena["plots"].scrolls["grafici"].scroll_item_selected + ui.scena["plots"].scrolls["grafici"].first_item
 
         # TODO: FIX WHEN < 5 PLOTS IN FOLDER 
@@ -787,7 +788,31 @@ class Painter:
         path_input : str, optional
             Path alla cartella con i grafici, by default 'PLOT_DATA/default'
         """
+        
+        if self.UI_caricamento.text == "":
+            return None
+
         files = os.listdir(self.UI_caricamento.text)
+
+        if len(files) < 1:
+            self.UI_errore.text = "Troppi pochi file nella cartella selezionata!"
+            self.UI_errore.color_text = [255, 100, 100]
+            self.UI_errore.timer = 300
+            return None
+
+        file_validi = 0
+        for file in files:
+        
+            if ".csv" in file or ".txt" in file or ".DAT" in file or ".dat" in file or ".ascii" in file or ".ASCII" in file:
+                file_validi += 1
+
+
+        if file_validi < 1:
+            self.UI_errore.text = "Non sono presenti file con estensione accettata!\n(.txt, .csv, .dat, .ascii)"
+            self.UI_errore.color_text = [255, 100, 100]
+            self.UI_errore.timer = 300
+            return None
+
 
         self.plots = []
         self.debug_info[2] = []
