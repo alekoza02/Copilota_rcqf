@@ -360,7 +360,7 @@ class Painter2D:
         self.UI_labelx = self.UI_calls_plots.entrate["labelx"]
         self.UI_labely = self.UI_calls_plots.entrate["labely"]
         self.UI_label2y = self.UI_calls_plots.entrate["label2y"]
-        self.UI_round_label = self.UI_calls_plots.entrate["round_label"]
+        self.UI_round_label_x = self.UI_calls_plots.entrate["round_label_x"]
         self.UI_font_size = self.UI_calls_plots.entrate["font_size"]
         self.UI_color_bg = self.UI_calls_plots.entrate["color_bg"]
         self.UI_color_text = self.UI_calls_plots.entrate["color_text"]
@@ -368,7 +368,7 @@ class Painter2D:
         self.UI_x_max = self.UI_calls_plots.entrate["x_max"]
         self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
         self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
-        self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
+        self.UI_subdivisions_x = self.UI_calls_plots.entrate["subdivisions_x"]       
         self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]  
         self.UI_x_foto = self.UI_calls_plots.entrate["x_foto"]  
         self.UI_y_foto = self.UI_calls_plots.entrate["y_foto"]  
@@ -490,7 +490,7 @@ class Painter2D:
                 self.testo_height_bar = self.UI_label2y.text_invio
             
             # prova di conversione
-            self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
+            self.approx_label = Mate.conversione_limite(self.UI_round_label_x.text_invio, 2, 9)
             self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)
             
             self.bg_color = Mate.hex2rgb(self.UI_color_bg.text_invio)
@@ -503,7 +503,7 @@ class Painter2D:
             self.y_min = Mate.inp2flo(self.UI_y_min.text_invio)
             self.y_max = Mate.inp2flo(self.UI_y_max.text_invio)
 
-            self.subdivisions = Mate.inp2int(self.UI_subdivisions.text_invio)
+            self.subdivisions = Mate.inp2int(self.UI_subdivisions_x.text_invio)
             if self.subdivisions < 2: self.subdivisions = 2
 
             self.ui_spessore = Mate.inp2int(self.UI_ui_spessore.text_invio)

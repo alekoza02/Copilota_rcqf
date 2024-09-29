@@ -539,7 +539,8 @@ class Painter:
         self.UI_labelx = self.UI_calls_plots.entrate["labelx"]
         self.UI_labely = self.UI_calls_plots.entrate["labely"]
         self.UI_label2y = self.UI_calls_plots.entrate["label2y"]
-        self.UI_round_label = self.UI_calls_plots.entrate["round_label"]
+        self.UI_round_label_x = self.UI_calls_plots.entrate["round_label_x"]
+        self.UI_round_label_y = self.UI_calls_plots.entrate["round_label_y"]
         self.UI_font_size = self.UI_calls_plots.entrate["font_size"]
         self.UI_color_bg = self.UI_calls_plots.entrate["color_bg"]
         self.UI_color_text = self.UI_calls_plots.entrate["color_text"]
@@ -556,7 +557,8 @@ class Painter:
         self.UI_x_max = self.UI_calls_plots.entrate["x_max"]
         self.UI_y_min = self.UI_calls_plots.entrate["y_min"]
         self.UI_y_max = self.UI_calls_plots.entrate["y_max"]       
-        self.UI_subdivisions = self.UI_calls_plots.entrate["subdivisions"]       
+        self.UI_subdivisions_x = self.UI_calls_plots.entrate["subdivisions_x"]       
+        self.UI_subdivisions_y = self.UI_calls_plots.entrate["subdivisions_y"]       
         self.UI_ui_spessore = self.UI_calls_plots.entrate["ui_spessore"]  
         self.UI_x_foto = self.UI_calls_plots.entrate["x_foto"]  
         self.UI_y_foto = self.UI_calls_plots.entrate["y_foto"]  
@@ -1269,7 +1271,8 @@ class Painter:
                 self.UI_metadata.assegna_messaggio(self.plots[self.active_plot].metadata)
 
             # prova di conversione
-            self.approx_label = Mate.conversione_limite(self.UI_round_label.text_invio, 2, 9)
+            self.approx_label_x = Mate.conversione_limite(self.UI_round_label_x.text_invio, 2, 9)
+            self.approx_label_y = Mate.conversione_limite(self.UI_round_label_y.text_invio, 2, 9)
             self.dim_font_base = Mate.conversione_limite(self.UI_font_size.text_invio, 32, 128)
 
             self.x_legenda = Mate.conversione_limite(self.UI_x_legenda.text_invio, 0.2, 0.9)
@@ -1285,8 +1288,10 @@ class Painter:
             self.y_min = Mate.inp2flo(self.UI_y_min.text_invio)
             self.y_max = Mate.inp2flo(self.UI_y_max.text_invio)
 
-            self.subdivisions = Mate.inp2int(self.UI_subdivisions.text_invio)
-            if self.subdivisions < 2: self.subdivisions = 2
+            self.subdivisions_x = Mate.inp2int(self.UI_subdivisions_x.text_invio)
+            self.subdivisions_y = Mate.inp2int(self.UI_subdivisions_y.text_invio)
+            if self.subdivisions_x < 2: self.subdivisions_x = 2
+            if self.subdivisions_y < 2: self.subdivisions_y = 2
 
             self.ui_spessore = Mate.inp2int(self.UI_ui_spessore.text_invio)
             if self.ui_spessore < 1: self.ui_spessore = 1
@@ -1334,11 +1339,10 @@ class Painter:
         delta_y = massimo_locale_label - minimo_locale_label
         delta_y2 = self.max_y_l[1] - self.min_y_l[1]
 
-        for i in range(self.subdivisions):
+        for i in range(self.subdivisions_x):
             
             # data x
-            pos_var_x = (self.start_x + self.w_plot_area * i/ (self.subdivisions - 1))
-            pos_var_y = (self.start_y - self.h_plot_area * i/ (self.subdivisions - 1))
+            pos_var_x = (self.start_x + self.w_plot_area * i/ (self.subdivisions_x - 1))
             
             pygame.draw.line(self.schermo, self.text_color, 
                 [pos_var_x, self.start_y + 1 * (self.utilizzo_h - self.start_y) // 4 - self.utilizzo_w // 100],
@@ -1346,29 +1350,34 @@ class Painter:
                 round(self.ui_spessore * self.DPI_factor)
             )
             
-            value = self.min_x + delta_x * i / (self.subdivisions - 1)
+            value = self.min_x + delta_x * i / (self.subdivisions_x - 1)
             formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
-            self.schermo.blit(self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, self.text_color), (
-                pos_var_x - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2,
+            self.schermo.blit(self.font_tipo.render(f"{value:.{self.approx_label_x}{formatting}}", True, self.text_color), (
+                pos_var_x - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label_x}{formatting}}") / 2,
                 self.start_y + (self.utilizzo_h - self.start_y) // 3
             ))
             
+
+        for i in range(self.subdivisions_y):
+
             # data y
+            pos_var_y = (self.start_y - self.h_plot_area * i/ (self.subdivisions_y - 1))
+
             pygame.draw.line(self.schermo, colori_assi[0], 
                 [3 * self.start_x // 4 - self.utilizzo_w // 100, pos_var_y],
                 [3 * self.start_x // 4 + self.utilizzo_w // 100, pos_var_y],
                 round(self.ui_spessore * self.DPI_factor)
             )
             
-            value = minimo_locale_label + delta_y * i / (self.subdivisions - 1)
+            value = minimo_locale_label + delta_y * i / (self.subdivisions_y - 1)
             formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
-            label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, colori_assi[0])
+            label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label_y}{formatting}}", True, colori_assi[0])
             label_y_scr = pygame.transform.rotate(label_y_scr, 90)
         
 
             self.schermo.blit(label_y_scr, (
                 self.start_x - self.start_x // 3 - self.font_pixel_dim[1],
-                pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
+                pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label_y}{formatting}}") / 2
             ))
             
             if self.visualize_second_ax:
@@ -1379,30 +1388,35 @@ class Painter:
                     round(self.ui_spessore * self.DPI_factor)
                 )
                 
-                value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions - 1)
+                value = self.min_y_l[1] + delta_y2 * i / (self.subdivisions_y - 1)
                 formatting = "e" if ((value > MAX_BORDER or value < MIN_BORDER) or (value < ZERO_MAX_BORDER and value > ZERO_MIN_BORDER)) and value != 0 else "f"
-                label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label}{formatting}}", True, colori_assi[1])
+                label_y_scr = self.font_tipo.render(f"{value:.{self.approx_label_y}{formatting}}", True, colori_assi[1])
                 label_y_scr = pygame.transform.rotate(label_y_scr, 90)
             
                 self.schermo.blit(label_y_scr, (
                     self.end_x + 1 * self.start_x // 3,
-                    pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label}{formatting}}") / 2
+                    pos_var_y - self.font_pixel_dim[0] * len(f"{value:.{self.approx_label_y}{formatting}}") / 2
                 ))
             
-            # griglia
-            if self.UI_toggle_plot_bb.toggled:
-                if True:
-                    pygame.draw.line(self.schermo, [50, 50, 50], 
-                        [pos_var_x, self.start_y],
-                        [pos_var_x, self.end_y],
-                        1
-                    )
+        for i in range(self.subdivisions_x):
+            for j in range(self.subdivisions_y):
+                pos_var_x = (self.start_x + self.w_plot_area * i/ (self.subdivisions_x - 1))
+                pos_var_y = (self.start_y - self.h_plot_area * j/ (self.subdivisions_y - 1))
+                
+                # griglia
+                if self.UI_toggle_plot_bb.toggled:
+                    if True:
+                        pygame.draw.line(self.schermo, [50, 50, 50], 
+                            [pos_var_x, self.start_y],
+                            [pos_var_x, self.end_y],
+                            1
+                        )
 
-                    pygame.draw.line(self.schermo, [50, 50, 50], 
-                        [self.start_x, pos_var_y],
-                        [self.end_x, pos_var_y],
-                        1
-                    )
+                        pygame.draw.line(self.schermo, [50, 50, 50], 
+                            [self.start_x, pos_var_y],
+                            [self.end_x, pos_var_y],
+                            1
+                        )
 
         self.disegna_plots()
 
